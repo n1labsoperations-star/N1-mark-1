@@ -1,4 +1,10 @@
-import { ActivityIndicator, Button, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Button,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AppText from '../components/AppText';
 import PlaceholderScreen from '../components/PlaceholderScreen';
@@ -41,6 +47,7 @@ function LatestScreen() {
         <AppText key={user.id}>{user.name}</AppText>
       ))}
 
+      <Text>Test</Text>
       <Button
         title="Open details"
         onPress={() => navigation.navigate('Details', { id: 'latest' })}
