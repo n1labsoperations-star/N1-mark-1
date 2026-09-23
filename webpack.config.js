@@ -1,0 +1,93 @@
+const path = require('path');
+const webpack = require('webpack');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+const appDirectory = path.resolve(__dirname);
+
+// Source files plus React Native packages that ship untranspiled code.
+const babelLoaderConfiguration = {
+  test: /\.[jt]sx?$/,
+  include: [
+    path.resolve(appDirectory, 'index.web.js'),
+    path.resolve(appDirectory, 'App.tsx'),
+    path.resolve(appDirectory, 'src'),
+    path.resolve(appDirectory, 'web'),
+    path.resolve(appDirectory, 'node_modules/@react-native/new-app-screen'),
+  ],
+  use: {
+    loader: 'babel-loader',
+    options: {
+      babelrc: false,
+      configFile: false,
+      cacheDirectory: true,
+      presets: ['module:@react-native/babel-preset'],
+    },
+  },
+};
+
+// React Navigation, Reanimated & co. publish ESM with extensionless imports.
+const esmResolutionConfiguration = {
+  test: /\.m?js$/,
+  resolve: { fullySpecified: false },
+};
+
+const assetLoaderConfiguration = {
+  test: /\.(gif|jpe?g|png|svg|webp|ttf)$/,
+  type: 'asset/resource',
+};
+
+module.exports = (env, argv) => {
+  const isDev = argv.mode !== 'production';
+
+  return {
+    entry: path.resolve(appDirectory, 'index.web.js'),
+    output: {
+      path: path.resolve(appDirectory, 'dist'),
+      filename: isDev ? 'bundle.js' : 'bundle.[contenthash].js',
+      publicPath: '/',
+      clean: true,
+    },
+    devtool: isDev ? 'eval-source-map' : 'source-map',
+    module: {
+      rules: [
+        esmResolutionConfiguration,
+        babelLoaderConfiguration,
+        assetLoaderConfiguration,
+      ],
+    },
+    resolve: {
+      // .web.* files take priority, so platform-specific code can live beside shared code.
+      extensions: ['.web.tsx', '.web.ts', '.web.js', '.tsx', '.ts', '.js'],
+      alias: {
+        'react-native$': path.resolve(
+          appDirectory,
+          'web/shims/react-native.js',
+        ),
+        'react-native/Libraries/Core/Devtools/openURLInBrowser': path.resolve(
+          appDirectory,
+          'web/shims/openURLInBrowser.js',
+        ),
+      },
+    },
+    plugins: [
+      new HtmlWebpackPlugin({
+        template: path.resolve(appDirectory, 'public/index.html'),
+      }),
+      new webpack.DefinePlugin({
+        __DEV__: JSON.stringify(isDev),
+        __REACT_NATIVE_VERSION__: JSON.stringify(
+          require(path.resolve(
+            appDirectory,
+            'node_modules/react-native/package.json',
+          )).version,
+        ),
+      }),
+    ],
+    devServer: {
+      port: 8080,
+      hot: true,
+      historyApiFallback: true,
+      static: path.resolve(appDirectory, 'public'),
+    },
+  };
+};
