@@ -23,6 +23,7 @@ export type DrawerParamList = {
 export type RootStackParamList = {
   Main: NavigatorScreenParams<DrawerParamList>;
   Details: { id: string };
+  Components: undefined;
 };
 
 declare global {
