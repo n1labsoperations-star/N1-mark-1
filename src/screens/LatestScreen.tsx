@@ -47,7 +47,7 @@ function LatestScreen() {
         <AppText key={user.id}>{user.name}</AppText>
       ))}
 
-      <Text>Test heloo world</Text>
+      <Text>Test heloo worlds</Text>
       <Button
         title="Open details"
         onPress={() => navigation.navigate('Details', { id: 'latest' })}
