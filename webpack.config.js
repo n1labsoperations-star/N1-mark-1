@@ -67,6 +67,10 @@ module.exports = (env, argv) => {
           appDirectory,
           'web/shims/openURLInBrowser.js',
         ),
+        '@react-native/assets-registry/registry': path.resolve(
+          appDirectory,
+          'web/shims/assetsRegistry.js',
+        ),
       },
     },
     plugins: [

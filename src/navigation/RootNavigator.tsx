@@ -6,6 +6,7 @@ import {
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import DrawerNavigator from './DrawerNavigator';
 import DetailsScreen from '../screens/DetailsScreen';
+import N1GalleryScreen from '../screens/N1GalleryScreen';
 import type { RootStackParamList } from './types';
 import { fontFamily } from '../theme/fonts';
 
@@ -32,6 +33,11 @@ function RootNavigator() {
           options={{ headerShown: false }}
         />
         <Stack.Screen name="Details" component={DetailsScreen} />
+        <Stack.Screen
+          name="Components"
+          component={N1GalleryScreen}
+          options={{ title: 'N1 Components' }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

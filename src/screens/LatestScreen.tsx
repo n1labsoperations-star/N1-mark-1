@@ -8,6 +8,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import AppText from '../components/AppText';
 import PlaceholderScreen from '../components/PlaceholderScreen';
+import { N1Button } from '../N1Modules';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import {
   decrement,
@@ -52,6 +53,12 @@ function LatestScreen() {
         title="Open details"
         onPress={() => navigation.navigate('Details', { id: 'latest' })}
       />
+      <N1Button
+        title="Show Components"
+        rightIcon="arrow-right"
+        style={styles.centered}
+        onPress={() => navigation.navigate('Components')}
+      />
     </PlaceholderScreen>
   );
 }
@@ -60,6 +67,9 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: 8,
+  },
+  centered: {
+    alignSelf: 'center',
   },
 });
 
