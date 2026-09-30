@@ -7,6 +7,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import DrawerNavigator from './DrawerNavigator';
 import { DetailsScreen } from '../../features/feed';
 import { N1GalleryScreen } from '../../features/gallery';
+import { AdminNavigator } from './admin';
 import type { RootStackParamList } from './types';
 import { linking } from './linking';
 import { fontFamily } from '../../theme/fonts';
@@ -38,6 +39,11 @@ function RootNavigator() {
           name="Components"
           component={N1GalleryScreen}
           options={{ title: 'N1 Components' }}
+        />
+        <Stack.Screen
+          name="Admin"
+          component={AdminNavigator}
+          options={{ headerShown: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>

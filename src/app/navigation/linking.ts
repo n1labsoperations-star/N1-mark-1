@@ -27,6 +27,28 @@ export const linking: LinkingOptions<RootStackParamList> = {
       },
       Details: 'details/:id',
       Components: 'components',
+      Admin: {
+        path: 'admin',
+        screens: {
+          Dashboard: '',
+          Users: 'users',
+          UserDetails: 'users/:userId',
+          MyProfile: 'profile',
+          Customers: 'customers',
+          CustomerDetails: 'customers/:customerId',
+          Orders: 'orders',
+          OrderDetails: 'orders/:orderId',
+          // Optional id: blank creates a new order.
+          OrderForm: 'order-form/:orderId?',
+          JobCards: 'job-cards',
+          Machines: 'machines',
+          Billing: 'billing',
+          InvoiceDetails: 'invoices/:invoiceId',
+          InvoiceEdit: 'invoices/:invoiceId/edit',
+          QuoteDetails: 'quotes/:quoteId',
+          QuoteForm: 'quote-form/:quoteId?',
+        },
+      },
     },
   },
 };

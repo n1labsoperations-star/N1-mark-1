@@ -1,4 +1,5 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
+import type { AdminStackParamList } from './admin/types';
 
 // Material top tabs (nested inside the Feed bottom tab)
 export type FeedTopTabParamList = {
@@ -24,6 +25,8 @@ export type RootStackParamList = {
   Main: NavigatorScreenParams<DrawerParamList>;
   Details: { id: string };
   Components: undefined;
+  /** Admin module; will sit behind the login flow. */
+  Admin: NavigatorScreenParams<AdminStackParamList> | undefined;
 };
 
 declare global {

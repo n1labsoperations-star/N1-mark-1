@@ -43,7 +43,7 @@ Open **N1 Components** from the app drawer to see every component live
 | `N1StatCard`                     | Summary numbers            | `label`, `value`, `tone`, `icon`                                                                                |
 | `N1ProgressBar`                  | Completion                 | `value` (0–100), `label`, `tone`                                                                                |
 | `N1Tabs`                         | Invoices / Quotes          | `tabs`, `value`, `onChange`                                                                                     |
-| `N1Table`                        | Lists of records           | `columns`, `data`, `keyExtractor`, `onRowPress`, `footer`, `renderCompactItem`                                  |
+| `N1Table`                        | Lists of records           | `columns` (`interactive` for cells with buttons), `data`, `keyExtractor`, `onRowPress`, `footer`, `renderCompactItem` |
 | `N1Pagination`                   | Table footer               | `summary`, `hasPrevious`, `hasNext`, `onPrevious`, `onNext`                                                     |
 | `N1Modal`                        | Forms in a dialog          | `visible`, `onClose`, `title`, `subtitle`, `footer`, `size`                                                     |
 | `N1ConfirmDialog`                | "Are you sure?"            | `title`, `message`, `confirmLabel`, `onConfirm`, `onCancel`, `tone`, `loading`                                  |
