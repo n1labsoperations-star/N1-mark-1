@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, type ViewProps, type ViewStyle } from 'react-native';
 import { useN1Theme } from '../../../theme/N1ThemeProvider';
 import type { N1Colors } from '../../../theme/themes';
@@ -29,7 +30,7 @@ export type N1ViewProps = ViewProps & {
  * Layout box. Spacing, colour and radius props take token names, so screens
  * never need hard-coded numbers or colours.
  */
-export function N1View({
+export const N1View = React.memo(function N1ViewComponent({
   row,
   flex,
   gap,
@@ -62,4 +63,5 @@ export function N1View({
     flexWrap: wrap ? 'wrap' : undefined,
   };
   return <View style={[box, style]} {...rest} />;
-}
+});
+N1View.displayName = 'N1View';

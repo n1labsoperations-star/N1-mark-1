@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { N1Icon, type N1IconName } from '../N1Icon/N1Icon';
@@ -34,7 +35,7 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** White rounded panel on the grey page background. */
-export function N1Card({
+export const N1Card = React.memo(function N1CardComponent({
   title,
   subtitle,
   icon,
@@ -68,4 +69,5 @@ export function N1Card({
       {children}
     </N1View>
   );
-}
+});
+N1Card.displayName = 'N1Card';

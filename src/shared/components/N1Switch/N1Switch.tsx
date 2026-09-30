@@ -1,3 +1,4 @@
+import React from 'react';
 import { Pressable, View } from 'react-native';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
 import { N1Text } from '../N1Text/N1Text';
@@ -46,7 +47,7 @@ const makeStyles = createN1Styles(t => {
 });
 
 /** On/off toggle (e.g. the permissions list). */
-export function N1Switch({
+export const N1Switch = React.memo(function N1SwitchComponent({
   value,
   onValueChange,
   label,
@@ -76,4 +77,5 @@ export function N1Switch({
       </View>
     </Pressable>
   );
-}
+});
+N1Switch.displayName = 'N1Switch';

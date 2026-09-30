@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { N1Icon } from '../N1Icon/N1Icon';
 import {
@@ -45,7 +46,7 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** One step on a route card (Material QC ✓ Completed, Turning ● Running). */
-export function N1TimelineItem({
+export const N1TimelineItem = React.memo(function N1TimelineItemComponent({
   title,
   subtitle,
   meta,
@@ -89,4 +90,5 @@ export function N1TimelineItem({
       <N1Badge label={statusLabel ?? d.label} tone={d.tone} />
     </View>
   );
-}
+});
+N1TimelineItem.displayName = 'N1TimelineItem';

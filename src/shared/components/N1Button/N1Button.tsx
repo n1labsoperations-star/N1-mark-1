@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -89,7 +90,7 @@ const makeStyles = createN1Styles(t => ({
   disabled: { opacity: t.opacity.disabled },
 }));
 
-export function N1Button({
+export const N1Button = React.memo(function N1ButtonComponent({
   title,
   variant = 'primary',
   size = 'md',
@@ -155,4 +156,5 @@ export function N1Button({
       )}
     </Pressable>
   );
-}
+});
+N1Button.displayName = 'N1Button';

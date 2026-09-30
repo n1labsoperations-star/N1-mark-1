@@ -1,3 +1,4 @@
+import React from 'react';
 import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { N1Icon } from '../N1Icon/N1Icon';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
@@ -42,7 +43,7 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** Dashed drop zone for attachments (design file, PO documents). */
-export function N1UploadBox({
+export const N1UploadBox = React.memo(function N1UploadBoxComponent({
   label,
   hint,
   onPress,
@@ -104,4 +105,5 @@ export function N1UploadBox({
       <N1FieldHelper errorText={errorText} />
     </View>
   );
-}
+});
+N1UploadBox.displayName = 'N1UploadBox';

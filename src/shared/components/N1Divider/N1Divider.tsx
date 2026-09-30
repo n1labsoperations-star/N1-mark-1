@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { useN1Theme } from '../../../theme/N1ThemeProvider';
 import type { N1Spacing } from '../../../theme/tokens';
@@ -9,7 +10,7 @@ export type N1DividerProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-export function N1Divider({
+export const N1Divider = React.memo(function N1DividerComponent({
   vertical = false,
   spacing = 'none',
   style,
@@ -30,4 +31,5 @@ export function N1Divider({
         backgroundColor: t.colors.border,
       };
   return <View accessible={false} style={[line, style]} />;
-}
+});
+N1Divider.displayName = 'N1Divider';

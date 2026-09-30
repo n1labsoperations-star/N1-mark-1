@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   ActivityIndicator,
   Button,
@@ -71,4 +72,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LatestScreen;
+export default React.memo(LatestScreen);

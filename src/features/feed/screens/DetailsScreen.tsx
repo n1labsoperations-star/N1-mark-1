@@ -1,3 +1,4 @@
+import React from 'react';
 import { Button } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppText, PlaceholderScreen } from '../../../shared/components';
@@ -14,4 +15,4 @@ function DetailsScreen({ navigation, route }: Props) {
   );
 }
 
-export default DetailsScreen;
+export default React.memo(DetailsScreen);

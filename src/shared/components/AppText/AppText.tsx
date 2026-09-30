@@ -1,3 +1,4 @@
+import React from 'react';
 import { Text, type TextProps } from 'react-native';
 import { fonts, type FontWeight } from '../../../theme/fonts';
 
@@ -10,4 +11,4 @@ function AppText({ weight = 'regular', style, ...rest }: Props) {
   return <Text style={[fonts[weight], style]} {...rest} />;
 }
 
-export default AppText;
+export default React.memo(AppText);

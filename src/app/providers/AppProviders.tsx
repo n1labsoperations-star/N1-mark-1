@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -29,4 +30,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AppProviders;
+export default React.memo(AppProviders);

@@ -1,3 +1,4 @@
+import React from 'react';
 import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
 import { N1Text } from '../N1Text/N1Text';
@@ -38,7 +39,7 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** Segmented tabs (e.g. Invoices / Quotes). */
-export function N1Tabs<K extends string>({
+export const N1Tabs = React.memo(function N1TabsComponent<K extends string>({
   tabs,
   value,
   onChange,
@@ -77,4 +78,4 @@ export function N1Tabs<K extends string>({
       })}
     </View>
   );
-}
+}) as <K extends string>(props: N1TabsProps<K>) => React.ReactNode;

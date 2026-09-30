@@ -12,6 +12,8 @@ export const fontFamily = {
 export type N1FontWeight = keyof typeof fontFamily;
 
 export const typography = {
+  /** Brand splash wordmark, e.g. the login hero panel. */
+  hero: { fontSize: 120, lineHeight: 132, weight: 'bold' },
   display: { fontSize: 32, lineHeight: 40, weight: 'bold' },
   h1: { fontSize: 26, lineHeight: 32, weight: 'bold' },
   h2: { fontSize: 20, lineHeight: 28, weight: 'bold' },

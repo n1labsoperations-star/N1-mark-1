@@ -1,3 +1,4 @@
+import React from 'react';
 import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
 import { N1FieldHelper, N1FieldLabel } from '../N1FieldLabel/N1FieldLabel';
@@ -44,7 +45,7 @@ const makeStyles = createN1Styles(t => {
   };
 });
 
-export function N1RadioButton({
+export const N1RadioButton = React.memo(function N1RadioButtonComponent({
   label,
   selected,
   onPress,
@@ -70,7 +71,8 @@ export function N1RadioButton({
       <N1Text>{label}</N1Text>
     </Pressable>
   );
-}
+});
+N1RadioButton.displayName = 'N1RadioButton';
 
 export type N1RadioOption<T extends string | number> = {
   label: string;
@@ -92,7 +94,9 @@ export type N1RadioGroupProps<T extends string | number> = {
   style?: StyleProp<ViewStyle>;
 };
 
-export function N1RadioGroup<T extends string | number>({
+export const N1RadioGroup = React.memo(function N1RadioGroupComponent<
+  T extends string | number,
+>({
   options,
   value,
   onChange,
@@ -122,4 +126,6 @@ export function N1RadioGroup<T extends string | number>({
       <N1FieldHelper helperText={helperText} errorText={errorText} />
     </View>
   );
-}
+}) as <T extends string | number>(
+  props: N1RadioGroupProps<T>,
+) => React.ReactNode;

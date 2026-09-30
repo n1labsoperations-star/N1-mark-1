@@ -1,3 +1,4 @@
+import React from 'react';
 import { Button } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { PlaceholderScreen } from '../../../shared/components';
@@ -15,4 +16,4 @@ function PopularScreen() {
   );
 }
 
-export default PopularScreen;
+export default React.memo(PopularScreen);

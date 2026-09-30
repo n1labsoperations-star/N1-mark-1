@@ -1,3 +1,4 @@
+import React from 'react';
 import { Button } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { PlaceholderScreen } from '../../../shared/components';
@@ -15,4 +16,4 @@ function SettingsScreen() {
   );
 }
 
-export default SettingsScreen;
+export default React.memo(SettingsScreen);

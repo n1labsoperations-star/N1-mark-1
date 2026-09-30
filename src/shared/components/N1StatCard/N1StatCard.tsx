@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { N1Icon, type N1IconName } from '../N1Icon/N1Icon';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
@@ -31,7 +32,7 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** Summary number tile (Total invoices, Running machines, Monthly billed…). */
-export function N1StatCard({
+export const N1StatCard = React.memo(function N1StatCardComponent({
   label,
   value,
   icon,
@@ -53,4 +54,5 @@ export function N1StatCard({
       </N1Text>
     </View>
   );
-}
+});
+N1StatCard.displayName = 'N1StatCard';

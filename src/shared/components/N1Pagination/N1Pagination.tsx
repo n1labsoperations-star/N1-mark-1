@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
 import { N1Button } from '../N1Button/N1Button';
@@ -26,7 +27,7 @@ const makeStyles = createN1Styles(t => ({
   buttons: { flexDirection: 'row', gap: t.spacing.sm },
 }));
 
-export function N1Pagination({
+export const N1Pagination = React.memo(function N1PaginationComponent({
   summary,
   hasPrevious,
   hasNext,
@@ -60,4 +61,5 @@ export function N1Pagination({
       </View>
     </View>
   );
-}
+});
+N1Pagination.displayName = 'N1Pagination';

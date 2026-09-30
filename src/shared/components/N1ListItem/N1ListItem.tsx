@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ReactNode } from 'react';
 import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
@@ -39,7 +40,7 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** One row in a list of jobs or QC checks. */
-export function N1ListItem({
+export const N1ListItem = React.memo(function N1ListItemComponent({
   title,
   subtitle,
   right,
@@ -91,4 +92,5 @@ export function N1ListItem({
       {content}
     </Pressable>
   );
-}
+});
+N1ListItem.displayName = 'N1ListItem';

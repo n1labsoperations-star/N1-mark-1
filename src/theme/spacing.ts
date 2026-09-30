@@ -59,6 +59,12 @@ export const borderWidth = {
   thick: 2,
 } as const;
 
+/** Admin sidebar: full width with labels, or an icon-only rail. */
+export const sidebarWidth = {
+  expanded: 280,
+  collapsed: 76,
+} as const;
+
 export const modalWidth = {
   sm: 400,
   md: 460,

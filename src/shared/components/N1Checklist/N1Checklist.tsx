@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { N1Icon } from '../N1Icon/N1Icon';
 import {
@@ -28,7 +29,10 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** Live rule checks under a field, e.g. password requirements. */
-export function N1Checklist({ items, style }: N1ChecklistProps) {
+export const N1Checklist = React.memo(function N1ChecklistComponent({
+  items,
+  style,
+}: N1ChecklistProps) {
   const styles = useN1Styles(makeStyles);
   const theme = useN1Theme();
   return (
@@ -57,4 +61,5 @@ export function N1Checklist({ items, style }: N1ChecklistProps) {
       ))}
     </View>
   );
-}
+});
+N1Checklist.displayName = 'N1Checklist';

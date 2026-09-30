@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from 'react';
+import React, { useId, useState, type ReactNode } from 'react';
 import {
   Pressable,
   TextInput,
@@ -71,7 +71,7 @@ const makeStyles = createN1Styles(t => ({
   accessory: { alignSelf: 'center' },
 }));
 
-export function N1TextInput({
+export const N1TextInput = React.memo(function N1TextInputComponent({
   label,
   required,
   helperText,
@@ -146,4 +146,5 @@ export function N1TextInput({
       <N1FieldHelper helperText={helperText} errorText={errorText} />
     </View>
   );
-}
+});
+N1TextInput.displayName = 'N1TextInput';

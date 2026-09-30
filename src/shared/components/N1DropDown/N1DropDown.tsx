@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -92,7 +92,9 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** Select field. Opens a list of options (bottom sheet on phones). */
-export function N1DropDown<T extends string | number>({
+export const N1DropDown = React.memo(function N1DropDownComponent<
+  T extends string | number,
+>({
   options,
   value,
   onChange,
@@ -202,4 +204,4 @@ export function N1DropDown<T extends string | number>({
       </Modal>
     </View>
   );
-}
+}) as <T extends string | number>(props: N1DropDownProps<T>) => React.ReactNode;

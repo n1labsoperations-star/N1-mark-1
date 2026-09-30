@@ -22,32 +22,32 @@ Open **N1 Components** from the app drawer to see every component live
 
 ## Components
 
-| Component                        | Use it for                 | Key props                                                                                                       |
-| -------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `N1Text`                         | All text                   | `variant` (display, h1, h2, h3, stat, title, body, label, small, caption, overline), `weight`, `color`, `align` |
-| `N1View`                         | Layout boxes               | `row`, `gap`, `padding`, `background`, `radius`, `bordered`, `align`, `justify`, `wrap`                         |
-| `N1Card`                         | White panels               | `title`, `subtitle`, `icon`, `headerRight`                                                                      |
-| `N1Divider`                      | Separator lines            | `vertical`, `spacing`                                                                                           |
-| `N1Button`                       | Actions                    | `title`, `variant` (primary, secondary, danger, ghost), `size`, `leftIcon`, `rightIcon`, `loading`, `fullWidth` |
-| `N1IconButton`                   | Back, close, delete        | `icon`, `accessibilityLabel`, `variant` (secondary, soft, primary, danger)                                      |
-| `N1TextInput`                    | Text fields                | `label`, `required`, `errorText`, `helperText`, `secure`, `leftIcon`, `rightElement`, `readOnly`, `multiline`   |
-| `N1DropDown`                     | Select fields              | `options`, `value`, `onChange`, `label`, `placeholder`                                                          |
-| `N1RadioGroup` / `N1RadioButton` | One of a few choices       | `options`, `value`, `onChange`, `direction`                                                                     |
-| `N1Checkbox`                     | Yes / no                   | `label`, `checked`, `onChange`                                                                                  |
-| `N1Switch`                       | On / off settings          | `label`, `value`, `onValueChange`                                                                               |
-| `N1UploadBox`                    | File drop zone             | `hint`, `onPress`, `fileName`, `onRemove`                                                                       |
-| `N1Checklist`                    | Password rules             | `items: { label, done }[]`                                                                                      |
-| `N1Badge`                        | Status tags                | `label`, `tone` (success, info, warning, danger, neutral), `dot`                                                |
-| `N1Chip`                         | Facts and filters          | `label`, `value`, `onPress`, `selected`                                                                         |
-| `N1Avatar`                       | Initials, priority markers | `name` or `label`, `size`, `shape`, `tone`                                                                      |
-| `N1StatCard`                     | Summary numbers            | `label`, `value`, `tone`, `icon`                                                                                |
-| `N1ProgressBar`                  | Completion                 | `value` (0–100), `label`, `tone`                                                                                |
-| `N1Tabs`                         | Invoices / Quotes          | `tabs`, `value`, `onChange`                                                                                     |
-| `N1Table`                        | Lists of records           | `columns`, `data`, `keyExtractor`, `onRowPress`, `footer`, `renderCompactItem`                                  |
-| `N1Pagination`                   | Table footer               | `summary`, `hasPrevious`, `hasNext`, `onPrevious`, `onNext`                                                     |
-| `N1Modal`                        | Forms in a dialog          | `visible`, `onClose`, `title`, `subtitle`, `footer`, `size`                                                     |
-| `N1ConfirmDialog`                | "Are you sure?"            | `title`, `message`, `confirmLabel`, `onConfirm`, `onCancel`, `tone`, `loading`                                  |
-| `N1Icon`                         | Outline icons              | `name` (see `n1IconNames`), `size`, `color`                                                                     |
+| Component                        | Use it for                 | Key props                                                                                                             |
+| -------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `N1Text`                         | All text                   | `variant` (hero, display, h1, h2, h3, stat, title, body, label, small, caption, overline), `weight`, `color`, `align` |
+| `N1View`                         | Layout boxes               | `row`, `gap`, `padding`, `background`, `radius`, `bordered`, `align`, `justify`, `wrap`                               |
+| `N1Card`                         | White panels               | `title`, `subtitle`, `icon`, `headerRight`                                                                            |
+| `N1Divider`                      | Separator lines            | `vertical`, `spacing`                                                                                                 |
+| `N1Button`                       | Actions                    | `title`, `variant` (primary, secondary, danger, ghost), `size`, `leftIcon`, `rightIcon`, `loading`, `fullWidth`       |
+| `N1IconButton`                   | Back, close, delete        | `icon`, `accessibilityLabel`, `variant` (secondary, soft, primary, danger)                                            |
+| `N1TextInput`                    | Text fields                | `label`, `required`, `errorText`, `helperText`, `secure`, `leftIcon`, `rightElement`, `readOnly`, `multiline`         |
+| `N1DropDown`                     | Select fields              | `options`, `value`, `onChange`, `label`, `placeholder`                                                                |
+| `N1RadioGroup` / `N1RadioButton` | One of a few choices       | `options`, `value`, `onChange`, `direction`                                                                           |
+| `N1Checkbox`                     | Yes / no                   | `label`, `checked`, `onChange`                                                                                        |
+| `N1Switch`                       | On / off settings          | `label`, `value`, `onValueChange`                                                                                     |
+| `N1UploadBox`                    | File drop zone             | `hint`, `onPress`, `fileName`, `onRemove`                                                                             |
+| `N1Checklist`                    | Password rules             | `items: { label, done }[]`                                                                                            |
+| `N1Badge`                        | Status tags                | `label`, `tone` (success, info, warning, danger, neutral), `dot`                                                      |
+| `N1Chip`                         | Facts and filters          | `label`, `value`, `onPress`, `selected`                                                                               |
+| `N1Avatar`                       | Initials, priority markers | `name` or `label`, `size`, `shape`, `tone`                                                                            |
+| `N1StatCard`                     | Summary numbers            | `label`, `value`, `tone`, `icon`                                                                                      |
+| `N1ProgressBar`                  | Completion                 | `value` (0–100), `label`, `tone`                                                                                      |
+| `N1Tabs`                         | Invoices / Quotes          | `tabs`, `value`, `onChange`                                                                                           |
+| `N1Table`                        | Lists of records           | `columns`, `data`, `keyExtractor`, `onRowPress`, `footer`, `renderCompactItem`                                        |
+| `N1Pagination`                   | Table footer               | `summary`, `hasPrevious`, `hasNext`, `onPrevious`, `onNext`                                                           |
+| `N1Modal`                        | Forms in a dialog          | `visible`, `onClose`, `title`, `subtitle`, `footer`, `size`                                                           |
+| `N1ConfirmDialog`                | "Are you sure?"            | `title`, `message`, `confirmLabel`, `onConfirm`, `onCancel`, `tone`, `loading`                                        |
+| `N1Icon`                         | Outline icons              | `name` (see `n1IconNames`), `size`, `color`                                                                           |
 
 ### Added from the userFlow design
 

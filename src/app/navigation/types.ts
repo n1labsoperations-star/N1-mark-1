@@ -1,4 +1,6 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
+import type { AuthStackParamList } from '../../features/auth/types';
+import type { AdminDrawerParamList } from '../../features/dashboard/types';
 
 // Material top tabs (nested inside the Feed bottom tab)
 export type FeedTopTabParamList = {
@@ -19,9 +21,16 @@ export type DrawerParamList = {
   Settings: undefined;
 };
 
+// Dashboard stack (nested inside the root "Dashboard" screen)
+export type MainStackParamList = {
+  Admin: NavigatorScreenParams<AdminDrawerParamList>;
+  User: undefined;
+};
+
 // Root stack
 export type RootStackParamList = {
-  Main: NavigatorScreenParams<DrawerParamList>;
+  Auth: NavigatorScreenParams<AuthStackParamList>;
+  Dashboard: NavigatorScreenParams<MainStackParamList>;
   Details: { id: string };
   Components: undefined;
 };

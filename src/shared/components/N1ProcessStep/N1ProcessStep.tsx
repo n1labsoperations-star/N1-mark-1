@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { N1Icon } from '../N1Icon/N1Icon';
@@ -53,7 +54,10 @@ const numberColor = {
   upcoming: 'secondary',
 } as const;
 
-export function N1StepNumber({ number, status = 'draft' }: N1StepNumberProps) {
+export const N1StepNumber = React.memo(function N1StepNumberComponent({
+  number,
+  status = 'draft',
+}: N1StepNumberProps) {
   const styles = useN1Styles(makeStyles);
   return (
     <View
@@ -65,7 +69,8 @@ export function N1StepNumber({ number, status = 'draft' }: N1StepNumberProps) {
       </N1Text>
     </View>
   );
-}
+});
+N1StepNumber.displayName = 'N1StepNumber';
 
 const statusBadge = {
   completed: { label: 'Completed', tone: 'success' },
@@ -89,7 +94,7 @@ export type N1ProcessStepProps = {
 };
 
 /** One numbered operation in a process flow (Create flow / Edit flow). */
-export function N1ProcessStep({
+export const N1ProcessStep = React.memo(function N1ProcessStepComponent({
   number,
   status = 'draft',
   children,
@@ -131,4 +136,5 @@ export function N1ProcessStep({
       )}
     </View>
   );
-}
+});
+N1ProcessStep.displayName = 'N1ProcessStep';

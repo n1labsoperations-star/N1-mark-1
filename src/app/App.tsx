@@ -2,6 +2,7 @@
  * @format
  */
 
+import React from 'react';
 import { StatusBar, useColorScheme } from 'react-native';
 import { AppProviders } from './providers';
 import RootNavigator from './navigation/RootNavigator';
@@ -17,4 +18,4 @@ function App() {
   );
 }
 
-export default App;
+export default React.memo(App);

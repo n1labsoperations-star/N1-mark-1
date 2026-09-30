@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
@@ -25,7 +26,7 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** Uppercase labels with values below, in columns (PO NUMBER, DC NO…). */
-export function N1DetailGrid({
+export const N1DetailGrid = React.memo(function N1DetailGridComponent({
   items,
   title,
   columns = 2,
@@ -58,4 +59,5 @@ export function N1DetailGrid({
       </View>
     </View>
   );
-}
+});
+N1DetailGrid.displayName = 'N1DetailGrid';

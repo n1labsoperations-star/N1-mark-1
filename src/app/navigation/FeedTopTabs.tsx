@@ -1,3 +1,4 @@
+import React from 'react';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { LatestScreen, PopularScreen } from '../../features/feed';
 import type { FeedTopTabParamList } from './types';
@@ -13,4 +14,4 @@ function FeedTopTabs() {
   );
 }
 
-export default FeedTopTabs;
+export default React.memo(FeedTopTabs);

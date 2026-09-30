@@ -1,3 +1,4 @@
+import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import FeedTopTabs from './FeedTopTabs';
 import { SearchScreen } from '../../features/search';
@@ -28,4 +29,4 @@ function MainTabNavigator() {
   );
 }
 
-export default MainTabNavigator;
+export default React.memo(MainTabNavigator);

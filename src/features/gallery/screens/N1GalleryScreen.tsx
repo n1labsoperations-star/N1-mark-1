@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { ScrollView } from 'react-native';
 import {
   N1Avatar,
@@ -736,4 +736,4 @@ function N1GalleryScreen() {
   );
 }
 
-export default N1GalleryScreen;
+export default React.memo(N1GalleryScreen);

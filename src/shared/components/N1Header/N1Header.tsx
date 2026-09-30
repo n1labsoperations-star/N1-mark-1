@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -53,7 +54,7 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** Top bar for a screen. */
-export function N1Header({
+export const N1Header = React.memo(function N1HeaderComponent({
   title,
   variant = 'default',
   leftIcon,
@@ -128,4 +129,5 @@ export function N1Header({
       <View style={styles.base}>{content}</View>
     </Container>
   );
-}
+});
+N1Header.displayName = 'N1Header';

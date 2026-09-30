@@ -1,3 +1,4 @@
+import React from 'react';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import MainTabNavigator from './MainTabNavigator';
 import { SettingsScreen } from '../../features/settings';
@@ -14,4 +15,4 @@ function DrawerNavigator() {
   );
 }
 
-export default DrawerNavigator;
+export default React.memo(DrawerNavigator);

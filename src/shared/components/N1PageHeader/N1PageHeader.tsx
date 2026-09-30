@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
@@ -22,7 +23,7 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** Large page title with a count line (My Jobs, QC). */
-export function N1PageHeader({
+export const N1PageHeader = React.memo(function N1PageHeaderComponent({
   title,
   subtitle,
   right,
@@ -44,4 +45,5 @@ export function N1PageHeader({
       {right}
     </View>
   );
-}
+});
+N1PageHeader.displayName = 'N1PageHeader';
