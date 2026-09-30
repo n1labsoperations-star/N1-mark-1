@@ -24,6 +24,8 @@ export type RootStackParamList = {
   Main: NavigatorScreenParams<DrawerParamList>;
   Details: { id: string };
   Components: undefined;
+  /** Admin module; will sit behind the login flow. */
+  Admin: undefined;
 };
 
 declare global {

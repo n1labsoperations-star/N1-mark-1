@@ -59,6 +59,14 @@ function LatestScreen() {
         style={styles.centered}
         onPress={() => navigation.navigate('Components')}
       />
+      {/* Temporary entry point until the login flow routes admins here. */}
+      <N1Button
+        title="Open Admin"
+        rightIcon="arrow-right"
+        style={styles.centered}
+        onPress={() => navigation.navigate('Admin')}
+        testID="open-admin"
+      />
     </PlaceholderScreen>
   );
 }

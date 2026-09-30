@@ -1,0 +1,159 @@
+import type { N1DropDownOption, N1Tab } from '../../N1Modules';
+import type { StatusMeta } from '../../shared/types';
+import type { BillingTab, InvoiceStatus, QuoteStatus } from './types';
+
+export const BILLING_STRINGS = {
+  title: 'Billing',
+  subtitle: 'Generate, track and collect payments.',
+  tabs: { invoices: 'Invoices', quotes: 'Quotes' },
+  statusFilter: 'Status',
+  export: 'Export',
+  exportAction: 'Exporting',
+  view: 'View',
+  edit: 'Edit',
+  invoices: {
+    search: 'Search invoice',
+    noun: 'invoices',
+    stats: {
+      total: 'Total Invoices',
+      paid: 'Paid',
+      pending: 'Pending',
+      month: 'This Month',
+    },
+    columns: {
+      invoice: 'Invoice',
+      customer: 'Customer',
+      job: 'Job',
+      routeCard: 'Route card',
+      amount: 'Amount',
+      status: 'Status',
+      actions: 'Actions',
+    },
+    clientReference: 'Client reference',
+  },
+  quotes: {
+    create: 'Create Quote',
+    createA11y: 'Create quote',
+    search: 'Search quote',
+    noun: 'quotes',
+    stats: {
+      total: 'Total Quotes',
+      accepted: 'Accepted',
+      pending: 'Pending',
+      rejected: 'Rejected',
+    },
+    columns: {
+      id: 'Quote ID',
+      customer: 'Customer',
+      status: 'Status',
+      actions: 'Actions',
+    },
+  },
+  invoice: {
+    title: 'Invoice',
+    subtitle: (id: string, status: string) => `${id} · ${status}`,
+    editTitle: 'Edit Invoice',
+    customer: 'Customer',
+    jobId: 'Job ID',
+    partName: 'Part name',
+    quantity: 'Quantity',
+    status: 'Status',
+    additional: 'Additional details',
+    discount: 'Discount',
+    notes: 'Notes',
+    send: 'Send Invoice',
+    sendShort: 'Send',
+    resendAction: 'Re-sending invoices',
+    downloadPdf: 'Download PDF',
+    pdfShort: 'PDF',
+    downloadAction: 'Downloading PDFs',
+    markPaid: 'Mark as Paid',
+    notFound: 'This invoice no longer exists.',
+  },
+  quote: {
+    title: 'Quote Detail',
+    addTitle: 'Add Quote',
+    newSubtitle: 'New quote',
+    total: 'Total',
+    operations: 'Operations',
+    material: 'Material',
+    materialPlaceholder: 'e.g. EN8',
+    status: 'Status',
+    convert: 'Convert to Job Card',
+    // "Add Quote" is the design's label for revising an existing quote.
+    revise: 'Add Quote',
+    downloadPdf: 'Download PDF',
+    pdfShort: 'PDF',
+    customer: 'Customer',
+    customerPlaceholder: 'Enter customer name',
+    partName: 'Part name',
+    partNamePlaceholder: 'Enter part name',
+    quantity: 'Quantity',
+    quantityPlaceholder: 'Enter quantity',
+    notFound: 'This quote no longer exists.',
+  },
+  lineItems: {
+    title: 'Process operations',
+    customizableInvoice: 'Columns are customizable per invoice',
+    customizableQuote: 'Columns are customizable per quote',
+    customizableShort: 'Customizable',
+    operation: 'Operation',
+    description: 'Description',
+    timeQty: 'Time / Qty',
+    rate: 'Rate',
+    amount: 'Amount',
+    addRow: 'Add row',
+    remove: (name: string) => `Remove ${name || 'row'}`,
+    minutesUnit: 'min',
+    minutesHeader: (qty: number) => `Min / pc × ${qty}`,
+    rateHeader: 'Rate (₹/min)',
+    rateUnit: '/min',
+    operationPlaceholder: 'e.g. Facing',
+    descriptionPlaceholder: 'e.g. OD facing both ends',
+    perPiece: (qty: number, minutes: number) => `${qty} pcs × ${minutes} min`,
+    perMinute: (rate: string) => `${rate}/min`,
+    none: 'No operations yet.',
+    needsOne: 'Add at least one operation',
+  },
+  totals: {
+    subtotal: 'Subtotal',
+    gst: 'GST',
+    discount: 'Discount',
+    total: 'Total',
+  },
+} as const;
+
+export const BILLING_TABS: N1Tab<BillingTab>[] = [
+  { key: 'invoices', label: BILLING_STRINGS.tabs.invoices },
+  { key: 'quotes', label: BILLING_STRINGS.tabs.quotes },
+];
+
+export const INVOICE_STATUS_META: Record<InvoiceStatus, StatusMeta> = {
+  draft: { label: 'Draft', tone: 'warning' },
+  pending: { label: 'Pending', tone: 'warning' },
+  paid: { label: 'Paid', tone: 'success' },
+  overdue: { label: 'Overdue', tone: 'danger' },
+};
+
+export const QUOTE_STATUS_META: Record<QuoteStatus, StatusMeta> = {
+  draft: { label: 'Draft', tone: 'neutral' },
+  sent: { label: 'Sent', tone: 'info' },
+  accepted: { label: 'Accepted', tone: 'success' },
+  rejected: { label: 'Rejected', tone: 'danger' },
+};
+
+export const INVOICE_STATUS_OPTIONS: N1DropDownOption<InvoiceStatus>[] = (
+  Object.keys(INVOICE_STATUS_META) as InvoiceStatus[]
+).map(value => ({ value, label: INVOICE_STATUS_META[value].label }));
+
+export const QUOTE_STATUS_OPTIONS: N1DropDownOption<QuoteStatus>[] = (
+  Object.keys(QUOTE_STATUS_META) as QuoteStatus[]
+).map(value => ({ value, label: QUOTE_STATUS_META[value].label }));
+
+export const INVOICE_FILTER_OPTIONS: N1DropDownOption<InvoiceStatus | 'all'>[] =
+  [{ value: 'all', label: 'All statuses' }, ...INVOICE_STATUS_OPTIONS];
+
+export const QUOTE_FILTER_OPTIONS: N1DropDownOption<QuoteStatus | 'all'>[] = [
+  { value: 'all', label: 'All statuses' },
+  ...QUOTE_STATUS_OPTIONS,
+];
