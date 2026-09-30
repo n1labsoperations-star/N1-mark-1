@@ -9,7 +9,6 @@ const babelLoaderConfiguration = {
   test: /\.[jt]sx?$/,
   include: [
     path.resolve(appDirectory, 'index.web.js'),
-    path.resolve(appDirectory, 'App.tsx'),
     path.resolve(appDirectory, 'src'),
     path.resolve(appDirectory, 'web'),
     path.resolve(appDirectory, 'node_modules/@react-native/new-app-screen'),

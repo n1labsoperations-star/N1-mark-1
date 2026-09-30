@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import type { RootState } from '../../store';
+import { useAppDispatch, useAppSelector } from '../../app/store/hooks';
+import type { RootState } from '../../app/store';
 import type { CrudActions, CrudState } from './createCrudSlice';
 
 /**

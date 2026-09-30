@@ -7,7 +7,7 @@ import {
   createN1Styles,
   useN1Breakpoint,
   useN1Styles,
-} from '../../../N1Modules';
+} from '..';
 import { COMMON_STRINGS, CONTENT_MAX_WIDTH } from '../../constants';
 
 export type DetailHeaderProps = {

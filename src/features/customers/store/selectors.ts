@@ -1,5 +1,5 @@
 import { createSelector } from '@reduxjs/toolkit';
-import type { RootState } from '../../../store';
+import type { RootState } from '../../../app/store';
 import { percentOf } from '../../../shared/utils';
 import type { CustomerShare } from '../types';
 import { customersCrud } from './customersSlice';

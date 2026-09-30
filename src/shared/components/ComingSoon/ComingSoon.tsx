@@ -6,7 +6,7 @@ import {
   createN1Styles,
   useN1Styles,
   type N1IconName,
-} from '../../../N1Modules';
+} from '..';
 
 export type ComingSoonProps = {
   title: string;

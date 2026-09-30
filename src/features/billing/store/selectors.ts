@@ -1,5 +1,5 @@
 import { createSelector } from '@reduxjs/toolkit';
-import type { RootState } from '../../../store';
+import type { RootState } from '../../../app/store';
 import { invoiceTotal, isThisMonth } from '../utils';
 import { invoicesCrud, quotesCrud } from './billingSlices';
 

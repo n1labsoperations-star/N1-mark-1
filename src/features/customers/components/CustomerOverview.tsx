@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import { View } from 'react-native';
-import { N1StatCard, createN1Styles, useN1Styles } from '../../../N1Modules';
+import { N1StatCard, createN1Styles, useN1Styles } from '../../../shared/components';
 import { DonutChart } from '../../../shared/components';
 import { CUSTOMER_STRINGS } from '../constants';
 import { useCustomerShares } from '../hooks/useCustomers';

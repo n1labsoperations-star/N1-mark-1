@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import { useN1Theme } from '../../../N1Modules';
+import { useN1Theme } from '../../../shared/components';
 import { useCrudResource } from '../../../shared/store';
-import { useAppSelector } from '../../../store/hooks';
+import { useAppSelector } from '../../../app/store/hooks';
 import { customerActions } from '../store/customersSlice';
 import {
   makeSelectCustomerShares,

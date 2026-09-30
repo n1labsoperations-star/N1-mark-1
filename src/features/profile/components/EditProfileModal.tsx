@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react';
-import { N1Modal, N1Text, N1TextInput } from '../../../N1Modules';
+import { N1Modal, N1Text, N1TextInput } from '../../../shared/components';
 import { FormFooter } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
 import { useForm, useOnSettled, type FormErrors } from '../../../shared/hooks';

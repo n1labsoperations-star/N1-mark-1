@@ -4,7 +4,7 @@ import {
   AsyncContent,
   ComingSoon,
 } from '../../../shared/components';
-import { N1View } from '../../../N1Modules';
+import { N1View } from '../../../shared/components';
 import { useSession } from '../../../features/profile';
 import {
   ADMIN_NAV_ITEMS,

@@ -10,7 +10,7 @@ import {
   N1Text,
   useN1Breakpoint,
   type N1TableColumn,
-} from '../../../N1Modules';
+} from '../../../shared/components';
 import type { AdminNavigation } from '../../../app/navigation/admin/types';
 import {
   AdminScreen,

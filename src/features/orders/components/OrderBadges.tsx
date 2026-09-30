@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { N1Avatar, N1Badge } from '../../../N1Modules';
+import { N1Avatar, N1Badge } from '../../../shared/components';
 import { ORDER_STATUS_META, PRIORITY_META } from '../constants';
 import type { OrderPriority, OrderStatus } from '../types';
 

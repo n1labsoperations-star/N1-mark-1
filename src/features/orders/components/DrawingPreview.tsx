@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
-import { createN1Styles, useN1Styles, useN1Theme } from '../../../N1Modules';
+import { createN1Styles, useN1Styles, useN1Theme } from '../../../shared/components';
 import { DRAWING_PREVIEW_HEIGHT } from '../../../shared/constants';
 import { ORDER_STRINGS } from '../constants';
 

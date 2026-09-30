@@ -1,4 +1,4 @@
-import type { N1IconName } from '../../../N1Modules';
+import type { N1IconName } from '..';
 
 export type AdminNavItem<K extends string = string> = {
   key: K;

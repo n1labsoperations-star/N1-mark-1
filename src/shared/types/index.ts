@@ -1,4 +1,4 @@
-import type { N1Tone } from '../../N1Modules';
+import type { N1Tone } from '../components';
 
 /** Lifecycle of a request tracked in the store. */
 export type RequestStatus = 'idle' | 'loading' | 'succeeded' | 'failed';

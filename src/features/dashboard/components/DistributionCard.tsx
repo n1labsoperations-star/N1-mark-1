@@ -9,7 +9,7 @@ import {
   createN1Styles,
   useN1Breakpoint,
   useN1Styles,
-} from '../../../N1Modules';
+} from '../../../shared/components';
 import { DonutChart } from '../../../shared/components';
 import { formatCurrency } from '../../../shared/utils';
 import type { CustomerShare } from '../../customers';

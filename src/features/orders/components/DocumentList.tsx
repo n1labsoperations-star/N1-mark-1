@@ -6,7 +6,7 @@ import {
   N1Text,
   createN1Styles,
   useN1Styles,
-} from '../../../N1Modules';
+} from '../../../shared/components';
 import type { Attachment } from '../../../shared/types';
 import { formatFileSize } from '../../../shared/utils';
 import { ORDER_STRINGS } from '../constants';

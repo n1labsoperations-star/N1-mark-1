@@ -4,7 +4,7 @@ import {
   createN1Styles,
   useN1Breakpoint,
   useN1Styles,
-} from '../../../N1Modules';
+} from '..';
 
 export type FormRowProps = {
   /** Fields that sit side by side on wide screens and stack on phones. */

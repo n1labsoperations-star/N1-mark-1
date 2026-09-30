@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { useAppDispatch, useAppSelector } from '../../../store/hooks';
+import { useAppDispatch, useAppSelector } from '../../../app/store/hooks';
 import { profileActions } from '../store/profileSlice';
 import { selectProfileState, selectShellUser } from '../store/selectors';
 import type { PasswordChangeInput, ProfileInput } from '../types';

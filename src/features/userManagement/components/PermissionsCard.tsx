@@ -5,7 +5,7 @@ import {
   N1Switch,
   createN1Styles,
   useN1Styles,
-} from '../../../N1Modules';
+} from '../../../shared/components';
 import { PERMISSION_LABELS, USER_STRINGS } from '../constants';
 import type { UserPermissionKey, UserPermissions } from '../types';
 

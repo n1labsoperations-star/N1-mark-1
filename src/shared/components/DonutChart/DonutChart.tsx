@@ -6,7 +6,7 @@ import {
   createN1Styles,
   useN1Styles,
   useN1Theme,
-} from '../../../N1Modules';
+} from '..';
 import { DONUT_SIZE, DONUT_THICKNESS } from '../../constants';
 
 export type DonutSegment = {

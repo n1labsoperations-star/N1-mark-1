@@ -1,4 +1,4 @@
-import { createN1Styles } from '../../../N1Modules';
+import { createN1Styles } from '..';
 import { SIDEBAR_COLLAPSED_WIDTH, SIDEBAR_WIDTH } from '../../constants';
 
 export const makeLayoutStyles = createN1Styles(t => ({

@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { View } from 'react-native';
-import { N1Text, createN1Styles, useN1Styles } from '../../../N1Modules';
+import { N1Text, createN1Styles, useN1Styles } from '../../../shared/components';
 
 const BAR_WIDTH = 24;
 const BAR_HEIGHT = 4;

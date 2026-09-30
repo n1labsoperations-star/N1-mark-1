@@ -3,7 +3,7 @@ import {
   createN1Styles,
   useN1Styles,
   type N1IconName,
-} from '../../../N1Modules';
+} from '..';
 import { COMMON_STRINGS } from '../../constants';
 
 export type FormFooterProps = {

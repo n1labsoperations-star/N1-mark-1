@@ -1,4 +1,4 @@
-import { N1Table, N1Text } from '../../N1Modules';
+import { N1Table, N1Text } from '../components';
 import { render } from '../testing/testUtils';
 
 let mockWidth = 1280;

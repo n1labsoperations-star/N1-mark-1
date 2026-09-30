@@ -7,7 +7,7 @@ import {
   useN1Styles,
   useN1Theme,
   type N1IconName,
-} from '../../../N1Modules';
+} from '..';
 import { COMMON_STRINGS } from '../../constants';
 import type { ActivityEntry } from '../../types';
 import { formatRelativeTime } from '../../utils';

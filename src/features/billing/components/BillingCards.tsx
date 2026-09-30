@@ -5,7 +5,7 @@ import {
   N1Text,
   createN1Styles,
   useN1Styles,
-} from '../../../N1Modules';
+} from '../../../shared/components';
 import { formatCurrency } from '../../../shared/utils';
 import { BILLING_STRINGS } from '../constants';
 import type { Invoice, Quote } from '../types';

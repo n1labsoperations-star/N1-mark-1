@@ -1,4 +1,4 @@
-import { N1PageHeader } from '../../../N1Modules';
+import { N1PageHeader } from '../../../shared/components';
 import { AdminScreen, ComingSoon } from '../../../shared/components';
 import { NAV_STRINGS } from '../../../shared/constants';
 

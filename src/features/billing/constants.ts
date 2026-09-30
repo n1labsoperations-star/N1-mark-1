@@ -1,4 +1,4 @@
-import type { N1DropDownOption, N1Tab } from '../../N1Modules';
+import type { N1DropDownOption, N1Tab } from '../../shared/components';
 import type { StatusMeta } from '../../shared/types';
 import type { BillingTab, InvoiceStatus, QuoteStatus } from './types';
 

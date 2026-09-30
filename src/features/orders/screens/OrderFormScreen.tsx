@@ -12,7 +12,7 @@ import {
   useN1Breakpoint,
   useN1Styles,
   type N1DropDownOption,
-} from '../../../N1Modules';
+} from '../../../shared/components';
 import type { AdminScreenProps } from '../../../app/navigation/admin/types';
 import { pickDocument } from '../../../services/files/pickDocument';
 import {

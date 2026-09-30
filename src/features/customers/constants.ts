@@ -1,4 +1,4 @@
-import type { N1DropDownOption, N1RadioOption } from '../../N1Modules';
+import type { N1DropDownOption, N1RadioOption } from '../../shared/components';
 import type { CustomerType } from './types';
 
 export const CUSTOMER_STRINGS = {

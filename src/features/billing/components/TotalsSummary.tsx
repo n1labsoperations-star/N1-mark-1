@@ -6,7 +6,7 @@ import {
   createN1Styles,
   useN1Breakpoint,
   useN1Styles,
-} from '../../../N1Modules';
+} from '../../../shared/components';
 import { formatCurrency } from '../../../shared/utils';
 import { BILLING_STRINGS } from '../constants';
 import type { Totals } from '../types';

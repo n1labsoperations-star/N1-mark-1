@@ -7,7 +7,7 @@ import {
   useN1Breakpoint,
   useN1Styles,
   type N1DropDownOption,
-} from '../../../N1Modules';
+} from '..';
 import {
   TOOLBAR_FILTER_MIN_WIDTH,
   TOOLBAR_SEARCH_WIDTH,

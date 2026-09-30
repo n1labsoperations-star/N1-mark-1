@@ -5,7 +5,7 @@ import {
   N1Text,
   createN1Styles,
   useN1Styles,
-} from '../../../N1Modules';
+} from '../../../shared/components';
 import { formatDayMonth } from '../../../shared/utils';
 import { ORDER_STRINGS } from '../constants';
 import type { WorkOrder } from '../types';

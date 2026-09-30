@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
-import { N1Text, createN1Styles, useN1Styles } from '../../../N1Modules';
+import { N1Text, createN1Styles, useN1Styles } from '../../../shared/components';
 
 const makeStyles = createN1Styles(t => ({
   section: { gap: t.spacing.md },

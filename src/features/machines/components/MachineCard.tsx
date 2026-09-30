@@ -5,7 +5,7 @@ import {
   N1Text,
   createN1Styles,
   useN1Styles,
-} from '../../../N1Modules';
+} from '../../../shared/components';
 import { MACHINE_STRINGS, MACHINE_TYPE_LABELS } from '../constants';
 import type { Machine } from '../types';
 import { CurrentWork } from './CurrentWork';

@@ -7,7 +7,7 @@ import {
   N1Text,
   useN1Breakpoint,
   useN1Styles,
-} from '../../../N1Modules';
+} from '..';
 import { NAV_STRINGS } from '../../constants';
 import { useToggle } from '../../hooks';
 import { AdminSidebar } from './AdminSidebar';

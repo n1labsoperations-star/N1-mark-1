@@ -7,7 +7,7 @@ import {
   createN1Styles,
   useN1Styles,
   useN1Theme,
-} from '../../../N1Modules';
+} from '..';
 import { COMMON_STRINGS } from '../../constants';
 import type { RequestStatus } from '../../types';
 

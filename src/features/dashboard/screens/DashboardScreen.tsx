@@ -6,7 +6,7 @@ import {
   createN1Styles,
   useN1Breakpoint,
   useN1Styles,
-} from '../../../N1Modules';
+} from '../../../shared/components';
 import type { AdminNavigation } from '../../../app/navigation/admin/types';
 import {
   AdminScreen,

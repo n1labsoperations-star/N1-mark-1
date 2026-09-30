@@ -7,7 +7,7 @@ import {
   N1Text,
   useN1Styles,
   useN1Theme,
-} from '../../../N1Modules';
+} from '..';
 import { NAV_STRINGS } from '../../constants';
 import { makeSidebarStyles } from './AdminLayout.styles';
 import type { AdminNavItem, AdminUserSummary } from './types';

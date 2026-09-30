@@ -1,4 +1,4 @@
-import type { N1DropDownOption } from '../../N1Modules';
+import type { N1DropDownOption } from '../../shared/components';
 import type { StatusMeta } from '../../shared/types';
 import type {
   UserFilters,

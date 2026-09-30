@@ -5,7 +5,7 @@ import {
   N1PageHeader,
   N1Tabs,
   useN1Breakpoint,
-} from '../../../N1Modules';
+} from '../../../shared/components';
 import type { AdminScreenProps } from '../../../app/navigation/admin/types';
 import { AdminScreen } from '../../../shared/components';
 import { InvoicesTab } from '../components/InvoicesTab';

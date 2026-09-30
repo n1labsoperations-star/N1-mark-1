@@ -11,7 +11,7 @@ import ReactTestRenderer, {
   type ReactTestInstance,
   type ReactTestRenderer as Renderer,
 } from 'react-test-renderer';
-import { N1ThemeProvider } from '../../N1Modules';
+import { N1ThemeProvider } from '../components';
 import { AdminNavigator } from '../../app/navigation/admin/AdminNavigator';
 import type {
   AdminRouteName,
@@ -23,7 +23,7 @@ import { machinesApi } from '../../features/machines/api/machinesApi';
 import { ordersApi } from '../../features/orders/api/ordersApi';
 import { profileApi } from '../../features/profile/api/profileApi';
 import { userManagementApi } from '../../features/userManagement/api/userManagementApi';
-import { createStore } from '../../store';
+import { createStore } from '../../app/store';
 
 const SAFE_AREA = {
   frame: { x: 0, y: 0, width: 390, height: 844 },

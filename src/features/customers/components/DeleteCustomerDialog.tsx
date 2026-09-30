@@ -1,4 +1,4 @@
-import { N1ConfirmDialog, N1Text } from '../../../N1Modules';
+import { N1ConfirmDialog, N1Text } from '../../../shared/components';
 import { CUSTOMER_STRINGS } from '../constants';
 import type { Customer } from '../types';
 

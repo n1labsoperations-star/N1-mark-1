@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { N1Badge } from '../../../N1Modules';
+import { N1Badge } from '../../../shared/components';
 import { ROLE_META, STATUS_META } from '../constants';
 import type { UserRole, UserStatus } from '../types';
 

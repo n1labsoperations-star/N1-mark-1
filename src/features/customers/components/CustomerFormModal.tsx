@@ -5,7 +5,7 @@ import {
   N1RadioGroup,
   N1Text,
   N1TextInput,
-} from '../../../N1Modules';
+} from '../../../shared/components';
 import { FormFooter, FormRow } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
 import { useForm, useOnSettled, type FormErrors } from '../../../shared/hooks';

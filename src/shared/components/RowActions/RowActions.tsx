@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { View } from 'react-native';
-import { N1IconButton, createN1Styles, useN1Styles } from '../../../N1Modules';
+import { N1IconButton, createN1Styles, useN1Styles } from '..';
 
 export type RowActionsProps = {
   onEdit?: () => void;

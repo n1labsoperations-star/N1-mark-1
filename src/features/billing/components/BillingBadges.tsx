@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { N1Badge } from '../../../N1Modules';
+import { N1Badge } from '../../../shared/components';
 import { INVOICE_STATUS_META, QUOTE_STATUS_META } from '../constants';
 import type { InvoiceStatus, QuoteStatus } from '../types';
 

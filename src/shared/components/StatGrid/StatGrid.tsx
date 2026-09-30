@@ -6,7 +6,7 @@ import {
   useN1Styles,
   type N1IconName,
   type N1Tone,
-} from '../../../N1Modules';
+} from '..';
 
 export type StatItem = {
   key: string;

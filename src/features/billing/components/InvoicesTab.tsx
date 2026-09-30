@@ -10,7 +10,7 @@ import {
   useN1Breakpoint,
   useN1Styles,
   type N1TableColumn,
-} from '../../../N1Modules';
+} from '../../../shared/components';
 import type { AdminNavigation } from '../../../app/navigation/admin/types';
 import {
   AsyncContent,

@@ -1,5 +1,5 @@
 import { useCrudResource } from '../../../shared/store';
-import { useAppSelector } from '../../../store/hooks';
+import { useAppSelector } from '../../../app/store/hooks';
 import { orderActions } from '../store/ordersSlice';
 import {
   selectAllOrders,

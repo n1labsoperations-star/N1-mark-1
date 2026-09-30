@@ -6,7 +6,7 @@ import {
   N1Text,
   createN1Styles,
   useN1Styles,
-} from '../../../N1Modules';
+} from '../../../shared/components';
 import { formatCurrency } from '../../../shared/utils';
 import { CUSTOMER_STRINGS } from '../constants';
 import type { Customer } from '../types';
