@@ -1,20 +1,14 @@
 import type { TextStyle } from 'react-native';
+import { fontFamily, type N1FontWeight } from './typography';
 
 /**
- * Lato font families. Each name is the font's PostScript name (iOS), its file
- * name in assets/fonts (Android) and its @font-face family (web), so the same
- * string works on every platform.
- *
- * Pick the weight via fontFamily only: combining a custom fontFamily with
- * fontWeight makes Android fall back to the system font.
+ * Ready-made Lato text styles. Each family name (see typography.ts) is the
+ * font's PostScript name (iOS), its file name in assets/fonts (Android) and its
+ * @font-face family (web), so the same string works on every platform.
  */
-export const fontFamily = {
-  regular: 'Lato-Regular',
-  semiBold: 'Lato-Semibold',
-  bold: 'Lato-Bold',
-} as const;
+export { fontFamily };
 
-export type FontWeight = keyof typeof fontFamily;
+export type FontWeight = N1FontWeight;
 
 export const fonts: Record<FontWeight, TextStyle> = {
   regular: { fontFamily: fontFamily.regular },
