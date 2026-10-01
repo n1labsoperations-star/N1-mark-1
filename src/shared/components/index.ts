@@ -137,3 +137,19 @@ export { N1ConfirmDialog, type N1ConfirmDialogProps } from './N1ConfirmDialog';
 export { AppText } from './AppText';
 export { Icon, type IconName } from './Icon';
 export { PlaceholderScreen } from './PlaceholderScreen';
+
+// Admin layout and screen building blocks.
+export * from './AdminLayout';
+export * from './AdminScreen';
+export * from './DetailHeader';
+export * from './SplitLayout';
+export * from './ListToolbar';
+export * from './AsyncContent';
+export * from './ActivityCard';
+export * from './DonutChart';
+export * from './EntityHero';
+export * from './ComingSoon';
+export * from './StatGrid';
+export * from './FormRow';
+export * from './RowActions';
+export * from './FormFooter';

@@ -16,6 +16,11 @@ export type N1TableColumn<T> = {
   render?: (row: T) => ReactNode;
   /** Leave this column out of the stacked phone card. */
   hideOnCompact?: boolean;
+  /**
+   * The cell has its own buttons (Edit, Delete). The row then isn't exposed
+   * as a button itself, since a button can't contain buttons on web.
+   */
+  interactive?: boolean;
 };
 
 export type N1TableProps<T> = {
@@ -115,6 +120,8 @@ export const N1Table = React.memo(function N1TableComponent<T>({
     );
   }
 
+  const rowRole = columns.some(c => c.interactive) ? undefined : 'button';
+
   if (isCompact) {
     const [first, ...rest] = columns;
     return (
@@ -138,7 +145,7 @@ export const N1Table = React.memo(function N1TableComponent<T>({
           return onRowPress ? (
             <Pressable
               key={keyExtractor(row)}
-              accessibilityRole="button"
+              accessibilityRole={rowRole}
               onPress={() => onRowPress(row)}
             >
               {content}
@@ -192,7 +199,7 @@ export const N1Table = React.memo(function N1TableComponent<T>({
         return (
           <Pressable
             key={keyExtractor(row)}
-            accessibilityRole="button"
+            accessibilityRole={rowRole}
             onPress={() => onRowPress(row)}
             style={({ pressed }) => [styles.row, pressed && styles.pressed]}
           >

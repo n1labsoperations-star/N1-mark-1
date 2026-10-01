@@ -1,0 +1,53 @@
+import type {
+  ActivityEntry,
+  Attachment,
+  ISODateString,
+} from '../../shared/types';
+
+export type OrderPriority = 'high' | 'medium' | 'low';
+export type OrderStatus = 'new' | 'in_progress' | 'qc_pending' | 'completed';
+
+export type WorkOrder = {
+  /** Work order number, e.g. "1042" (shown as "WO #1042"). */
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerEmail: string;
+  partName: string;
+  /** e.g. "Job A". */
+  jobName: string;
+  description: string;
+  material: string;
+  quantity: number;
+  priority: OrderPriority;
+  status: OrderStatus;
+  dueDate: ISODateString;
+  poNumber: string;
+  routeCardNo: string;
+  dcNo: string;
+  dcDate: ISODateString;
+  partNumber: string;
+  drawingNumber: string;
+  rmPartNumber: string;
+  shopOrderNumber: string;
+  rawMaterialSize: string;
+  heatNumber: string;
+  projectId: string;
+  rawMaterialGrade: string;
+  notes: string;
+  designFile: Attachment | null;
+  documents: Attachment[];
+  statusHistory: ActivityEntry[];
+  createdAt: ISODateString;
+};
+
+/** Everything the Create / Edit order form can set. All optional in the UI. */
+export type OrderInput = Omit<
+  WorkOrder,
+  'id' | 'status' | 'statusHistory' | 'createdAt'
+>;
+
+export type OrderFilters = {
+  priority: OrderPriority | 'all';
+  status: OrderStatus | 'all';
+};
