@@ -6,6 +6,7 @@ import type {
 } from '@react-navigation/native-stack';
 import type { AdminDrawerParamList } from '../dashboard/types';
 import type { ISODateString } from '../../shared/types';
+import type { GstSupply } from '../../shared/utils';
 
 /** One process operation, charged per minute per piece. */
 export type LineItem = {
@@ -41,6 +42,10 @@ export type Invoice = {
   status: InvoiceStatus;
   lineItems: LineItem[];
   discount: number;
+  /** GST rate (%) charged; picked from the organization's active rates. */
+  gstRate: number;
+  /** The quote this was billed against, if any (to compare). */
+  quoteId: string | null;
   notes: string;
   issuedAt: ISODateString;
 };
@@ -55,6 +60,10 @@ export type Quote = {
   material: string;
   status: QuoteStatus;
   lineItems: LineItem[];
+  /** GST rate (%) charged; picked from the organization's active rates. */
+  gstRate: number;
+  /** The work order this quote was converted to. */
+  orderId: string | null;
   createdAt: ISODateString;
 };
 
@@ -63,6 +72,15 @@ export type QuoteInput = Omit<Quote, 'id' | 'createdAt'>;
 export type Totals = {
   subtotal: number;
   discount: number;
+  /** Subtotal after discount; GST is charged on this. */
+  taxable: number;
+  gstRate: number;
+  /** Same state: CGST + SGST; other state: IGST; 'none': no GST. */
+  supply: GstSupply;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  /** All GST together. */
   gst: number;
   total: number;
 };

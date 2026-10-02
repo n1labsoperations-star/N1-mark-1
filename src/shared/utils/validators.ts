@@ -9,6 +9,19 @@ export const isBlank = (value: string | undefined | null) =>
 
 export const isEmail = (value: string) => EMAIL_PATTERN.test(value.trim());
 
+/**
+ * Indian GSTIN: 2-digit state code, 10-character PAN, entity number, "Z",
+ * check character, e.g. "33ABCDE1234F1Z5". Case and spaces don't matter.
+ */
+const GSTIN_PATTERN = /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+
+/** "33abcde1234f1z5 " → "33ABCDE1234F1Z5" */
+export const normalizeGstin = (value: string) =>
+  value.replace(/\s/g, '').toUpperCase();
+
+export const isGstin = (value: string) =>
+  GSTIN_PATTERN.test(normalizeGstin(value));
+
 /** Allows +, spaces and dashes; counts the digits only. */
 export function isPhone(value: string): boolean {
   if (/[^\d\s+()-]/.test(value)) {

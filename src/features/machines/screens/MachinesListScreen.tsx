@@ -112,9 +112,9 @@ export function MachinesListScreen() {
         title: S.columns.actions,
         flex: 0.8,
         render: m => (
-          <N1Button
-            title={S.edit}
-            leftIcon="edit"
+          <N1IconButton
+            icon="edit"
+            variant="primary"
             size="sm"
             onPress={() => openEdit(m)}
             accessibilityLabel={S.a11y.edit(m.name)}

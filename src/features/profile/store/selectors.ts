@@ -1,5 +1,6 @@
 import { createSelector } from '@reduxjs/toolkit';
 import type { RootState } from '../../../app/store';
+import { ROLE_LABELS } from '../../auth/constants';
 
 export const selectProfileState = (state: RootState) => state.profile;
 export const selectMyProfile = (state: RootState) => state.profile.profile;
@@ -13,10 +14,7 @@ export const selectShellUser = createSelector(
     profile && {
       name: profile.name,
       email: profile.email,
-      subtitle: [
-        profile.role === 'admin' ? 'Admin' : 'User',
-        organization?.shortName,
-      ]
+      subtitle: [ROLE_LABELS[profile.role], organization?.shortName]
         .filter(Boolean)
         .join(' · '),
     },

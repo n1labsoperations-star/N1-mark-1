@@ -28,12 +28,11 @@ import { formatDate } from '../../../shared/utils';
 import { useSession } from '../../profile';
 import { AttachmentList } from '../components/AttachmentList';
 import { DeleteUserDialog } from '../components/DeleteUserDialog';
-import { PermissionsCard } from '../components/PermissionsCard';
 import { RoleBadge, UserStatusBadge } from '../components/UserBadges';
 import { UserFormModal } from '../components/UserFormModal';
 import { USER_STRINGS } from '../constants';
 import { useUser } from '../hooks/useUsers';
-import type { AdminUser, UserPermissionKey } from '../types';
+import type { AdminUser } from '../types';
 
 const D = USER_STRINGS.details;
 
@@ -61,7 +60,6 @@ export function UserDetailsScreen({
     error,
     reload,
     update,
-    saving,
     remove,
     deletingId,
     deleteError,
@@ -73,15 +71,6 @@ export function UserDetailsScreen({
     deletingId,
     deleteError,
     goBack,
-  );
-
-  const setPermission = useCallback(
-    (key: UserPermissionKey, value: boolean) => {
-      if (user) {
-        update(user.id, { permissions: { ...user.permissions, [key]: value } });
-      }
-    },
-    [user, update],
   );
 
   const toggleActive = useCallback(() => {
@@ -218,11 +207,6 @@ export function UserDetailsScreen({
         </N1Card>
       )}
       <ActivityCard items={user.activity} />
-      <PermissionsCard
-        permissions={user.permissions}
-        onChange={setPermission}
-        disabled={saving}
-      />
     </>
   );
 

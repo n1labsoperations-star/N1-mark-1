@@ -2,6 +2,7 @@ import { memo, type ReactNode } from 'react';
 import { View } from 'react-native';
 import {
   N1Badge,
+  N1Button,
   N1Chip,
   N1Text,
   N1Timer,
@@ -181,9 +182,12 @@ export function QcStation({
 export const JobOverview = memo(function JobOverviewComponent({
   jobCard,
   station,
+  onViewDetails,
 }: {
   jobCard: JobCard;
   station?: ReactNode;
+  /** Shows View Details, which opens the work order. */
+  onViewDetails?: () => void;
 }) {
   const styles = useN1Styles(makeStyles);
   const op = currentOperation(jobCard);
@@ -202,6 +206,16 @@ export const JobOverview = memo(function JobOverviewComponent({
           value={JOB_CARD_STRINGS.quantity(jobCard.quantity)}
         />
       </View>
+      {onViewDetails && (
+        <N1Button
+          title={JOBS_STRINGS.orderDetails.open}
+          leftIcon="file"
+          variant="secondary"
+          fullWidth
+          onPress={onViewDetails}
+          testID="view-order-details"
+        />
+      )}
       {station ??
         (jobCard.status === 'completed' ? (
           <N1Text color="secondary">{S.allDone}</N1Text>

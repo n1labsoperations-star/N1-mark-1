@@ -133,6 +133,7 @@ test('failing needs remarks, then marks the item failed', async () => {
   await press(byTestId(root, 'qc-fail'));
   expect(allText(root)).toContain('Fail Remarks');
   expect(byLabel(root, 'Voice note')).toBeTruthy();
+  expect(hasTestId(root, 'qc-rejected-grade')).toBe(false);
 
   await press(byTestId(root, 'qc-submit-fail'));
   expect(allText(root)).toContain('This field is required');
@@ -155,6 +156,39 @@ test('failing needs remarks, then marks the item failed', async () => {
   expect(hasTestId(root, 'qc-pass')).toBe(false);
 });
 
+test('failing raw material QC also records the rejected material', async () => {
+  const root = await qc();
+  await press(byTestId(root, 'qc-row-1039'));
+  await press(byTestId(root, 'qc-fail'));
+  expect(allText(root)).toContain('Rejected material');
+
+  // Remarks and all three material fields are required.
+  await typeInto(byTestId(root, 'qc-remarks'), 'Wrong grade received');
+  await press(byTestId(root, 'qc-submit-fail'));
+  expect(allText(root).split('This field is required').length - 1).toBe(3);
+  await typeInto(byTestId(root, 'qc-rejected-grade'), 'EN1A');
+  await typeInto(byTestId(root, 'qc-rejected-heatNumber'), 'HT-12345');
+  await typeInto(byTestId(root, 'qc-rejected-size'), '24mm dia x 200mm');
+  await press(byTestId(root, 'qc-submit-fail'));
+
+  expect(rowText(root, '1039')).toContain('Failed');
+  expect((await card('1039')).qcHistory.at(-1)).toMatchObject({
+    result: 'rejected',
+    remark: 'Wrong grade received',
+    rejectedMaterial: {
+      grade: 'EN1A',
+      heatNumber: 'HT-12345',
+      size: '24mm dia x 200mm',
+    },
+  });
+
+  // The check lists them with the remark.
+  await press(byTestId(root, 'qc-row-1039'));
+  const text = allText(root);
+  expect(text).toContain('Wrong grade received');
+  expect(text).toContain('HT-12345');
+});
+
 test('importing a job opens its check in the current tab', async () => {
   const root = await qc();
   await press(byText(root, 'Machine QC'));
@@ -171,4 +205,14 @@ test('importing a job opens its check in the current tab', async () => {
   await press(byLabel(root, 'Back'));
   expect(allText(root)).toContain('6 total');
   expect(hasTestId(root, 'qc-row-1040')).toBe(true);
+});
+
+test('View Details opens the order behind a QC check', async () => {
+  const root = await qc();
+  await press(byTestId(root, 'qc-row-1042'));
+  await press(byTestId(root, 'view-order-details'));
+
+  const text = allText(byTestId(root, 'order-details-modal'));
+  expect(text).toContain('Order Details');
+  expect(text).toContain('Additional details');
 });

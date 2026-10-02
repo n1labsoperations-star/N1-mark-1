@@ -116,6 +116,7 @@ const DRAWER_STACKS: Record<DrawerRoute, string[]> = {
   JobCards: ['JobCardsList', 'JobCardDetails', 'JobCardFlow'],
   Machines: ['MachinesList'],
   Profile: ['MyProfile'],
+  Organization: ['Organization'],
   Billing: [
     'BillingHome',
     'InvoiceDetails',

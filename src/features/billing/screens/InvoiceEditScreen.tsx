@@ -33,9 +33,11 @@ import { useInvoice } from '../hooks/useBilling';
 import { useLineItems } from '../hooks/useLineItems';
 import type { BillingScreenProps, InvoiceStatus } from '../types';
 import { calculateTotals } from '../utils';
+import { gstRateOptions, useGst } from '../hooks/useGst';
 
 const I = BILLING_STRINGS.invoice;
 const L = BILLING_STRINGS.lineItems;
+const T = BILLING_STRINGS.totals;
 
 const makeStyles = createN1Styles(t => ({
   body: { gap: t.spacing.lg },
@@ -74,6 +76,8 @@ export function InvoiceEditScreen({
     invoice ? String(invoice.discount) : '0',
   );
   const [notes, setNotes] = useState(invoice?.notes ?? '');
+  const [gstRate, setGstRate] = useState(invoice?.gstRate ?? 0);
+  const gst = useGst(invoice?.customerName ?? '');
   const [discountError, setDiscountError] = useState<string>();
   const [linesError, setLinesError] = useState<string>();
 
@@ -88,6 +92,7 @@ export function InvoiceEditScreen({
       setInvoiceStatus(invoice.status);
       setDiscount(String(invoice.discount));
       setNotes(invoice.notes);
+      setGstRate(invoice.gstRate);
     }
   }, [invoice, resetLines]);
 
@@ -100,8 +105,14 @@ export function InvoiceEditScreen({
 
   const totals = useMemo(
     () =>
-      calculateTotals(lines.items, invoice?.quantity ?? 0, toNumber(discount)),
-    [lines.items, invoice?.quantity, discount],
+      calculateTotals(
+        lines.items,
+        invoice?.quantity ?? 0,
+        toNumber(discount),
+        gstRate,
+        gst.supply,
+      ),
+    [lines.items, invoice?.quantity, discount, gstRate, gst.supply],
   );
 
   const save = useCallback(() => {
@@ -116,9 +127,10 @@ export function InvoiceEditScreen({
       status: invoiceStatus,
       lineItems: lines.items,
       discount: toNumber(discount),
+      gstRate,
       notes: notes.trim(),
     });
-  }, [discount, lines.items, invoiceStatus, notes, update, invoiceId]);
+  }, [discount, lines.items, invoiceStatus, notes, gstRate, update, invoiceId]);
 
   const header = (
     <DetailHeader title={I.editTitle} subtitle={invoiceId} onBack={goBack} />
@@ -194,6 +206,16 @@ export function InvoiceEditScreen({
           errorText={discountError}
           testID="invoice-discount"
         />
+        {gst.registered && (
+          <N1DropDown
+            label={T.gstRate}
+            options={gstRateOptions(gst.rates, gstRate)}
+            value={gstRate}
+            onChange={setGstRate}
+            placeholder={T.gstRatePlaceholder}
+            testID="invoice-gst-rate"
+          />
+        )}
         <N1TextInput
           label={I.notes}
           value={notes}

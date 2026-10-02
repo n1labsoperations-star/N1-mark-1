@@ -7,6 +7,8 @@ import {
 import type { JobsScreenProps, JobsStackParamList } from '../types';
 
 type Navigation = JobsScreenProps<'ScanJob'>['navigation'];
+/** The role navigator's tab host (see RoleNavigation). */
+const TABS = 'Tabs';
 type JobRoute = 'JobCardDetails' | 'OperatorJob' | 'QcCheck';
 
 /**
@@ -17,11 +19,14 @@ export function useOpenOverTabs() {
   const navigation = useNavigation<Navigation>();
   return useCallback(
     <R extends JobRoute>(name: R, params: JobsStackParamList[R]) => {
-      const [tabs] = navigation.getState().routes;
-      const routes: PartialRoute<Route<keyof JobsStackParamList>>[] = [
-        { key: tabs.key, name: tabs.name },
+      // Tabs isn't in the history when a job screen was opened by URL.
+      const tabs = navigation
+        .getState()
+        .routes.find(route => (route.name as string) === TABS);
+      const routes = [
+        tabs ? { key: tabs.key, name: TABS } : { name: TABS },
         { name, params },
-      ];
+      ] as PartialRoute<Route<keyof JobsStackParamList>>[];
       navigation.reset({ index: routes.length - 1, routes });
     },
     [navigation],

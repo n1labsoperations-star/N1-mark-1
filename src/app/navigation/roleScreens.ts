@@ -9,6 +9,7 @@ import {
   EnterJobCodeScreen,
   ImportOrderScreen,
   OperatorJobScreen,
+  OrderDetailsModalScreen,
   QcCheckScreen,
   QcFailScreen,
   RawMaterialScreen,
@@ -31,9 +32,15 @@ const MODAL: NativeStackNavigationOptions = {
   animation: 'slide_from_bottom',
 };
 
-// Second Admin: import a job (scan / code → order → raw material modal →
+// Covers the whole screen, sliding up from the bottom.
+const FULL_SCREEN_MODAL: NativeStackNavigationOptions = {
+  presentation: 'fullScreenModal',
+  animation: 'slide_from_bottom',
+};
+
+// Supervisor: import a job (scan / code → order → raw material modal →
 // job card) and manage its job card. Job card and flow reuse the admin screens' phone layouts.
-export const SECOND_ADMIN_SCREENS: RoleScreen[] = [
+export const SUPERVISOR_SCREENS: RoleScreen[] = [
   { name: 'ScanJob', component: ScanJobScreen },
   { name: 'EnterJobCode', component: EnterJobCodeScreen },
   { name: 'ImportOrder', component: ImportOrderScreen },
@@ -42,13 +49,18 @@ export const SECOND_ADMIN_SCREENS: RoleScreen[] = [
   { name: 'JobCardFlow', component: JobCardFlowScreen },
 ];
 
-// Machine Operator: import a job (scan / code) straight to its Job Detail,
+// Operator: import a job (scan / code) straight to its Job Detail,
 // then start (after Assign Machine), pause and complete operations.
-export const MACHINE_OPERATOR_SCREENS: RoleScreen[] = [
+export const OPERATOR_SCREENS: RoleScreen[] = [
   { name: 'ScanJob', component: ScanJobScreen },
   { name: 'EnterJobCode', component: EnterJobCodeScreen },
   { name: 'OperatorJob', component: OperatorJobScreen },
   { name: 'AssignMachine', component: AssignMachineScreen },
+  {
+    name: 'OrderDetails',
+    component: OrderDetailsModalScreen,
+    options: FULL_SCREEN_MODAL,
+  },
 ];
 
 // QC: import a job (scan / code) into the open tab's QC Check, then pass it,
@@ -58,4 +70,9 @@ export const QC_SCREENS: RoleScreen[] = [
   { name: 'EnterJobCode', component: EnterJobCodeScreen },
   { name: 'QcCheck', component: QcCheckScreen },
   { name: 'QcFail', component: QcFailScreen },
+  {
+    name: 'OrderDetails',
+    component: OrderDetailsModalScreen,
+    options: FULL_SCREEN_MODAL,
+  },
 ];

@@ -24,6 +24,7 @@ export const COMMON_STRINGS = {
   required: 'This field is required',
   invalidEmail: 'Enter a valid email address',
   invalidPhone: 'Enter a valid phone number',
+  invalidGstin: 'Enter a valid 15-character GST number',
   invalidNumber: 'Enter a number',
   showing: (shown: number, total: number, noun: string) =>
     `Showing ${shown} of ${total} ${noun}`,

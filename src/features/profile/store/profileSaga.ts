@@ -4,6 +4,9 @@ import { errorMessage } from '../../../shared/store';
 import { profileApi } from '../api/profileApi';
 import type {
   MyProfile,
+  Organization,
+  OrganizationInput,
+  OrganizationUpdate,
   PasswordChangeInput,
   ProfileInput,
   Session,
@@ -18,6 +21,38 @@ export function* fetchSession() {
     yield put(
       profileActions.fetchSessionFailure(
         errorMessage(error, 'Failed to load your profile'),
+      ),
+    );
+  }
+}
+
+export function* createOrganization(action: PayloadAction<OrganizationInput>) {
+  try {
+    const session: Session = yield call(
+      profileApi.createOrganization,
+      action.payload,
+    );
+    yield put(profileActions.fetchSessionSuccess(session));
+  } catch (error) {
+    yield put(
+      profileActions.fetchSessionFailure(
+        errorMessage(error, 'Failed to create the organization'),
+      ),
+    );
+  }
+}
+
+export function* updateOrganization(action: PayloadAction<OrganizationUpdate>) {
+  try {
+    const organization: Organization = yield call(
+      profileApi.updateOrganization,
+      action.payload,
+    );
+    yield put(profileActions.updateOrganizationSuccess(organization));
+  } catch (error) {
+    yield put(
+      profileActions.updateOrganizationFailure(
+        errorMessage(error, 'Failed to save the organization'),
       ),
     );
   }
@@ -54,6 +89,14 @@ export function* changePassword(action: PayloadAction<PasswordChangeInput>) {
 
 export default function* profileSaga() {
   yield takeLatest(profileActions.fetchSessionRequest.type, fetchSession);
+  yield takeLatest(
+    profileActions.createOrganizationRequest.type,
+    createOrganization,
+  );
   yield takeLatest(profileActions.updateProfileRequest.type, updateProfile);
+  yield takeLatest(
+    profileActions.updateOrganizationRequest.type,
+    updateOrganization,
+  );
   yield takeLatest(profileActions.changePasswordRequest.type, changePassword);
 }

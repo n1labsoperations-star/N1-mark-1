@@ -10,6 +10,8 @@ import {
   N1TextInput,
   useN1Styles,
 } from '../../../shared/components';
+import { COMMON_STRINGS } from '../../../shared/constants';
+import { isGstin, normalizeGstin } from '../../../shared/utils';
 import { INDUSTRY_OPTIONS } from '../constants';
 import { makeCreateOrganizationFormStyles } from '../styles';
 import {
@@ -25,6 +27,8 @@ export type CreateOrganizationValues = {
   industry: string;
   email: string;
   phone: string;
+  /** GSTIN, upper-case; blank when the business isn't registered. */
+  gstNumber: string;
   password: string;
 };
 
@@ -41,6 +45,7 @@ function CreateOrganizationForm({ compact, onBack, onSubmit }: Props) {
   const [industry, setIndustry] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [gstNumber, setGstNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   // Errors only show once the user has tried to submit.
@@ -53,6 +58,11 @@ function CreateOrganizationForm({ compact, onBack, onSubmit }: Props) {
     industry: industry ? undefined : 'Select an industry',
     email: isValidEmail(email) ? undefined : 'Enter a valid email',
     phone: phone.trim() ? undefined : 'Enter a phone number',
+    // Optional: not every business is GST-registered.
+    gstNumber:
+      !gstNumber.trim() || isGstin(gstNumber)
+        ? undefined
+        : COMMON_STRINGS.invalidGstin,
     password:
       rules.minLength && rules.lettersAndNumbers
         ? undefined
@@ -72,6 +82,7 @@ function CreateOrganizationForm({ compact, onBack, onSubmit }: Props) {
       industry,
       email: email.trim(),
       phone: phone.trim(),
+      gstNumber: normalizeGstin(gstNumber),
       password,
     });
   };
@@ -149,17 +160,31 @@ function CreateOrganizationForm({ compact, onBack, onSubmit }: Props) {
           containerStyle={itemStyle}
         />
       </View>
-      <N1TextInput
-        label="Phone number"
-        required
-        value={phone}
-        onChangeText={setPhone}
-        placeholder="+91 98765 43210"
-        keyboardType="phone-pad"
-        autoComplete="tel"
-        textContentType="telephoneNumber"
-        errorText={shown(errors.phone)}
-      />
+      <View style={rowStyle}>
+        <N1TextInput
+          label="Phone number"
+          required
+          value={phone}
+          onChangeText={setPhone}
+          placeholder="+91 98765 43210"
+          keyboardType="phone-pad"
+          autoComplete="tel"
+          textContentType="telephoneNumber"
+          errorText={shown(errors.phone)}
+          containerStyle={itemStyle}
+        />
+        <N1TextInput
+          label="GST number"
+          value={gstNumber}
+          onChangeText={setGstNumber}
+          placeholder="e.g. 33ABCDE1234F1Z5"
+          autoCapitalize="characters"
+          autoCorrect={false}
+          maxLength={15}
+          errorText={shown(errors.gstNumber)}
+          containerStyle={itemStyle}
+        />
+      </View>
       <View style={rowStyle}>
         <N1TextInput
           label="Password"

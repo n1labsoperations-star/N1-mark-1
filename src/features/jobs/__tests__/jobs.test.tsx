@@ -4,7 +4,6 @@ import {
   byLabel,
   byTestId,
   byText,
-  choose,
   hasTestId,
   press,
   renderAppAs,
@@ -29,7 +28,7 @@ afterEach(async () => {
 });
 
 async function secondAdmin() {
-  app = await renderAppAs('secondadmin@n1.com', 'SecondAdmin@123');
+  app = await renderAppAs('supervisor@n1.com', 'Supervisor@123');
   return app.root;
 }
 
@@ -56,7 +55,7 @@ describe('utils', () => {
   test('isRawMaterialMissing flags any blank raw material detail', () => {
     const [order] = MOCK_ORDERS;
     expect(isRawMaterialMissing(order)).toBe(false);
-    expect(isRawMaterialMissing({ ...order, supplier: '' })).toBe(true);
+    expect(isRawMaterialMissing({ ...order, materialSource: '' })).toBe(true);
     expect(isRawMaterialMissing({ ...order, heatNumber: ' ' })).toBe(true);
   });
 });
@@ -66,7 +65,7 @@ test("My Jobs lists the user's jobs with counts and search", async () => {
 
   const text = allText(root);
   expect(text).toContain('My Jobs');
-  expect(text).toContain('4 active · 5 total');
+  expect(text).toContain('5 active · 6 total');
   expect(hasTestId(root, 'job-card-1042')).toBe(true);
   // Job cards that were never imported stay off the list.
   expect(hasTestId(root, 'job-card-1036')).toBe(false);
@@ -113,7 +112,7 @@ test('order → raw material modal → job added to My Jobs → job card', async
   await press(byTestId(root, 'raw-material-submit'));
   expect(allText(root).split('This field is required').length - 1).toBe(2);
   await typeInto(byTestId(root, 'raw-material-heatNumber'), 'HT-55555');
-  await choose(root, 'raw-material-supplier', 'Hindalco Metals');
+  await press(byLabel(root, 'In-house'));
   await press(byTestId(root, 'raw-material-submit'));
 
   // Straight to the new job's job card.
@@ -124,15 +123,15 @@ test('order → raw material modal → job added to My Jobs → job card', async
   expect(text).not.toContain('Raw Material Details');
   const order = (await ordersApi.list()).find(o => o.id === '1036');
   expect(order).toMatchObject({
-    supplier: 'Hindalco Metals',
+    materialSource: 'in_house',
     heatNumber: 'HT-55555',
   });
 
   // Back lands on My Jobs, with the job added at the top.
   await press(byLabel(root, 'Back'));
   text = allText(root);
-  expect(text).toContain('5 active · 6 total');
-  expect(text.indexOf('WO #1036')).toBeLessThan(text.indexOf('WO #1042'));
+  expect(text).toContain('6 active · 7 total');
+  expect(text.indexOf('WO #1036')).toBeLessThan(text.indexOf('WO #1041'));
 });
 
 test('closing the raw material modal keeps the order open', async () => {
@@ -163,7 +162,7 @@ test('an order without a job card gets one created', async () => {
   // A new work order; it gets the next number, 1043.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { id, status, statusHistory, createdAt, ...input } = MOCK_ORDERS[0];
-  app = await renderAppAs('secondadmin@n1.com', 'SecondAdmin@123', () =>
+  app = await renderAppAs('supervisor@n1.com', 'Supervisor@123', () =>
     ordersApi.create(input),
   );
   const root = app.root;
@@ -177,4 +176,42 @@ test('an order without a job card gets one created', async () => {
   expect(allText(root)).toContain('Route card & progress');
   const created = (await jobCardsApi.list()).find(c => c.id === '1043');
   expect(created).toMatchObject({ status: 'not_started', operations: [] });
+});
+
+test('supervisor re-initiates RM QC with new material after a rejection', async () => {
+  const root = await secondAdmin();
+  // My Jobs flags the job whose material RM QC rejected.
+  expect(allText(byTestId(root, 'rm-qc-failed-1041'))).toContain(
+    'RM QC failed',
+  );
+  expect(hasTestId(root, 'rm-qc-failed-1042')).toBe(false);
+  await press(byLabel(root, 'View job card WO #1041'));
+
+  // The job card shows what RM QC rejected, and offers Re-initiate.
+  const rejected = allText(byTestId(root, 'rejected-material'));
+  expect(rejected).toContain('AL6061');
+  expect(rejected).toContain('HT-99212');
+  expect(rejected).toContain('24.6mm dia x 200mm');
+  expect(rejected).toContain('Billet diameter under tolerance');
+  await press(byTestId(root, 'reinitiate-rm-qc'));
+
+  // Same raw material form, for the replacement: a new heat number is needed.
+  expect(allText(root)).toContain('Replacement material');
+  expect(byTestId(root, 'raw-material-heatNumber').props.value).toBe('');
+  await press(byLabel(root, 'Bought out'));
+  await press(byTestId(root, 'raw-material-submit'));
+  expect(allText(root)).toContain('This field is required');
+  await typeInto(byTestId(root, 'raw-material-heatNumber'), 'HT-70001');
+  await press(byTestId(root, 'raw-material-submit'));
+
+  // Back on the job card: RM QC is pending again, nothing left to re-initiate.
+  expect(allText(root)).toContain('Route card & progress');
+  expect(hasTestId(root, 'reinitiate-rm-qc')).toBe(false);
+  expect(hasTestId(root, 'rejected-material')).toBe(false);
+  expect((await jobCardsApi.get('1041')).materialQc).toBe('pending');
+  expect((await ordersApi.get('1041')).heatNumber).toBe('HT-70001');
+
+  // And the My Jobs flag is gone.
+  await press(byLabel(root, 'Back'));
+  expect(hasTestId(root, 'rm-qc-failed-1041')).toBe(false);
 });

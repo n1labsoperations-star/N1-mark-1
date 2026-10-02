@@ -251,6 +251,11 @@ export const MOCK_JOB_CARDS: JobCard[] = [
         result: 'rejected',
         remark: 'Billet diameter under tolerance; supplier to replace.',
         at: '2026-09-26',
+        rejectedMaterial: {
+          grade: 'AL6061',
+          heatNumber: 'HT-99212',
+          size: '24.6mm dia x 200mm',
+        },
       },
     ],
     operations: route(

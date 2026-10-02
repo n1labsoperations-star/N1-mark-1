@@ -24,6 +24,7 @@ import { LineItemsTable } from '../components/LineItemsTable';
 import { TotalsSummary } from '../components/TotalsSummary';
 import { BILLING_STRINGS, INVOICE_STATUS_META } from '../constants';
 import { useInvoice } from '../hooks/useBilling';
+import { useGst } from '../hooks/useGst';
 import { calculateTotals } from '../utils';
 import type { BillingScreenProps } from '../types';
 
@@ -57,6 +58,10 @@ export function InvoiceDetailsScreen({
     () => navigation.navigate('InvoiceEdit', { invoiceId }),
     [navigation, invoiceId],
   );
+  const viewQuote = useCallback(
+    (quoteId: string) => navigation.navigate('QuoteDetails', { quoteId }),
+    [navigation],
+  );
   const markPaid = useCallback(
     () => update(invoiceId, { status: 'paid' }),
     [update, invoiceId],
@@ -73,17 +78,25 @@ export function InvoiceDetailsScreen({
     [],
   );
 
+  const gst = useGst(invoice?.customerName ?? '');
   const totals = useMemo(
     () =>
       invoice
-        ? calculateTotals(invoice.lineItems, invoice.quantity, invoice.discount)
+        ? calculateTotals(
+            invoice.lineItems,
+            invoice.quantity,
+            invoice.discount,
+            invoice.gstRate,
+            gst.supply,
+          )
         : null,
-    [invoice],
+    [invoice, gst.supply],
   );
 
   const editIcon = (
     <N1IconButton
       icon="edit"
+      variant="primary"
       size="sm"
       accessibilityLabel={COMMON_STRINGS.edit}
       onPress={edit}
@@ -165,11 +178,25 @@ export function InvoiceDetailsScreen({
     { label: I.partName, value: invoice.partName },
     { label: I.quantity, value: `${invoice.quantity} pcs` },
   ];
+  const quoteId = invoice.quoteId;
 
   const body = (
     <View style={styles.body}>
       {isCompact && <InvoiceStatusBadge status={invoice.status} />}
       <N1DetailGrid items={summary} columns={isCompact ? 2 : 4} />
+      {quoteId && (
+        // Billed against a quote: open it to compare.
+        <View style={styles.row}>
+          <N1Button
+            title={`${I.viewQuote} · ${quoteId}`}
+            leftIcon="file"
+            variant="secondary"
+            size="sm"
+            onPress={() => viewQuote(quoteId)}
+            testID="view-quote"
+          />
+        </View>
+      )}
       <N1Divider />
       <BillingSection title={BILLING_STRINGS.lineItems.title}>
         <LineItemsTable items={invoice.lineItems} quantity={invoice.quantity} />

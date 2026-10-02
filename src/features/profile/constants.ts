@@ -1,4 +1,5 @@
 import type { N1DropDownOption } from '../../shared/components';
+import { ROLE_LABELS } from '../auth/constants';
 import type { EmployeeRole } from './types';
 
 export const PROFILE_STRINGS = {
@@ -17,8 +18,6 @@ export const PROFILE_STRINGS = {
   role: 'Role',
   status: 'Status',
   memberSince: 'Member since',
-  admin: 'Admin',
-  user: 'User',
   active: 'Active',
   editTitle: 'Edit profile',
   editSubtitle: 'Update how you appear to your team.',
@@ -67,9 +66,9 @@ export const EMPLOYEE_PROFILE_STRINGS = {
 } as const;
 
 export const EMPLOYEE_ROLE_LABELS: Record<EmployeeRole, string> = {
-  'second-admin': 'Second Admin',
-  'machine-operator': 'Machine Operator',
-  qc: 'QC',
+  supervisor: ROLE_LABELS.supervisor,
+  operator: ROLE_LABELS.operator,
+  qc: ROLE_LABELS.qc,
 };
 
 export const DEPARTMENT_OPTIONS: N1DropDownOption<string>[] = [

@@ -2,10 +2,10 @@ import type { EmployeeProfile, EmployeeRole } from '../types';
 
 /** One signed-in person per non-admin login (see MOCK_USERS in auth). */
 export const MOCK_EMPLOYEES: Record<EmployeeRole, EmployeeProfile> = {
-  'second-admin': {
+  supervisor: {
     id: 'EMP-1007',
     name: 'Priya Sharma',
-    role: 'second-admin',
+    role: 'supervisor',
     employeeId: 'EMP-1007',
     department: 'Production',
     shift: 'General (9 AM – 6 PM)',
@@ -13,10 +13,10 @@ export const MOCK_EMPLOYEES: Record<EmployeeRole, EmployeeProfile> = {
     phone: '+91 98450 12345',
     email: 'priya.sharma@abceng.com',
   },
-  'machine-operator': {
+  operator: {
     id: 'EMP-1042',
     name: 'Ravi Kumar',
-    role: 'machine-operator',
+    role: 'operator',
     employeeId: 'EMP-1042',
     department: 'Machining',
     shift: 'Morning (6 AM – 2 PM)',

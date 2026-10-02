@@ -5,6 +5,7 @@ import {
   AdminScreen,
   AsyncContent,
   ListToolbar,
+  N1ConfirmDialog,
   N1IconButton,
   N1PageHeader,
   N1Pagination,
@@ -18,7 +19,11 @@ import {
   type N1TableColumn,
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
-import { useListFilter, usePagination } from '../../../shared/hooks';
+import {
+  useConfirmDelete,
+  useListFilter,
+  usePagination,
+} from '../../../shared/hooks';
 import { notifyUnavailable } from '../../../shared/utils';
 import { FlowActionButton } from '../components/FlowActionButton';
 import { JobCardCard } from '../components/JobCardCard';
@@ -46,7 +51,10 @@ export function JobCardsListScreen() {
   const styles = useN1Styles(makeStyles);
   const navigation = useNavigation<JobCardsNavigation>();
   const { isCompact } = useN1Breakpoint();
-  const { items, status, error, reload } = useJobCards();
+  const { items, status, error, reload, remove, deletingId, deleteError } =
+    useJobCards();
+  const deletion = useConfirmDelete<JobCard>(remove, deletingId, deleteError);
+  const requestDelete = deletion.request;
   const stats = useJobCardStats();
 
   const { query, setQuery, filters, setFilter, filtered } = useListFilter(
@@ -144,18 +152,20 @@ export function JobCardsListScreen() {
         interactive: true,
         render: c => (
           <View style={styles.actions}>
-            <N1IconButton
-              icon="eye"
-              size="sm"
-              accessibilityLabel={S.a11y.view(c.id)}
-              onPress={() => openDetails(c)}
-            />
             <FlowActionButton jobCard={c} onPress={openFlow} />
+            <N1IconButton
+              icon="trash"
+              variant="danger"
+              size="sm"
+              accessibilityLabel={S.a11y.delete(c.id)}
+              onPress={() => requestDelete(c)}
+              testID={`delete-${c.id}`}
+            />
           </View>
         ),
       },
     ],
-    [styles, openDetails, openFlow],
+    [styles, openFlow, requestDelete],
   );
 
   const renderCompactItem = useCallback(
@@ -212,6 +222,7 @@ export function JobCardsListScreen() {
           columns={columns}
           data={pager.pageItems}
           keyExtractor={c => c.id}
+          onRowPress={openDetails}
           renderCompactItem={renderCompactItem}
           emptyText={
             items.length ? COMMON_STRINGS.noResults : COMMON_STRINGS.empty
@@ -234,6 +245,18 @@ export function JobCardsListScreen() {
           testID="job-cards-table"
         />
       </AsyncContent>
+      <N1ConfirmDialog
+        visible={deletion.target !== null}
+        title={S.delete.title}
+        message={deletion.target ? S.delete.message(deletion.target.id) : ''}
+        confirmLabel={S.delete.confirm}
+        tone="danger"
+        icon="trash"
+        loading={deletion.loading}
+        onConfirm={deletion.confirm}
+        onCancel={deletion.cancel}
+        testID="delete-job-card-dialog"
+      />
     </AdminScreen>
   );
 }

@@ -147,7 +147,8 @@ export function formValuesToOrderInput(
     projectId: v.projectId.trim(),
     rawMaterialGrade: v.rawMaterialGrade.trim(),
     // Not on the admin form; set from the shop floor's Raw Material Details.
-    supplier: existing?.supplier ?? '',
+    materialSource: existing?.materialSource ?? '',
+    quoteId: existing?.quoteId ?? '',
     notes: existing?.notes ?? '',
     designFile: v.designFile,
     // The form edits the first (purchase order) document; any others are kept.

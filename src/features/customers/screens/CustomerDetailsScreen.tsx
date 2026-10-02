@@ -28,6 +28,7 @@ import { useConfirmDelete, useToggle } from '../../../shared/hooks';
 import { formatCurrency, formatDate } from '../../../shared/utils';
 import { useOrganizationName } from '../../profile';
 import { CustomerFormModal } from '../components/CustomerFormModal';
+import { CustomerHistory } from '../components/CustomerHistory';
 import { DeleteCustomerDialog } from '../components/DeleteCustomerDialog';
 import { CUSTOMER_STRINGS, CUSTOMER_TYPE_BADGE } from '../constants';
 import { useCustomer } from '../hooks/useCustomers';
@@ -132,6 +133,7 @@ export function CustomerDetailsScreen({
   const editIcon = (
     <N1IconButton
       icon="edit"
+      variant="primary"
       size="sm"
       accessibilityLabel={CUSTOMER_STRINGS.a11y.edit(customer?.name ?? '')}
       onPress={openForm}
@@ -232,6 +234,7 @@ export function CustomerDetailsScreen({
             <N1DetailGrid title={D.contact} items={contactItems} columns={1} />
             <N1Divider />
             {notes}
+            <CustomerHistory customer={customer} />
           </>
         ) : (
           <N1Card padding="xxl">
@@ -251,6 +254,7 @@ export function CustomerDetailsScreen({
             </View>
           </N1Card>
         )}
+        {!isCompact && <CustomerHistory customer={customer} />}
       </SplitLayout>
 
       <CustomerFormModal

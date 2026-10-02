@@ -11,6 +11,8 @@ import {
   isBlank,
   isDisplayDate,
   isEmail,
+  isGstin,
+  normalizeGstin,
   isNumeric,
   isPhone,
   isStrongPassword,
@@ -116,4 +118,14 @@ test('password rules', () => {
   expect(checkPassword('', '')).toMatchObject({ matches: false });
   expect(isStrongPassword('short1')).toBe(false);
   expect(isStrongPassword('longer123')).toBe(true);
+});
+
+test('GST numbers follow the 15-character GSTIN format', () => {
+  expect(isGstin('33ABCDE1234F1Z5')).toBe(true);
+  // Case and spaces don't matter.
+  expect(isGstin(' 33abcde1234f1z5 ')).toBe(true);
+  expect(normalizeGstin(' 33abcde 1234f1z5')).toBe('33ABCDE1234F1Z5');
+  expect(isGstin('33ABCDE1234F1Z')).toBe(false); // too short
+  expect(isGstin('AAABCDE1234F1Z5')).toBe(false); // state code
+  expect(isGstin('33ABCDE1234F1X5')).toBe(false); // 14th must be Z
 });

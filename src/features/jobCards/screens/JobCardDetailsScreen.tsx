@@ -1,5 +1,6 @@
 import { useCallback, type ReactNode } from 'react';
 import { View } from 'react-native';
+import { StackActions } from '@react-navigation/native';
 import {
   AdminScreen,
   AsyncContent,
@@ -9,13 +10,21 @@ import {
   N1Card,
   N1Chip,
   N1Divider,
+  N1KeyValueList,
   N1Text,
   createN1Styles,
   useN1Breakpoint,
   useN1Styles,
 } from '../../../shared/components';
-import { formatLongDate, notifyUnavailable } from '../../../shared/utils';
+import { useToggle } from '../../../shared/hooks';
+import {
+  formatLongDate,
+  notify,
+  notifyUnavailable,
+} from '../../../shared/utils';
+import { BILLING_STRINGS, GenerateDispatchModal } from '../../billing';
 import { PRIORITY_META } from '../../orders/constants';
+import { useOptionalEmployeeRole } from '../../profile/context/EmployeeRoleContext';
 import { DashedTile } from '../components/DashedTile';
 import { JobCardStatusBadge, MetaBadge } from '../components/JobCardBadges';
 import { QcHistory } from '../components/QcHistory';
@@ -37,7 +46,9 @@ import {
   completeOperation,
   jobCustomerHeading,
   jobProgress,
+  materialRejection,
   pauseOperation,
+  rejectedMaterialItems,
   startOperation,
 } from '../utils';
 
@@ -104,8 +115,39 @@ export function JobCardDetailsScreen({
     [navigation, jobCardId],
   );
   const print = useCallback(() => notifyUnavailable(D.print), []);
-  const dispatchNote = useCallback(() => notifyUnavailable(D.dispatch), []);
+  const [dispatchOpen, openDispatch, closeDispatch] = useToggle(false);
+  // Admin: open the invoice in Billing. Shop-floor roles have no Billing
+  // screen, so they're told it was created.
+  const showInvoice = useCallback(
+    (invoiceId: string, fillRates: boolean) => {
+      closeDispatch();
+      const drawer = navigation.getParent();
+      if (drawer?.getState()?.routeNames.includes('Billing')) {
+        navigation.navigate('Billing', {
+          screen: fillRates ? 'InvoiceEdit' : 'InvoiceDetails',
+          params: { invoiceId },
+          initial: false,
+        });
+      } else {
+        notify(
+          BILLING_STRINGS.dispatch.created,
+          BILLING_STRINGS.dispatch.createdMessage(invoiceId),
+        );
+      }
+    },
+    [closeDispatch, navigation],
+  );
   const openDrawing = useCallback(() => notifyUnavailable(S.openDrawing), []);
+  // Supervisor only: enter the replacement material so RM QC checks it again.
+  // RawMaterial lives in the role's stack, not the admin Job Cards stack.
+  const canReinitiate = useOptionalEmployeeRole() === 'supervisor';
+  const reinitiate = useCallback(
+    () =>
+      navigation.dispatch(
+        StackActions.push('RawMaterial', { orderId: jobCardId, retest: true }),
+      ),
+    [navigation, jobCardId],
+  );
 
   const header = (
     <DetailHeader
@@ -194,7 +236,8 @@ export function JobCardDetailsScreen({
             title={D.dispatch}
             leftIcon="package"
             variant="secondary"
-            onPress={dispatchNote}
+            onPress={openDispatch}
+            testID="generate-dispatch"
           />
         </View>
       </View>
@@ -239,6 +282,31 @@ export function JobCardDetailsScreen({
   );
 
   const materialQc = <MetaBadge meta={MATERIAL_QC_META[jobCard.materialQc]} />;
+  const rejection = materialRejection(jobCard);
+  const rejected = jobCard.materialQc === 'rejected' && (
+    <>
+      {rejection?.rejectedMaterial && (
+        <N1KeyValueList
+          title={D.rejectedMaterial}
+          items={[
+            ...rejectedMaterialItems(rejection.rejectedMaterial),
+            { label: D.reason, value: rejection.remark },
+          ]}
+          testID="rejected-material"
+        />
+      )}
+      {canReinitiate && (
+        <View style={styles.actionsRow}>
+          <N1Button
+            title={D.reinitiate}
+            leftIcon="refresh"
+            onPress={reinitiate}
+            testID="reinitiate-rm-qc"
+          />
+        </View>
+      )}
+    </>
+  );
   const material = section(
     <>
       {heading(D.material)}
@@ -266,6 +334,7 @@ export function JobCardDetailsScreen({
           {materialQc}
         </View>
       )}
+      {rejected}
     </>,
   );
 
@@ -340,6 +409,12 @@ export function JobCardDetailsScreen({
           <View style={styles.section}>{body}</View>
         </N1Card>
       )}
+      <GenerateDispatchModal
+        visible={dispatchOpen}
+        jobCard={jobCard}
+        onClose={closeDispatch}
+        onInvoice={showInvoice}
+      />
     </AdminScreen>
   );
 }

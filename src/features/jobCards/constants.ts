@@ -13,6 +13,8 @@ import type {
 } from './types';
 
 export const JOB_CARD_STRINGS = {
+  /** On a job's card while RM QC has rejected its material. */
+  rmQcFailed: 'RM QC failed',
   title: 'Job Cards',
   subtitle:
     'Shop-floor operations in progress, with the machine and operator assigned to each.',
@@ -37,8 +39,15 @@ export const JOB_CARD_STRINGS = {
   operator: (name: string) => `Operator: ${name}`,
   quantity: (n: number) => `${n} pcs`,
   view: 'View',
+  delete: {
+    title: 'Delete job card?',
+    message: (id: string) =>
+      `This will permanently remove the job card for WO #${id}, with its route card and QC history. This can’t be undone.`,
+    confirm: 'Delete job card',
+  },
   a11y: {
     view: (id: string) => `View job card WO #${id}`,
+    delete: (id: string) => `Delete job card WO #${id}`,
     createFlow: (id: string) => `Create flow for WO #${id}`,
     editFlow: (id: string) => `Edit flow for WO #${id}`,
     diagram: (id: string) => `Open drawing for WO #${id}`,
@@ -61,6 +70,12 @@ export const JOB_CARD_STRINGS = {
     material: 'Material',
     source: 'Source',
     materialQc: 'Material QC',
+    rejectedMaterial: 'Rejected material',
+    rmGrade: 'RM grade',
+    heatNumber: 'Heat no.',
+    rmSize: 'RM size',
+    reason: 'Reason',
+    reinitiate: 'Re-initiate RM QC',
     routeCard: 'Route card & progress',
     editFlow: 'Edit flow',
     editFlowShort: 'Edit',

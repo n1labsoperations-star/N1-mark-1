@@ -13,3 +13,6 @@ export function useEmployeeRole(): EmployeeRole {
   }
   return role;
 }
+
+/** The shop-floor role, or null on admin screens (no provider). */
+export const useOptionalEmployeeRole = () => useContext(EmployeeRoleContext);

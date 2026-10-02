@@ -1,4 +1,5 @@
-import { N1Table, N1Text } from '../components';
+import ReactTestRenderer from 'react-test-renderer';
+import { N1Table, N1Text, lightTheme } from '../components';
 import { render } from '../testing/testUtils';
 
 let mockWidth = 1280;
@@ -40,5 +41,36 @@ test.each([1280, 390])(
     mockWidth = width;
     expect(await rowRoles(false)).toContain('button');
     expect(await rowRoles(true)).not.toContain('button');
+  },
+);
+
+test.each([true, false])(
+  'rows turn light grey on hover (clickable: %s)',
+  async clickable => {
+    mockWidth = 1280;
+    const r = await render(
+      <N1Table
+        columns={[{ key: 'name', title: 'Name' }]}
+        data={rows}
+        keyExtractor={row => row.id}
+        onRowPress={clickable ? () => undefined : undefined}
+      />,
+    );
+    // The row Pressable, and the view it renders (which holds the style).
+    const row = () => r.root.find(n => typeof n.props.onHoverIn === 'function');
+    const background = () =>
+      [row().findAll(n => typeof n.type === 'string')[0].props.style]
+        .flat(Infinity)
+        .reduce(
+          (color: unknown, s: { backgroundColor?: string } | undefined) =>
+            s?.backgroundColor ?? color,
+          undefined,
+        );
+
+    expect(background()).toBeUndefined();
+    await ReactTestRenderer.act(() => row().props.onHoverIn({}));
+    expect(background()).toBe(lightTheme.colors.background);
+    await ReactTestRenderer.act(() => row().props.onHoverOut({}));
+    expect(background()).toBeUndefined();
   },
 );

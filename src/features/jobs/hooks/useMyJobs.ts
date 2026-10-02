@@ -45,8 +45,10 @@ export function useMyJobs() {
     jobCards.reload();
   }, [dispatch, role, jobCards]);
   const importJob = useCallback(
-    (orderId: string, rawMaterial?: RawMaterialInput) =>
-      dispatch(myJobsActions.importRequest({ role, orderId, rawMaterial })),
+    (orderId: string, rawMaterial?: RawMaterialInput, retest?: boolean) =>
+      dispatch(
+        myJobsActions.importRequest({ role, orderId, rawMaterial, retest }),
+      ),
     [dispatch, role],
   );
 

@@ -10,7 +10,9 @@ import {
   renderAdmin,
   typeInto,
 } from '../../../shared/testing/testUtils';
+import { jobCardsApi } from '../../jobCards/api/jobCardsApi';
 import { MOCK_ORDERS } from '../api/mockData';
+import { ordersApi } from '../api/ordersApi';
 import {
   formValuesToOrderInput,
   orderToFormValues,
@@ -229,5 +231,44 @@ test('order helpers', () => {
     dueDate: '',
     partName: 'New part',
     documents: [],
+  });
+});
+
+describe('Orders list actions', () => {
+  test('edit opens the order form for that order', async () => {
+    const h = await renderAdmin('Orders');
+    await press(byLabel(h.root, 'Edit order WO #1042'));
+    expect(h.currentRoute()).toBe('OrderForm');
+  });
+
+  test('the job card button opens the job card, or Create flow', async () => {
+    const h = await renderAdmin('Orders');
+    // 1042 has a route card: open its job card.
+    await press(byLabel(h.root, 'Open job card for WO #1042'));
+    expect(h.currentRoute()).toBe('JobCardDetails');
+
+    // 1036 has no route card yet: straight to Create flow.
+    await h.navigate('Orders');
+    await press(byLabel(h.root, 'Create job card for WO #1036'));
+    expect(h.currentRoute()).toBe('JobCardFlow');
+    expect(allText(h.root)).toContain('Create flow');
+  });
+
+  test('an order without a job card gets one, then Create flow', async () => {
+    const h = await renderAdmin('Orders');
+    // A new order has no job card yet.
+    await press(byTestId(h.root, 'create-order'));
+    await press(byTestId(h.root, 'order-form-next'));
+    await press(byTestId(h.root, 'order-form-submit'));
+    await h.navigate('Orders');
+    const ids = (await jobCardsApi.list()).map(c => c.id);
+    const created = (await ordersApi.list()).find(o => !ids.includes(o.id));
+    expect(created).toBeDefined();
+
+    await press(byLabel(h.root, `Create job card for WO #${created!.id}`));
+    expect(h.currentRoute()).toBe('JobCardFlow');
+    expect((await jobCardsApi.list()).some(c => c.id === created!.id)).toBe(
+      true,
+    );
   });
 });

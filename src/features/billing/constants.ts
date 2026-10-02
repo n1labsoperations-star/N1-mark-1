@@ -11,6 +11,11 @@ export const BILLING_STRINGS = {
   exportAction: 'Exporting',
   view: 'View',
   edit: 'Edit',
+  a11y: {
+    view: (id: string) => `View ${id}`,
+    edit: (id: string) => `Edit ${id}`,
+    viewQuote: (quoteId: string) => `View quote ${quoteId}`,
+  },
   invoices: {
     search: 'Search invoice',
     noun: 'invoices',
@@ -48,9 +53,30 @@ export const BILLING_STRINGS = {
       status: 'Status',
       actions: 'Actions',
     },
+    convertA11y: (id: string) => `Convert ${id} to order`,
+  },
+  dispatch: {
+    title: 'Generate dispatch',
+    subtitle: (customer: string) =>
+      `Bill ${customer} for this job. Attach their quote to bill at its rates, or continue without one.`,
+    noQuotes: (customer: string) => `No quotes found for ${customer}.`,
+    noQuote: 'No quote',
+    pick: 'Pick a quote, or No quote.',
+    noQuoteHelp:
+      'Bill from the job’s operations; fill in the rates on the invoice.',
+    quoteLine: (part: string, quantity: number) => `${part} · ${quantity} pcs`,
+    create: 'Create invoice',
+    existing: (invoiceId: string) =>
+      `This job is already billed on ${invoiceId}.`,
+    open: 'Open invoice',
+    created: 'Invoice created',
+    createdMessage: (invoiceId: string) =>
+      `${invoiceId} was added to billing as a draft.`,
   },
   invoice: {
     title: 'Invoice',
+    quote: 'Quote',
+    viewQuote: 'View Quote',
     subtitle: (id: string, status: string) => `${id} · ${status}`,
     editTitle: 'Edit Invoice',
     customer: 'Customer',
@@ -79,7 +105,9 @@ export const BILLING_STRINGS = {
     material: 'Material',
     materialPlaceholder: 'e.g. EN8',
     status: 'Status',
-    convert: 'Convert to Job Card',
+    convert: 'Convert to Order',
+    order: 'Order',
+    orderValue: (orderId: string) => `WO #${orderId}`,
     // "Add Quote" is the design's label for revising an existing quote.
     revise: 'Add Quote',
     downloadPdf: 'Download PDF',
@@ -120,6 +148,12 @@ export const BILLING_STRINGS = {
     gst: 'GST',
     discount: 'Discount',
     total: 'Total',
+    cgst: (rate: string) => `CGST ${rate}`,
+    sgst: (rate: string) => `SGST ${rate}`,
+    igst: (rate: string) => `IGST ${rate}`,
+    noGst: 'GST not applied',
+    gstRate: 'GST rate',
+    gstRatePlaceholder: 'Select GST rate',
   },
 } as const;
 

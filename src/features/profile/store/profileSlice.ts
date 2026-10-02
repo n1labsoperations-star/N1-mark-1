@@ -3,6 +3,8 @@ import type { RequestStatus } from '../../../shared/types';
 import type {
   MyProfile,
   Organization,
+  OrganizationInput,
+  OrganizationUpdate,
   PasswordChangeInput,
   ProfileInput,
   Session,
@@ -50,6 +52,29 @@ const profileSlice = createSlice({
     fetchSessionFailure: (state, action: PayloadAction<string>) => {
       state.status = 'failed';
       state.error = action.payload;
+    },
+    /** Create organization; the saga stores it and loads the new session. */
+    createOrganizationRequest: (
+      state,
+      _action: PayloadAction<OrganizationInput>,
+    ) => {
+      state.status = 'loading';
+      state.error = null;
+    },
+    updateOrganizationRequest: (
+      state,
+      _action: PayloadAction<OrganizationUpdate>,
+    ) => {
+      state.saving = true;
+      state.saveError = null;
+    },
+    updateOrganizationSuccess: (state, action: PayloadAction<Organization>) => {
+      state.organization = action.payload;
+      state.saving = false;
+    },
+    updateOrganizationFailure: (state, action: PayloadAction<string>) => {
+      state.saving = false;
+      state.saveError = action.payload;
     },
     updateProfileRequest: (state, _action: PayloadAction<ProfileInput>) => {
       state.saving = true;

@@ -3,12 +3,19 @@ import { useNavigation } from '@react-navigation/native';
 import { useN1Breakpoint } from '../../../shared/components';
 import AuthLayout from '../components/AuthLayout';
 import AuthPrompt from '../components/AuthPrompt';
-import CreateOrganizationForm from '../components/CreateOrganizationForm';
-import { CREATE_ORGANIZATION_TAGLINE } from '../constants';
+import CreateOrganizationForm, {
+  type CreateOrganizationValues,
+} from '../components/CreateOrganizationForm';
+import { useAppDispatch } from '../../../app/store/hooks';
+import { profileActions } from '../../profile/store/profileSlice';
+import { CREATE_ORGANIZATION_TAGLINE, USER_ROLES } from '../constants';
+import { useAuthSession } from '../hooks';
 
 function CreateOrganizationScreen() {
   const { isCompact } = useN1Breakpoint();
   const navigation = useNavigation();
+  const { signIn } = useAuthSession();
+  const dispatch = useAppDispatch();
 
   // Opened straight from a link there is no Login behind this screen to go back to.
   const goToLogin = () => {
@@ -19,10 +26,15 @@ function CreateOrganizationScreen() {
     }
   };
 
-  // No API yet: the new admin goes straight in. reset replaces the whole
-  // history with the Dashboard, so there is nothing to go back to.
-  const handleSubmit = () =>
-    navigation.reset({ index: 0, routes: [{ name: 'Dashboard' }] });
+  // Saves the organization (mock API), then the new admin goes straight in;
+  // the root navigator swaps the sign-up screens for the dashboard.
+  const handleSubmit = ({
+    password: _password,
+    ...organization
+  }: CreateOrganizationValues) => {
+    dispatch(profileActions.createOrganizationRequest(organization));
+    signIn(USER_ROLES.ADMIN);
+  };
 
   return (
     <AuthLayout

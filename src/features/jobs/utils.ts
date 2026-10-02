@@ -15,7 +15,7 @@ export const rawMaterialOf = (order: WorkOrder): RawMaterialInput => ({
   rawMaterialSize: order.rawMaterialSize,
   heatNumber: order.heatNumber,
   rmPartNumber: order.rmPartNumber,
-  supplier: order.supplier,
+  materialSource: order.materialSource,
 });
 
 /** True when any raw material detail needed for a job card is blank. */

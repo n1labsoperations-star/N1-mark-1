@@ -10,7 +10,8 @@ import {
   useN1Theme,
 } from '../../../shared/components';
 import { NAV_STRINGS } from '../../../shared/constants';
-import { CURRENT_USER, ORGANIZATION } from '../constants';
+import { ORGANIZATION_STRINGS } from '../../profile/organization';
+import { CURRENT_USER } from '../constants';
 import { makeTopBarStyles } from '../styles';
 
 type Props = {
@@ -18,13 +19,22 @@ type Props = {
   onMenuPress: () => void;
   /** Opens My profile from the signed-in user. */
   onProfilePress: () => void;
+  /** Wide screens: the organization's name, which opens its details. */
+  organizationName: string;
+  onOrganizationPress: () => void;
 };
 
 /**
  * Wide screens: organization name and the signed-in user.
  * Phones: menu button, logo and the user's avatar.
  */
-function TopBar({ compact, onMenuPress, onProfilePress }: Props) {
+function TopBar({
+  compact,
+  onMenuPress,
+  onProfilePress,
+  organizationName,
+  onOrganizationPress,
+}: Props) {
   const styles = useN1Styles(makeTopBarStyles);
   const theme = useN1Theme();
   const insets = useSafeAreaInsets();
@@ -63,9 +73,20 @@ function TopBar({ compact, onMenuPress, onProfilePress }: Props) {
 
   return (
     <View style={styles.bar}>
-      <N1Text variant="h3" numberOfLines={1}>
-        {ORGANIZATION.name}
-      </N1Text>
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel={ORGANIZATION_STRINGS.open(organizationName)}
+        onPress={onOrganizationPress}
+        style={({ pressed }) => [
+          styles.organization,
+          pressed && styles.pressed,
+        ]}
+        testID="open-organization"
+      >
+        <N1Text variant="h3" numberOfLines={1}>
+          {organizationName}
+        </N1Text>
+      </Pressable>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={NAV_STRINGS.openProfile}

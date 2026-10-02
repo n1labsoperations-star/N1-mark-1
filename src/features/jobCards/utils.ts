@@ -9,6 +9,7 @@ import type {
   JobCardInput,
   JobCardStatus,
   JobOperation,
+  RejectedMaterial,
 } from './types';
 
 const isDone = (op: JobOperation) => op.status === 'completed';
@@ -225,3 +226,16 @@ export function jobCardFromOrder(order: WorkOrder): JobCard {
     billing: 'not_invoiced',
   };
 }
+
+/** The rejected material's grade, heat number and size, as label / value rows. */
+export const rejectedMaterialItems = (m: RejectedMaterial) => [
+  { label: JOB_CARD_STRINGS.details.rmGrade, value: m.grade },
+  { label: JOB_CARD_STRINGS.details.heatNumber, value: m.heatNumber },
+  { label: JOB_CARD_STRINGS.details.rmSize, value: m.size },
+];
+
+/** The RM QC rejection behind a rejected material, if it was recorded. */
+export const materialRejection = (c: JobCard) =>
+  c.materialQc === 'rejected'
+    ? [...c.qcHistory].reverse().find(e => e.rejectedMaterial)
+    : undefined;

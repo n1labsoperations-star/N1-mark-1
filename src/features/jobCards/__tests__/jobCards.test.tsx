@@ -2,6 +2,7 @@ import { Alert } from 'react-native';
 import {
   allText,
   byLabel,
+  byText,
   byTestId,
   choose,
   hasTestId,
@@ -231,10 +232,46 @@ describe('Job Cards list', () => {
   });
 });
 
+describe('Job Cards list actions', () => {
+  test('rows have flow and delete buttons, not view', async () => {
+    const h = await renderAdmin('JobCards');
+    expect(() => byLabel(h.root, 'View job card WO #1042')).toThrow();
+    expect(byLabel(h.root, 'Edit flow for WO #1042')).toBeTruthy();
+    expect(byLabel(h.root, 'Create flow for WO #1036')).toBeTruthy();
+    expect(byLabel(h.root, 'Delete job card WO #1042')).toBeTruthy();
+  });
+
+  test('delete asks first, then removes the job card', async () => {
+    const h = await renderAdmin('JobCards');
+    await press(byLabel(h.root, 'Delete job card WO #1042'));
+    expect(allText(h.root)).toContain('Delete job card?');
+
+    // Cancel keeps it.
+    const cancel = h.root.findAll(
+      n =>
+        typeof n.type === 'string' && n.props.accessibilityLabel === 'Cancel',
+    );
+    await press(cancel[cancel.length - 1]);
+    expect(allText(h.root)).toContain('WO #1042');
+
+    await press(byLabel(h.root, 'Delete job card WO #1042'));
+    const confirm = h.root.findAll(
+      n =>
+        typeof n.type === 'string' &&
+        n.props.accessibilityLabel === 'Delete job card',
+    );
+    await press(confirm[confirm.length - 1]);
+    expect(allText(h.root)).not.toContain('WO #1042');
+    // Confirming doesn't count as a row click.
+    expect(h.currentRoute()).not.toBe('JobCardDetails');
+  });
+});
+
 describe('Job card details', () => {
   test('shows the order, drawing, material, route card and QC history', async () => {
     const h = await renderAdmin('JobCards');
-    await press(byLabel(h.root, 'View job card WO #1042'));
+    // Clicking anywhere on the row opens the job card.
+    await press(byText(h.root, 'Bracket — Job A'));
     const screen = byTestId(h.root, 'job-card-details-screen');
     const text = allText(screen);
     expect(text).toContain('WO #1042 · Acme Metalworks');
@@ -246,6 +283,33 @@ describe('Job card details', () => {
     expect(text).toContain('Design approval: Approved');
     expect(text).toContain('Company purchased');
     expect(allText(byTestId(screen, 'overall-progress'))).toContain('42%');
+
+    // Every step is listed; only the current one starts open (and highlighted).
+    const step = (id: string) => byTestId(screen, `operation-1042-${id}`);
+    expect(allText(step('op1'))).toContain('Material QC');
+    expect(allText(step('op1'))).not.toContain('QC Bay 1');
+    expect(step('op1').props.accessibilityState).toMatchObject({
+      selected: false,
+      expanded: false,
+    });
+    expect(step('op3').props.accessibilityState).toMatchObject({
+      selected: true,
+      expanded: true,
+    });
+
+    // Each step opens and closes on its own.
+    for (const id of ['op1', 'op4', 'op5']) {
+      await press(step(id));
+    }
+    expect(step('op1').props.accessibilityState).toMatchObject({
+      expanded: true,
+    });
+    await press(step('op3'));
+    expect(step('op3').props.accessibilityState).toMatchObject({
+      selected: true,
+      expanded: false,
+    });
+    await press(step('op3'));
     expect(allText(byTestId(screen, 'operation-1042-op1'))).toContain(
       'QC Bay 1 · Suresh Babu',
     );
@@ -297,14 +361,77 @@ describe('Job card details', () => {
     );
   });
 
-  test('print and dispatch explain they are not available yet', async () => {
+  test('print explains it is not available yet', async () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const h = await renderAdmin('JobCards');
     await h.navigate('JobCardDetails', { jobCardId: '1042' });
     const screen = byTestId(h.root, 'job-card-details-screen');
     await press(byLabel(screen, 'Print Job Card'));
-    await press(byLabel(screen, 'Generate Dispatch'));
-    expect(alert).toHaveBeenCalledTimes(2);
+    expect(alert).toHaveBeenCalledTimes(1);
+  });
+
+  test('dispatch against the customer’s quote adds an invoice', async () => {
+    const h = await renderAdmin('JobCards');
+    await h.navigate('JobCardDetails', { jobCardId: '1042' });
+    await press(byTestId(h.root, 'generate-dispatch'));
+
+    // Acme Metalworks' quote, plus "No quote".
+    const modal = allText(byTestId(h.root, 'dispatch-modal'));
+    expect(modal).toContain('QT-2026-0040');
+    expect(modal).toContain('No quote');
+    expect(modal).not.toContain('QT-2026-0042');
+
+    // Nothing picked yet.
+    await press(byTestId(h.root, 'dispatch-submit'));
+    expect(allText(h.root)).toContain('Pick a quote, or No quote.');
+
+    await press(byTestId(h.root, 'dispatch-quote-QT-2026-0040'));
+    await press(byTestId(h.root, 'dispatch-submit'));
+
+    expect(h.currentRoute()).toBe('InvoiceDetails');
+    const invoice = Object.values(
+      h.store.getState().billing.invoices.entities,
+    ).find(i => i?.jobId === 'WO-01042');
+    expect(invoice).toMatchObject({
+      customerName: 'Acme Metalworks',
+      quoteId: 'QT-2026-0040',
+      status: 'draft',
+      quantity: 200,
+    });
+    expect(invoice?.lineItems.length).toBeGreaterThan(0);
+    // The quote is now mapped to this order.
+    expect(
+      h.store.getState().billing.quotes.entities['QT-2026-0040']?.orderId,
+    ).toBe('1042');
+  });
+
+  test('dispatch with no quote lists the job’s operations to price', async () => {
+    const h = await renderAdmin('JobCards');
+    await h.navigate('JobCardDetails', { jobCardId: '1039' });
+    await press(byTestId(h.root, 'generate-dispatch'));
+    await press(byTestId(h.root, 'dispatch-no-quote'));
+    await press(byTestId(h.root, 'dispatch-submit'));
+
+    // Rates still to fill in: straight to the invoice editor.
+    expect(h.currentRoute()).toBe('InvoiceEdit');
+    const invoice = Object.values(
+      h.store.getState().billing.invoices.entities,
+    ).find(i => i?.jobId === 'WO-01039');
+    expect(invoice).toMatchObject({ quoteId: null, gstRate: 18 });
+    expect(invoice?.lineItems.map(l => l.operation)).toEqual([
+      'Material QC',
+      'CNC Milling',
+      'Drilling',
+      'Deburring',
+      'QC Inspection',
+    ]);
+
+    // Dispatching again opens the same invoice instead of a second one.
+    await h.navigate('JobCardDetails', { jobCardId: '1039' });
+    await press(byTestId(h.root, 'generate-dispatch'));
+    expect(allText(byTestId(h.root, 'dispatch-modal'))).toContain(
+      `already billed on ${invoice?.id}`,
+    );
   });
 
   test('a card without a flow offers Create flow', async () => {
@@ -315,6 +442,16 @@ describe('Job card details', () => {
     expect(allText(screen)).toContain('Not started');
     await press(byTestId(screen, 'open-flow'));
     expect(h.currentRoute()).toBe('JobCardFlow');
+  });
+
+  test('a rejected material shows what RM QC rejected; only supervisors re-initiate', async () => {
+    const h = await renderAdmin('JobCards');
+    await h.navigate('JobCardDetails', { jobCardId: '1041' });
+    const screen = byTestId(h.root, 'job-card-details-screen');
+    const rejected = allText(byTestId(screen, 'rejected-material'));
+    expect(rejected).toContain('Rejected material');
+    expect(rejected).toContain('HT-99212');
+    expect(hasTestId(screen, 'reinitiate-rm-qc')).toBe(false);
   });
 
   test('an unknown card says it no longer exists', async () => {

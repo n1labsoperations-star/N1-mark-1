@@ -8,7 +8,10 @@ import type {
   ISODateString,
 } from '../../shared/types';
 
-export type UserRole = 'admin' | 'user';
+import type { UserRole } from '../auth/constants';
+
+/** Admin uses the dashboard; Supervisor, Operator and QC use the shop-floor app. */
+export type { UserRole };
 export type UserStatus = 'active' | 'invited' | 'suspended' | 'inactive';
 
 export type UserPermissionKey = 'viewOrders' | 'manageUsers' | 'exportReports';

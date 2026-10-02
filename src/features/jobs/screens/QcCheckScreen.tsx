@@ -13,7 +13,12 @@ import {
   useN1Styles,
 } from '../../../shared/components';
 import { useOnSettled } from '../../../shared/hooks';
-import { JOB_CARD_STRINGS, jobHeading, useJobCard } from '../../jobCards';
+import {
+  JOB_CARD_STRINGS,
+  jobHeading,
+  rejectedMaterialItems,
+  useJobCard,
+} from '../../jobCards';
 import { useEmployeeProfile } from '../../profile/hooks/useEmployeeProfile';
 import { JobOverview, QcStation } from '../components/JobOverview';
 import { QC_STATUS_META, QC_STRINGS } from '../constants';
@@ -120,11 +125,19 @@ export function QcCheckScreen({
       {item.status === 'failed' && entry?.remark ? (
         <N1KeyValueList
           title={S.remark}
-          items={[{ label: entry.stage, value: entry.remark }]}
+          items={[
+            { label: entry.stage, value: entry.remark },
+            ...(entry.rejectedMaterial
+              ? rejectedMaterialItems(entry.rejectedMaterial)
+              : []),
+          ]}
         />
       ) : null}
       <JobOverview
         jobCard={jobCard}
+        onViewDetails={() =>
+          navigation.navigate('OrderDetails', { orderId: jobCard.id })
+        }
         station={
           <QcStation
             jobCard={jobCard}

@@ -1,5 +1,9 @@
-import { GST_RATE } from '../../config/constants';
-import { formatCurrency, toNumber } from '../../shared/utils';
+import {
+  formatCurrency,
+  gstAmounts,
+  toNumber,
+  type GstSupply,
+} from '../../shared/utils';
 import { BILLING_STRINGS } from './constants';
 import type { Invoice, LineItem, LineItemDraft, Quote, Totals } from './types';
 
@@ -9,25 +13,43 @@ export const lineAmount = (
   quantity: number,
 ) => Math.round(quantity * item.minutesPerPiece * item.ratePerMinute);
 
-/** GST is charged on the subtotal after discount. */
+/**
+ * GST is charged on the subtotal after discount, at the document's rate:
+ * CGST + SGST within the organization's state, IGST across states. The total
+ * is the same either way.
+ */
 export function calculateTotals(
   items: readonly LineItem[],
   quantity: number,
-  discount = 0,
+  discount: number,
+  gstRate: number,
+  supply: GstSupply = 'intra',
 ): Totals {
   const subtotal = items.reduce(
     (sum, item) => sum + lineAmount(item, quantity),
     0,
   );
   const applied = Math.min(Math.max(0, discount), subtotal);
-  const gst = Math.round((subtotal - applied) * GST_RATE);
-  return { subtotal, discount: applied, gst, total: subtotal - applied + gst };
+  const taxable = subtotal - applied;
+  const gst = gstAmounts(taxable, gstRate, supply);
+  return {
+    subtotal,
+    discount: applied,
+    taxable,
+    gstRate: supply === 'none' ? 0 : gstRate,
+    supply,
+    cgst: gst.cgst,
+    sgst: gst.sgst,
+    igst: gst.igst,
+    gst: gst.total,
+    total: taxable + gst.total,
+  };
 }
 
 export const invoiceTotal = (i: Invoice) =>
-  calculateTotals(i.lineItems, i.quantity, i.discount).total;
+  calculateTotals(i.lineItems, i.quantity, i.discount, i.gstRate).total;
 export const quoteTotal = (q: Quote) =>
-  calculateTotals(q.lineItems, q.quantity).total;
+  calculateTotals(q.lineItems, q.quantity, 0, q.gstRate).total;
 
 export const toDraft = (item: LineItem): LineItemDraft => ({
   id: item.id,

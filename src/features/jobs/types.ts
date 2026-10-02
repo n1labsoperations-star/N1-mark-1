@@ -13,13 +13,16 @@ export type JobsStackParamList = {
   /** The work order behind a scanned or typed job code. */
   ImportOrder: { orderId: string };
   /** Mandatory raw material details; opens as a modal from the order. */
-  RawMaterial: { orderId: string };
+  /** retest: replacement material after RM QC rejected it (supervisor). */
+  RawMaterial: { orderId: string; retest?: boolean };
+  /** Operator / QC: the job's work order, read only (full screen modal). */
+  OrderDetails: { orderId: string };
   // Reused from the Job Cards feature, under the same names.
   JobCardDetails: { jobCardId: string };
   JobCardFlow: { jobCardId: string };
-  /** Machine Operator: the job they run (start, pause, complete). */
+  /** Operator: the job they run (start, pause, complete). */
   OperatorJob: { jobCardId: string };
-  /** Machine Operator: pick a machine, then start the operation. */
+  /** Operator: pick a machine, then start the operation. */
   AssignMachine: { jobCardId: string };
   /** QC: inspect a job, then pass or fail it. */
   QcCheck: { jobCardId: string; kind: QcKind };
@@ -36,5 +39,5 @@ export type RawMaterialInput = Pick<
   | 'rawMaterialSize'
   | 'heatNumber'
   | 'rmPartNumber'
-  | 'supplier'
+  | 'materialSource'
 >;

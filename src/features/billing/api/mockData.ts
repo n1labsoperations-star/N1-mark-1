@@ -74,11 +74,21 @@ const FLANGE_OPERATIONS: LineItem[] = [
   },
 ];
 
-type InvoiceSeed = Omit<Invoice, 'discount' | 'notes' | 'lineItems'> &
-  Partial<Pick<Invoice, 'discount' | 'notes'>> & { lineItems?: LineItem[] };
+type InvoiceSeed = Omit<
+  Invoice,
+  'discount' | 'notes' | 'lineItems' | 'gstRate' | 'quoteId'
+> &
+  Partial<Pick<Invoice, 'discount' | 'notes' | 'gstRate' | 'quoteId'>> & {
+    lineItems?: LineItem[];
+  };
+
+// Seeded documents were issued at 5% GST.
+const SEED_GST_RATE = 5;
 
 const invoice = (seed: InvoiceSeed): Invoice => ({
   discount: 0,
+  gstRate: SEED_GST_RATE,
+  quoteId: null,
   notes: '',
   lineItems: SHAFT_OPERATIONS,
   ...seed,
@@ -88,6 +98,8 @@ export const MOCK_INVOICES: Invoice[] = [
   invoice({
     id: 'INV-2026-0125',
     customerName: 'ABC Engineering',
+    // Billed against this quote (same customer, part and operations).
+    quoteId: 'QT-2026-0042',
     jobId: 'WO-00125',
     routeCard: 'RC-2225',
     partName: 'Machined Shaft',
@@ -216,11 +228,18 @@ export const MOCK_INVOICES: Invoice[] = [
 
 type QuoteSeed = Omit<
   Quote,
-  'lineItems' | 'material' | 'partName' | 'quantity'
+  'lineItems' | 'material' | 'partName' | 'quantity' | 'gstRate' | 'orderId'
 > &
-  Partial<Pick<Quote, 'lineItems' | 'material' | 'partName' | 'quantity'>>;
+  Partial<
+    Pick<
+      Quote,
+      'lineItems' | 'material' | 'partName' | 'quantity' | 'gstRate' | 'orderId'
+    >
+  >;
 
 const quote = (seed: QuoteSeed): Quote => ({
+  gstRate: SEED_GST_RATE,
+  orderId: null,
   lineItems: SHAFT_OPERATIONS,
   material: 'EN8',
   partName: 'Machined Shaft',
