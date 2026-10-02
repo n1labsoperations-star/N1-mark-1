@@ -41,6 +41,8 @@ export type WorkOrder = {
   heatNumber: string;
   projectId: string;
   rawMaterialGrade: string;
+  /** Raw material supplier; filled in when the job card is created. */
+  supplier: string;
   notes: string;
   designFile: Attachment | null;
   documents: Attachment[];

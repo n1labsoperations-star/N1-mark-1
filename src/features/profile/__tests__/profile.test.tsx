@@ -104,7 +104,15 @@ test('log out asks first, then returns to the login screen', async () => {
     </Provider>,
   );
   const root = app.root;
-  await press(byLabel(root, 'Log in'));
+  const logInAsAdmin = async () => {
+    const [email, password] = root.findAll(
+      n => typeof n.type === 'string' && n.props.placeholder !== undefined,
+    );
+    await typeInto(email, 'admin@n1.com');
+    await typeInto(password, 'Admin@123');
+    await press(byLabel(root, 'Log in'));
+  };
+  await logInAsAdmin();
   await press(byLabel(root, 'Open my profile'));
   await press(byTestId(root, 'logout'));
   expect(allText(root)).toContain('Log out?');
@@ -117,7 +125,7 @@ test('log out asks first, then returns to the login screen', async () => {
   expect(allText(root)).not.toContain('Koushik Dasarathan');
 
   // Signing in again reloads the session.
-  await press(byLabel(root, 'Log in'));
+  await logInAsAdmin();
   await press(byLabel(root, 'Open my profile'));
   expect(store.getState().profile.status).toBe('succeeded');
   expect(allText(root)).toContain('Signed in as the account owner');

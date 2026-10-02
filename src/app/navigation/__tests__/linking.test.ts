@@ -59,7 +59,73 @@ const ADMIN_URLS: [path: string, screen: string, params?: object][] = [
   ],
 ];
 
-const CASES = ADMIN_URLS.map(([path, screen, params]) => ({
+const USER_URLS: [path: string, screen: string][] = [
+  'second-admin',
+  'machine-operator',
+  'qc',
+].flatMap(role => [
+  [`/dashboard/${role}`, 'Jobs'],
+  [`/dashboard/${role}/profile`, 'Profile'],
+  [`/dashboard/${role}/profile/edit`, 'EditProfile'],
+]);
+
+const SECOND_ADMIN_URLS: [path: string, screen: string, params?: object][] = [
+  ['/dashboard/second-admin/scan', 'ScanJob'],
+  ['/dashboard/second-admin/job-code', 'EnterJobCode'],
+  ['/dashboard/second-admin/orders/1036', 'ImportOrder', { orderId: '1036' }],
+  [
+    '/dashboard/second-admin/orders/1036/raw-material',
+    'RawMaterial',
+    { orderId: '1036' },
+  ],
+  [
+    '/dashboard/second-admin/job-cards/1042',
+    'JobCardDetails',
+    { jobCardId: '1042' },
+  ],
+  [
+    '/dashboard/second-admin/job-cards/1042/flow',
+    'JobCardFlow',
+    { jobCardId: '1042' },
+  ],
+];
+
+const OPERATOR_URLS: [path: string, screen: string, params?: object][] = [
+  ['/dashboard/machine-operator/scan', 'ScanJob'],
+  ['/dashboard/machine-operator/job-code', 'EnterJobCode'],
+  [
+    '/dashboard/machine-operator/jobs/1042',
+    'OperatorJob',
+    { jobCardId: '1042' },
+  ],
+  [
+    '/dashboard/machine-operator/jobs/1042/machine',
+    'AssignMachine',
+    { jobCardId: '1042' },
+  ],
+];
+
+const QC_URLS: [path: string, screen: string, params?: object][] = [
+  ['/dashboard/qc/scan', 'ScanJob'],
+  [
+    '/dashboard/qc/checks/rm/1042',
+    'QcCheck',
+    { kind: 'rm', jobCardId: '1042' },
+  ],
+  [
+    '/dashboard/qc/checks/machine/1042/fail',
+    'QcFail',
+    { kind: 'machine', jobCardId: '1042' },
+  ],
+];
+
+const CASES = [
+  ...ADMIN_URLS,
+  ...USER_URLS,
+  ...SECOND_ADMIN_URLS,
+  ...OPERATOR_URLS,
+  ...QC_URLS,
+].map(([path, screen, params]: [string, string, object?]) => ({
   path,
   screen,
   params,

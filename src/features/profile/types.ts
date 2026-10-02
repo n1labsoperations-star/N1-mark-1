@@ -1,5 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ActivityEntry, ISODateString } from '../../shared/types';
+import type { UserRole } from '../auth/constants';
 
 export type Organization = {
   id: string;
@@ -38,3 +39,30 @@ export type ProfileStackParamList = {
 
 export type ProfileScreenProps<R extends keyof ProfileStackParamList> =
   NativeStackScreenProps<ProfileStackParamList, R>;
+
+/** Non-admin roles. Their tabs differ but they share the same profile screens. */
+export type EmployeeRole = Exclude<UserRole, 'admin'>;
+
+/** A non-admin signed-in person (Profile tab). */
+export type EmployeeProfile = {
+  id: string;
+  name: string;
+  role: EmployeeRole;
+  employeeId: string;
+  department: string;
+  shift: string;
+  joinedOn: ISODateString;
+  phone: string;
+  email: string;
+};
+
+export type EmployeeProfileInput = Pick<
+  EmployeeProfile,
+  'name' | 'department' | 'shift' | 'phone' | 'email'
+>;
+
+// Routes the employee profile screens navigate to. The role navigator that
+// hosts them must register these names.
+export type EmployeeProfileParamList = {
+  EditProfile: undefined;
+};

@@ -49,6 +49,7 @@ function order(seed: Seed): WorkOrder {
     heatNumber: `HT-${99171 + n - 1000}`,
     projectId: `PRJ-${76 + n - 1000}`,
     rawMaterialGrade: GRADES[seed.material] ?? '',
+    supplier: '',
     notes: '',
     designFile: {
       id: 'design',
@@ -100,6 +101,7 @@ export const MOCK_ORDERS: WorkOrder[] = [
     heatNumber: 'HT-99213',
     projectId: 'PRJ-118',
     rawMaterialGrade: 'EN8',
+    supplier: 'Sri Balaji Steels',
     createdAt: isoAgo(6 * DAY_MS),
     notes:
       'Rework batch — confirm bore tolerance before moving to welding. Customer requested delivery ahead of the 05 Oct dispatch run.',

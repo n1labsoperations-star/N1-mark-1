@@ -1,4 +1,5 @@
 import type { N1DropDownOption, N1StepStatus } from '../../shared/components';
+import type { WorkOrder } from '../orders/types';
 import { ALL, matchesOption } from '../../shared/hooks';
 import { percentOf } from '../../shared/utils';
 import { JOB_CARD_STRINGS } from './constants';
@@ -74,13 +75,25 @@ export const canStart = (c: JobCard) =>
 export const canPauseOrComplete = (c: JobCard) =>
   c.operations.some(op => op.status === 'running');
 
-/** Starts (or resumes) the first step that isn't done. */
-export function startOperation(c: JobCard, now: string): JobCardInput {
+/**
+ * Starts (or resumes) the first step that isn't done, optionally on a chosen
+ * machine by a named operator (Assign Machine).
+ */
+export function startOperation(
+  c: JobCard,
+  now: string,
+  assignment?: Pick<JobOperation, 'machine' | 'operator'>,
+): JobCardInput {
   const next = c.operations.findIndex(op => !isDone(op));
   return withOperations(
     c.operations.map((op, i) =>
       i === next
-        ? { ...op, status: 'running', startedAt: op.startedAt ?? now }
+        ? {
+            ...op,
+            ...assignment,
+            status: 'running',
+            startedAt: op.startedAt ?? now,
+          }
         : op,
     ),
   );
@@ -187,4 +200,28 @@ export function optionsFrom(
     { value: ALL, label: allLabel },
     ...distinct.map(value => ({ value, label: value })),
   ];
+}
+
+/** A new job card for a work order: no route card yet, nothing approved. */
+export function jobCardFromOrder(order: WorkOrder): JobCard {
+  return {
+    id: order.id,
+    customerId: order.customerId,
+    customerName: order.customerName,
+    partName: order.partName,
+    jobName: order.jobName,
+    material: order.material || order.rawMaterialGrade,
+    quantity: order.quantity,
+    priority: order.priority,
+    dueDate: order.dueDate,
+    status: 'not_started',
+    designFile: order.designFile,
+    designApproval: 'pending',
+    materialSource: 'company',
+    materialQc: 'pending',
+    operations: [],
+    qcHistory: [],
+    quotation: 'pending',
+    billing: 'not_invoiced',
+  };
 }

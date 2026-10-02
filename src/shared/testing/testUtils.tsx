@@ -13,13 +13,16 @@ import ReactTestRenderer, {
 } from 'react-test-renderer';
 import { N1ThemeProvider } from '../components';
 import AdminDashboardNavigation from '../../app/navigation/AdminDashboardNavigation';
+import RootNavigator from '../../app/navigation/RootNavigator';
 import type { AdminDrawerParamList } from '../../features/dashboard/types';
 import { customersApi } from '../../features/customers/api/customersApi';
 import { invoicesApi, quotesApi } from '../../features/billing/api/billingApi';
 import { jobCardsApi } from '../../features/jobCards/api/jobCardsApi';
+import { myJobsApi } from '../../features/jobs/api/myJobsApi';
 import { machinesApi } from '../../features/machines/api/machinesApi';
 import { ordersApi } from '../../features/orders/api/ordersApi';
 import { profileApi } from '../../features/profile/api/profileApi';
+import { employeeProfileApi } from '../../features/profile/api/employeeProfileApi';
 import { userManagementApi } from '../../features/userManagement/api/userManagementApi';
 import { createStore } from '../../app/store';
 
@@ -35,9 +38,11 @@ export function resetMockApis() {
     invoicesApi,
     quotesApi,
     jobCardsApi,
+    myJobsApi,
     machinesApi,
     ordersApi,
     profileApi,
+    employeeProfileApi,
     userManagementApi,
   ].forEach(api => api.reset());
 }
@@ -58,6 +63,46 @@ export async function render(element: ReactElement): Promise<Renderer> {
   });
   await flush();
   return renderer as Renderer;
+}
+
+/**
+ * The whole app (root navigator with deep linking) on the login screen, signed
+ * in with these credentials. Unmount it after the test: only one linked
+ * NavigationContainer may be mounted at a time.
+ */
+export async function renderAppAs(
+  email: string,
+  password: string,
+  /** Extra mock data, added after the reset and before the app loads. */
+  seed?: () => Promise<unknown>,
+) {
+  resetMockApis();
+  await seed?.();
+  const app = await render(
+    <Provider store={createStore()}>
+      <SafeAreaProvider initialMetrics={SAFE_AREA}>
+        <N1ThemeProvider>
+          <RootNavigator />
+        </N1ThemeProvider>
+      </SafeAreaProvider>
+    </Provider>,
+  );
+  await logIn(app.root, email, password);
+  return app;
+}
+
+/** Fills the login form and presses Log in. */
+export async function logIn(
+  root: ReactTestInstance,
+  email: string,
+  password: string,
+) {
+  const [emailInput, passwordInput] = root.findAll(
+    n => isHost(n) && n.props.placeholder !== undefined,
+  );
+  await typeInto(emailInput, email);
+  await typeInto(passwordInput, password);
+  await press(byLabel(root, 'Log in'));
 }
 
 type DrawerRoute = keyof AdminDrawerParamList;

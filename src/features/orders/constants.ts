@@ -152,3 +152,12 @@ export const ORDER_STATUS_FILTER_OPTIONS: N1DropDownOption<
     label: ORDER_STATUS_META[value].label,
   })),
 ];
+
+/** Raw material suppliers (Raw Material Details). */
+export const SUPPLIER_OPTIONS: N1DropDownOption<string>[] = [
+  'Sri Balaji Steels',
+  'Tata Steel Distributors',
+  'JSW Steel Service Centre',
+  'Hindalco Metals',
+  'Jindal Stainless',
+].map(name => ({ label: name, value: name }));

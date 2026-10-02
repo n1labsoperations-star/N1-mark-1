@@ -258,18 +258,21 @@ describe('N1Button / N1IconButton', () => {
     expect(r.root.findAllByType(RN.ActivityIndicator)).toHaveLength(1);
   });
 
-  test.each(['primary', 'secondary', 'danger', 'ghost'] as const)(
-    '%s variant renders at every size',
-    async variant => {
-      const r = await render(
-        <>
-          <N1Button title="a" variant={variant} size="sm" fullWidth />
-          <N1Button title="b" variant={variant} size="lg" disabled />
-        </>,
-      );
-      expect(byRole(r.root, 'button')).toHaveLength(2);
-    },
-  );
+  test.each([
+    'primary',
+    'secondary',
+    'danger',
+    'dangerOutline',
+    'ghost',
+  ] as const)('%s variant renders at every size', async variant => {
+    const r = await render(
+      <>
+        <N1Button title="a" variant={variant} size="sm" fullWidth />
+        <N1Button title="b" variant={variant} size="lg" disabled />
+      </>,
+    );
+    expect(byRole(r.root, 'button')).toHaveLength(2);
+  });
 
   test('N1IconButton needs a label and reports disabled', async () => {
     const onPress = jest.fn();

@@ -40,6 +40,8 @@ export type QcEntry = {
   result: QcResult;
   remark: string;
   at: ISODateString;
+  /** The route card step a machine QC check inspected. */
+  operationId?: string;
 };
 
 /**

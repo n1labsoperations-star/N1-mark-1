@@ -17,6 +17,7 @@ export const makeSidebarSearchStyles = createN1Styles(t => ({
     color: t.colors.textInverse,
     fontFamily: t.fontFamily.regular,
     fontSize: t.typography.body.fontSize,
+    outlineWidth: 0,
   },
   shortcut: {
     paddingHorizontal: t.spacing.xs,
