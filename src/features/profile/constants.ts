@@ -1,3 +1,6 @@
+import type { N1DropDownOption } from '../../shared/components';
+import type { EmployeeRole } from './types';
+
 export const PROFILE_STRINGS = {
   title: 'My profile',
   signedInAs: 'Signed in as the account owner',
@@ -38,3 +41,48 @@ export const PROFILE_STRINGS = {
   logoutTitle: 'Log out?',
   logoutMessage: 'You’ll need to sign in again to use N1.',
 } as const;
+
+export const EMPLOYEE_PROFILE_STRINGS = {
+  title: 'Profile',
+  editTitle: 'Edit Profile',
+  editProfile: 'Edit profile',
+  changePhoto: 'Change photo',
+  logout: 'Log out',
+  logoutTitle: 'Log out?',
+  logoutMessage: 'You’ll need to sign in again to use N1.',
+  employeeId: 'Employee ID',
+  department: 'Department',
+  shift: 'Shift',
+  joined: 'Joined',
+  phone: 'Phone',
+  email: 'Email',
+  fields: {
+    name: 'Full name',
+    role: 'Role',
+    department: 'Department',
+    shift: 'Shift',
+    phone: 'Phone',
+    email: 'Email',
+  },
+} as const;
+
+export const EMPLOYEE_ROLE_LABELS: Record<EmployeeRole, string> = {
+  'second-admin': 'Second Admin',
+  'machine-operator': 'Machine Operator',
+  qc: 'QC',
+};
+
+export const DEPARTMENT_OPTIONS: N1DropDownOption<string>[] = [
+  'Machining',
+  'Quality Control',
+  'Production',
+  'Maintenance',
+  'Stores',
+].map(name => ({ label: name, value: name }));
+
+export const SHIFT_OPTIONS: N1DropDownOption<string>[] = [
+  'Morning (6 AM – 2 PM)',
+  'Afternoon (2 PM – 10 PM)',
+  'Night (10 PM – 6 AM)',
+  'General (9 AM – 6 PM)',
+].map(name => ({ label: name, value: name }));

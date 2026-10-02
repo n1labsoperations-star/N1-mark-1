@@ -19,6 +19,7 @@ export type N1ButtonVariant =
   | 'primary'
   | 'secondary'
   | 'danger'
+  | 'dangerOutline'
   | 'success'
   | 'ghost'
   | 'link';
@@ -29,6 +30,7 @@ export type N1ButtonProps = Omit<PressableProps, 'style' | 'children'> & {
    * primary: black pill (Log in, Create user)
    * secondary: white outlined pill (Cancel, View, Export)
    * danger: red pill (Delete customer)
+   * dangerOutline: white pill with red text and border (Log out)
    * success: green pill (Pass)
    * ghost: text only (Forgot password?)
    * link: underlined text (Enter code manually)
@@ -47,6 +49,7 @@ const textColor: Record<N1ButtonVariant, N1TextColor> = {
   primary: 'onPrimary',
   secondary: 'primary',
   danger: 'onPrimary',
+  dangerOutline: 'danger',
   success: 'onPrimary',
   ghost: 'primary',
   link: 'primary',
@@ -56,6 +59,7 @@ const iconColor: Record<N1ButtonVariant, N1IconColor> = {
   primary: 'onPrimary',
   secondary: 'textPrimary',
   danger: 'onPrimary',
+  dangerOutline: 'danger',
   success: 'onPrimary',
   ghost: 'textPrimary',
   link: 'textPrimary',
@@ -81,6 +85,10 @@ const makeStyles = createN1Styles(t => ({
     borderColor: t.colors.border,
   },
   danger: { backgroundColor: t.colors.danger },
+  dangerOutline: {
+    backgroundColor: t.colors.surface,
+    borderColor: t.colors.tone.danger.background,
+  },
   success: { backgroundColor: t.colors.tone.success.solid },
   link: { backgroundColor: 'transparent', paddingHorizontal: t.spacing.xs },
   linkText: { textDecorationLine: 'underline' },

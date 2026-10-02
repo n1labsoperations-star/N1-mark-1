@@ -130,6 +130,7 @@ export const MOCK_JOB_CARDS: JobCard[] = [
         result: 'passed',
         remark: '',
         at: '2026-09-25',
+        operationId: '1042-op2',
       },
     ],
   }),
@@ -218,6 +219,8 @@ export const MOCK_JOB_CARDS: JobCard[] = [
     quantity: 80,
     priority: 'medium',
     dueDate: '2026-10-05',
+    // Raw material still waiting for its incoming inspection.
+    materialQc: 'pending',
     operations: route(
       '1039',
       [
@@ -240,6 +243,16 @@ export const MOCK_JOB_CARDS: JobCard[] = [
     quantity: 50,
     priority: 'medium',
     dueDate: '2026-10-07',
+    materialQc: 'rejected',
+    qcHistory: [
+      {
+        id: 'qc1',
+        stage: 'Material QC',
+        result: 'rejected',
+        remark: 'Billet diameter under tolerance; supplier to replace.',
+        at: '2026-09-26',
+      },
+    ],
     operations: route(
       '1041',
       [

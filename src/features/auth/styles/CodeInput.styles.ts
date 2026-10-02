@@ -22,6 +22,7 @@ export const makeCodeInputStyles = createN1Styles(t => ({
     fontSize: t.typography.h2.fontSize,
     textAlign: 'center',
     padding: 0,
+    outlineWidth: 0,
   },
   boxFocused: {
     borderColor: t.colors.borderStrong,

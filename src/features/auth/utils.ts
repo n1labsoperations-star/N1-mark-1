@@ -1,5 +1,7 @@
 import type { N1ChecklistItem } from '../../shared/components';
 import {
+  MOCK_USERS,
+  type MockUser,
   ORGANIZATION_CODE_LENGTH,
   PASSWORD_MIN_LENGTH,
   VERIFICATION_CODE_LENGTH,
@@ -58,4 +60,15 @@ export function sanitizeCode(input: string): string {
 
 export function isCompleteCode(code: string): boolean {
   return sanitizeCode(code).length === VERIFICATION_CODE_LENGTH;
+}
+
+/** The mock user matching these credentials, or undefined. Email ignores case and spaces. */
+export function findMockUser(
+  email: string,
+  password: string,
+): MockUser | undefined {
+  const normalized = email.trim().toLowerCase();
+  return MOCK_USERS.find(
+    user => user.email === normalized && user.password === password,
+  );
 }

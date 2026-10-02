@@ -4,7 +4,14 @@ export { MyProfileScreen } from './screens/MyProfileScreen';
 export { default as ProfileNavigation } from './navigation/ProfileNavigation';
 export { useSession, useOrganizationName } from './hooks/useSession';
 export { profileActions } from './store/profileSlice';
+
+// Profile screens shared by the non-admin roles.
+export { EmployeeProfileScreen } from './screens/EmployeeProfileScreen';
+export { EditEmployeeProfileScreen } from './screens/EditEmployeeProfileScreen';
+export { EmployeeRoleProvider } from './context/EmployeeRoleContext';
 export type {
+  EmployeeProfileParamList,
+  EmployeeRole,
   MyProfile,
   Organization,
   ProfileStackParamList,

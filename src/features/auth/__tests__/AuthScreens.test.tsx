@@ -68,15 +68,33 @@ describe('LoginScreen', () => {
     expect(text).not.toContain('Welcome to N1');
   });
 
-  test('logging in replaces the history with the Dashboard', async () => {
+  test.each([
+    ['admin@n1.com', 'Admin@123', 'Admin'],
+    ['secondadmin@n1.com', 'SecondAdmin@123', 'SecondAdmin'],
+    ['  OPERATOR@n1.com ', 'Operator@123', 'MachineOperator'],
+    ['qc@n1.com', 'Qc@12345', 'Qc'],
+  ])('%s logs in to the %s screen', async (email, password, screen) => {
     const root = await render(<LoginScreen />, PHONE);
 
+    await type(root, 'you@company.com', email);
+    await type(root, 'Enter your password', password);
     await press(findText(root, 'Log in'));
 
     expect(mockNavigation.reset).toHaveBeenCalledWith({
       index: 0,
-      routes: [{ name: 'Dashboard' }],
+      routes: [{ name: 'Dashboard', params: { screen } }],
     });
+  });
+
+  test('wrong credentials show an error and stay on Login', async () => {
+    const root = await render(<LoginScreen />, PHONE);
+
+    await type(root, 'you@company.com', 'admin@n1.com');
+    await type(root, 'Enter your password', 'wrong');
+    await press(findText(root, 'Log in'));
+
+    expect(mockNavigation.reset).not.toHaveBeenCalled();
+    expect(allText(root)).toContain('Invalid email or password.');
   });
 
   test('remember me toggles', async () => {

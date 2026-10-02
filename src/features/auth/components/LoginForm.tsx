@@ -17,6 +17,8 @@ type Props = {
   showRememberMe?: boolean;
   /** Small logo above the title (phones, where the hero panel is hidden). */
   showLogo?: boolean;
+  /** Shown under the password field, e.g. for wrong credentials. */
+  errorText?: string;
   onSubmit: (email: string, password: string) => void;
   onForgotPassword?: () => void;
 };
@@ -26,6 +28,7 @@ function LoginForm({
   subtitle,
   showRememberMe = false,
   showLogo = false,
+  errorText,
   onSubmit,
   onForgotPassword,
 }: Props) {
@@ -61,6 +64,7 @@ function LoginForm({
         onChangeText={setPassword}
         placeholder="Enter your password"
         secure
+        errorText={errorText}
         autoComplete="password"
         textContentType="password"
       />

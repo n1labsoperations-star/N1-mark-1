@@ -140,6 +140,7 @@ export { Icon, type IconName } from './Icon';
 // Admin layout and screen building blocks.
 export * from './AdminLayout';
 export * from './AdminScreen';
+export * from './UserScreen';
 export * from './DetailHeader';
 export * from './SplitLayout';
 export * from './ListToolbar';

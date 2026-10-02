@@ -1,0 +1,178 @@
+import type { StatusMeta } from '../../shared/types';
+import type { OperationStatus } from '../jobCards/types';
+import type { EmployeeRole } from '../profile/types';
+import type { RawMaterialInput } from './types';
+
+/**
+ * How each role works its jobs. Second Admin imports to the order (then raw
+ * material and job card) and sees progress cards; the shop floor imports
+ * straight to the job and sees simple rows.
+ */
+export const ROLE_JOBS: Record<
+  EmployeeRole,
+  { importTo: 'order' | 'job' | 'qc'; list: 'cards' | 'rows' }
+> = {
+  'second-admin': { importTo: 'order', list: 'cards' },
+  'machine-operator': { importTo: 'job', list: 'rows' },
+  qc: { importTo: 'qc', list: 'rows' },
+};
+
+export const QC_STRINGS = {
+  title: 'QC',
+  subtitle: (pending: number, total: number) =>
+    `${pending} pending · ${total} total`,
+  tabs: { rm: 'Raw Material QC', machine: 'Machine QC' },
+  kind: { rm: 'RM QC', machine: 'Machine QC' },
+  stages: {
+    incoming: 'Incoming inspection',
+    inProcess: 'In-process QC',
+    final: 'Final QC',
+    nothingDone: 'No operation finished yet',
+    materialStage: 'Material QC',
+    operationStage: (operation: string) => `${operation} - QC`,
+  },
+  station: {
+    assignedQc: 'Assigned QC',
+    /** "Turning (Lathe) QC"; a step already named "… QC" stays as is. */
+    operationQc: (operation: string) =>
+      /\bQC$/.test(operation) ? operation : `${operation} QC`,
+  },
+  check: {
+    title: 'QC Check',
+    remark: 'Remarks',
+    pass: 'Pass',
+    fail: 'Fail',
+    running:
+      'This operation is still running. Check it once the operator completes it.',
+    waiting: 'No operation has been completed on this job yet.',
+  },
+  fail: {
+    title: 'Fail Remarks',
+    remarks: 'Remarks',
+    placeholder:
+      'Describe the reason for failure — e.g. dimension out of tolerance, surface defect, missing certificate…',
+    voiceNote: 'Voice note',
+    voiceNotes: 'Voice notes',
+    submit: 'Submit Fail',
+  },
+} as const;
+
+export const QC_STATUS_META: Record<
+  'pending' | 'in_progress' | 'passed' | 'failed' | 'waiting',
+  StatusMeta
+> = {
+  pending: { label: 'Pending', tone: 'neutral' },
+  in_progress: { label: 'In progress', tone: 'info' },
+  passed: { label: 'Passed', tone: 'success' },
+  failed: { label: 'Failed', tone: 'danger' },
+  waiting: { label: 'Waiting', tone: 'neutral' },
+};
+
+export const OPERATION_STATUS_META: Record<OperationStatus, StatusMeta> = {
+  pending: { label: 'Not started', tone: 'neutral' },
+  running: { label: 'Running', tone: 'success' },
+  paused: { label: 'Paused', tone: 'warning' },
+  completed: { label: 'Completed', tone: 'success' },
+};
+
+export const JOBS_STRINGS = {
+  myJobs: {
+    title: 'My Jobs',
+    subtitle: (active: number, total: number) =>
+      `${active} active · ${total} total`,
+    inProgressSubtitle: (inProgress: number, total: number) =>
+      `${inProgress} in progress · ${total} total`,
+    importJob: 'Import Job',
+    search: 'Search jobs',
+    openSearch: 'Search jobs',
+    closeSearch: 'Close search',
+    empty: 'No jobs yet. Import one to get started.',
+  },
+  scan: {
+    title: 'Scan QR Code',
+    frameTitle: 'Align the QR code within the frame',
+    message: 'The job details will import automatically once scanned',
+    manual: 'Enter code manually',
+    flash: 'Flash',
+  },
+  code: {
+    title: 'Enter Job Code',
+    heading: 'Type in the job code',
+    help: "You'll find this printed on the job card or route card if the QR code can't be scanned.",
+    label: 'Job code',
+    placeholder: 'e.g. WO-1042',
+    importJob: 'Import Job',
+    scanInstead: 'Scan QR code instead',
+    notFound: (code: string) => `No work order found for ${code}`,
+    noRoute: (workOrder: string) =>
+      `${workOrder} has no route card yet. Ask an admin to create its flow.`,
+  },
+  order: {
+    title: 'Order',
+    createJobCard: 'Create Job Card',
+    viewJobCard: 'View Job Card',
+  },
+  operatorJob: {
+    title: 'Job Detail',
+    activeStation: 'Active station',
+    nextOperation: 'Next operation',
+    machine: 'Machine',
+    operator: 'Operator',
+    notAssigned: 'Not assigned',
+    startedAt: 'Started at',
+    elapsed: 'Elapsed time',
+    materialQc: (label: string) => `Material QC: ${label}`,
+    routeCard: 'Route card & progress',
+    step: (n: number, total: number) => `Step ${n} of ${total}`,
+    allDone: 'Every operation on this job is complete.',
+    start: 'Start',
+    resume: 'Resume',
+    pause: 'Pause',
+    complete: 'Complete',
+  },
+  assignMachine: {
+    title: 'Assign Machine',
+    help: "Select the machine you'll run this operation on",
+    confirm: 'Confirm & Start',
+    available: 'Available',
+    inUse: 'In use',
+    maintenance: 'Maintenance',
+    empty: 'No machines are set up yet.',
+  },
+  rawMaterial: {
+    title: 'Raw Material Details',
+    heading: 'A few details are missing',
+    help: (workOrder: string) =>
+      `Fill in the raw material details for ${workOrder} before the job card is created.`,
+    /** When the order already has every detail: confirm instead of fill in. */
+    confirmHeading: 'Check the raw material details',
+    confirmHelp: (workOrder: string) =>
+      `Confirm the raw material details for ${workOrder} before the job card is created.`,
+    continue: 'Continue',
+  },
+} as const;
+
+/** Raw Material Details fields, in form order. All are required. */
+export const RAW_MATERIAL_FIELDS: {
+  key: Exclude<keyof RawMaterialInput, 'supplier'>;
+  label: string;
+  placeholder: string;
+}[] = [
+  {
+    key: 'rawMaterialGrade',
+    label: 'Raw material grade',
+    placeholder: 'e.g. EN8',
+  },
+  {
+    key: 'rawMaterialSize',
+    label: 'Raw material size',
+    placeholder: 'e.g. 25mm dia x 200mm',
+  },
+  { key: 'heatNumber', label: 'Heat number', placeholder: 'e.g. HT-99213' },
+  { key: 'rmPartNumber', label: 'RM part number', placeholder: 'e.g. RM-4092' },
+];
+
+export const SUPPLIER_FIELD = {
+  label: 'Supplier',
+  placeholder: 'Select supplier',
+} as const;

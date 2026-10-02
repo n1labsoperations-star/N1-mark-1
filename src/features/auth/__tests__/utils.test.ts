@@ -1,5 +1,6 @@
 import {
   checkPassword,
+  findMockUser,
   generateOrganizationCode,
   isCompleteCode,
   isPasswordValid,
@@ -82,5 +83,20 @@ describe('verification code helpers', () => {
   test('isCompleteCode needs exactly 6 digits', () => {
     expect(isCompleteCode('123456')).toBe(true);
     expect(isCompleteCode('12345')).toBe(false);
+  });
+});
+
+describe('findMockUser', () => {
+  test('matches each role and rejects bad credentials', () => {
+    expect(findMockUser('admin@n1.com', 'Admin@123')?.role).toBe('admin');
+    expect(findMockUser('secondadmin@n1.com', 'SecondAdmin@123')?.role).toBe(
+      'second-admin',
+    );
+    expect(findMockUser(' Operator@N1.com ', 'Operator@123')?.role).toBe(
+      'machine-operator',
+    );
+    expect(findMockUser('qc@n1.com', 'Qc@12345')?.role).toBe('qc');
+    expect(findMockUser('admin@n1.com', 'Qc@12345')).toBeUndefined();
+    expect(findMockUser('nobody@n1.com', 'Admin@123')).toBeUndefined();
   });
 });

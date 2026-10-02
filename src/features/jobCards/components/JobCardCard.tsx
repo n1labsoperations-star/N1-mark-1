@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { View } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 import {
   N1Button,
   N1Text,
@@ -11,6 +11,7 @@ import { JOB_CARD_STRINGS as S } from '../constants';
 import type { JobCard } from '../types';
 import { currentOperation, jobHeading, jobProgress } from '../utils';
 import { FlowActionButton } from './FlowActionButton';
+import { JobCardStatusBadge } from './JobCardBadges';
 import { JobProgress } from './JobProgress';
 
 const makeStyles = createN1Styles(t => ({
@@ -27,12 +28,20 @@ const makeStyles = createN1Styles(t => ({
     marginTop: t.spacing.xs,
   },
   view: { flex: 1 },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: t.spacing.sm,
+  },
+  title: { flex: 1 },
 }));
 
 type Props = {
   jobCard: JobCard;
   onView: (jobCard: JobCard) => void;
   onFlow: (jobCard: JobCard) => void;
+  style?: StyleProp<ViewStyle>;
 };
 
 /** One job card on the phone list. */
@@ -40,15 +49,19 @@ export const JobCardCard = memo(function JobCardCardComponent({
   jobCard,
   onView,
   onFlow,
+  style,
 }: Props) {
   const styles = useN1Styles(makeStyles);
   const op = currentOperation(jobCard);
   const where = [op?.name, op?.machine].filter(Boolean).join(' · ');
   return (
-    <View style={styles.card} testID={`job-card-${jobCard.id}`}>
-      <N1Text variant="title" weight="bold">
-        {jobHeading(jobCard)}
-      </N1Text>
+    <View style={[styles.card, style]} testID={`job-card-${jobCard.id}`}>
+      <View style={styles.titleRow}>
+        <N1Text variant="title" weight="bold" style={styles.title}>
+          {jobHeading(jobCard)}
+        </N1Text>
+        <JobCardStatusBadge status={jobCard.status} />
+      </View>
       <N1Text variant="small" color="secondary">
         {where || COMMON_STRINGS.dash}
       </N1Text>

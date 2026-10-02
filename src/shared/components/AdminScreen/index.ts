@@ -1,1 +1,5 @@
-export { AdminScreen, type AdminScreenProps } from './AdminScreen';
+export {
+  AdminScreen,
+  AdminScreenBackground,
+  type AdminScreenProps,
+} from './AdminScreen';
