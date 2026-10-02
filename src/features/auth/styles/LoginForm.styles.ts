@@ -8,6 +8,12 @@ export const makeLoginFormStyles = createN1Styles(t => ({
   logo: {
     marginBottom: t.spacing.xxl,
   },
+  // Very small, left aligned, just above the title.
+  brand: {
+    width: 34,
+    height: 24,
+    alignSelf: 'flex-start',
+  },
   heading: {
     gap: t.spacing.xs,
   },

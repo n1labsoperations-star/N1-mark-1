@@ -44,6 +44,9 @@ export type N1Colors = {
   surfaceInverseActive: string;
   textPrimary: string;
   textSecondary: string;
+  /** Theme background colour. */
+  themeBg: string;
+
   textTertiary: string;
   textInverse: string;
   border: string;
@@ -66,6 +69,7 @@ export type N1Colors = {
 
 const lightColors: N1Colors = {
   background: palette.grey100,
+  themeBg: palette.themeBg,
   surface: palette.white,
   surfaceMuted: palette.grey150,
   surfaceInverse: palette.ink900,

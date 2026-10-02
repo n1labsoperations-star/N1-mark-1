@@ -67,7 +67,7 @@ describe('ForgotPasswordScreen', () => {
 
   test('shows the tagline on wide screens only', async () => {
     const tagline =
-      "Locked out? It happens. We'll get you back into your dashboard in a minute.";
+      'N1 brings your organization, your team, and your data together in one simple workspace. Stay on top of daily operations, keep your team aligned, and get a clear view of your business from one dashboard.';
     expect(allText(await renderScreen(WIDE))).toContain(tagline);
     expect(allText(await renderScreen(PHONE))).not.toContain(tagline);
   });

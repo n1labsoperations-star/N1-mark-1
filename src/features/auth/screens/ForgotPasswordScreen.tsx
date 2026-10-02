@@ -4,7 +4,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { N1Button, N1TextInput } from '../../../shared/components';
 import AuthLayout from '../components/AuthLayout';
 import AuthStep from '../components/AuthStep';
-import { FORGOT_PASSWORD_TAGLINE } from '../constants';
 import { useForgotPassword } from '../context/ForgotPasswordContext';
 import type {
   AuthStackParamList,
@@ -38,7 +37,7 @@ function ForgotPasswordScreen() {
   };
 
   return (
-    <AuthLayout tagline={FORGOT_PASSWORD_TAGLINE}>
+    <AuthLayout>
       <AuthStep
         icon="lock"
         title="Forgot Password?"

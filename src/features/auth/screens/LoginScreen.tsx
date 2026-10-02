@@ -4,7 +4,7 @@ import { useN1Breakpoint } from '../../../shared/components';
 import AuthLayout from '../components/AuthLayout';
 import AuthPrompt from '../components/AuthPrompt';
 import LoginForm from '../components/LoginForm';
-import { INVALID_CREDENTIALS_MESSAGE, LOGIN_TAGLINE } from '../constants';
+import { INVALID_CREDENTIALS_MESSAGE } from '../constants';
 import { useAuthSession } from '../hooks';
 import { findMockUser } from '../utils';
 
@@ -29,7 +29,6 @@ function LoginScreen() {
 
   return (
     <AuthLayout
-      tagline={LOGIN_TAGLINE}
       footer={
         <AuthPrompt
           question="Setting up for your company?"
@@ -41,9 +40,14 @@ function LoginScreen() {
       }
     >
       <LoginForm
-        title={isCompact ? 'Welcome Back!' : 'Welcome to N1'}
-        subtitle={isCompact ? 'Log in to your dashboard.' : undefined}
+        title={isCompact ? 'Welcome Back!' : 'Get Started'}
+        subtitle={
+          isCompact
+            ? 'Log in to your dashboard.'
+            : 'Log in as a user or admin to view your dashboard.'
+        }
         showLogo={isCompact}
+        showBrand={!isCompact}
         showRememberMe={!isCompact}
         errorText={error}
         onSubmit={handleSubmit}
