@@ -7,8 +7,6 @@ import { makeAuthLayoutStyles } from '../styles';
 import AuthHero from './AuthHero';
 
 type Props = {
-  /** Text at the bottom of the hero panel (tablet / desktop only). */
-  tagline: string;
   children: ReactNode;
   /** Line under the form; pinned to the bottom on phones. */
   footer?: ReactNode;
@@ -20,7 +18,7 @@ type Props = {
  * Shared shell for the auth screens: hero panel + form side by side on
  * tablet / desktop, a single scrolling column on phones.
  */
-function AuthLayout({ tagline, children, footer, wide = false }: Props) {
+function AuthLayout({ children, footer, wide = false }: Props) {
   const styles = useN1Styles(makeAuthLayoutStyles);
   const { isCompact } = useN1Breakpoint();
 
@@ -40,7 +38,7 @@ function AuthLayout({ tagline, children, footer, wide = false }: Props) {
 
   return (
     <View style={styles.split}>
-      <AuthHero tagline={tagline} />
+      <AuthHero />
       <ScrollView
         style={styles.formPane}
         contentContainerStyle={styles.formPaneContent}

@@ -9,8 +9,8 @@
 export const spacing = {
   none: 0,
   xxs: 2,
-  xs: 4,
-  sm: 8,
+  xs: 5,
+  sm: 10,
   md: 12,
   lg: 16,
   xl: 20,
@@ -89,6 +89,8 @@ export const shadow = {
   none: undefined,
   modal: '0px 12px 32px rgba(0, 0, 0, 0.16)',
   raised: '0px 2px 8px rgba(0, 0, 0, 0.06)',
+  /** A floating panel, e.g. the auth form card. */
+  card: '0px 8px 32px rgba(0, 0, 0, 0.12)',
 } as const;
 
 export const opacity = {

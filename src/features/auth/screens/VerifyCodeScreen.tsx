@@ -7,7 +7,7 @@ import AuthLayout from '../components/AuthLayout';
 import AuthPrompt from '../components/AuthPrompt';
 import AuthStep from '../components/AuthStep';
 import CodeInput from '../components/CodeInput';
-import { VERIFICATION_CODE_LENGTH, VERIFY_CODE_TAGLINE } from '../constants';
+import { VERIFICATION_CODE_LENGTH } from '../constants';
 import { useForgotPassword } from '../context/ForgotPasswordContext';
 import type { ForgotPasswordStackParamList } from '../types';
 import { makeVerifyCodeScreenStyles } from '../styles';
@@ -41,7 +41,7 @@ function VerifyCodeScreen() {
   };
 
   return (
-    <AuthLayout tagline={VERIFY_CODE_TAGLINE}>
+    <AuthLayout>
       <AuthStep
         icon="mail"
         title="Enter Code"

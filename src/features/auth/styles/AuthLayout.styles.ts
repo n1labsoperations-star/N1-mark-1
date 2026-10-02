@@ -5,18 +5,24 @@ export const makeAuthLayoutStyles = createN1Styles(t => ({
   split: {
     flex: 1,
     flexDirection: 'row',
-    gap: t.spacing.xxxl,
-    padding: t.spacing.lg,
-    backgroundColor: t.colors.surface,
+    gap: t.spacing.sm,
+    padding: t.spacing.sm,
+    backgroundColor: t.colors.themeBg,
   },
+  // The shadow sits on the pane: the scroll area would clip one on its content.
   formPane: {
     flex: 1,
+    borderRadius: t.radius.xl,
+    boxShadow: t.shadow.card,
   },
   formPaneContent: {
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: t.spacing.xxl,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.radius.xl,
+    paddingHorizontal: t.spacing.xxl,
   },
   formWidth: {
     width: '100%',

@@ -8,7 +8,7 @@ import CreateOrganizationForm, {
 } from '../components/CreateOrganizationForm';
 import { useAppDispatch } from '../../../app/store/hooks';
 import { profileActions } from '../../profile/store/profileSlice';
-import { CREATE_ORGANIZATION_TAGLINE, USER_ROLES } from '../constants';
+import { USER_ROLES } from '../constants';
 import { useAuthSession } from '../hooks';
 
 function CreateOrganizationScreen() {
@@ -38,7 +38,6 @@ function CreateOrganizationScreen() {
 
   return (
     <AuthLayout
-      tagline={CREATE_ORGANIZATION_TAGLINE}
       wide
       footer={
         <AuthPrompt

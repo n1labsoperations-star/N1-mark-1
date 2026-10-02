@@ -1,19 +1,8 @@
 import type { N1DropDownOption } from '../../shared/components';
 
-export const LOGIN_TAGLINE =
-  'N1 brings your organization, your team and your data together in one dashboard.';
-
-export const CREATE_ORGANIZATION_TAGLINE =
-  'Register your organization, get its unique code, and bring your team into one dashboard.';
-
-export const FORGOT_PASSWORD_TAGLINE =
-  "Locked out? It happens. We'll get you back into your dashboard in a minute.";
-
-export const VERIFY_CODE_TAGLINE =
-  "Almost there. Enter the code we sent to confirm it's you.";
-
-export const RESET_PASSWORD_TAGLINE =
-  "One last step — choose a new password and you're back in.";
+/** Shown on the hero panel of every auth screen (login, sign-up, reset). */
+export const AUTH_TAGLINE =
+  'N1 brings your organization, your team, and your data together in one simple workspace. Stay on top of daily operations, keep your team aligned, and get a clear view of your business from one dashboard.';
 
 export const PASSWORD_MIN_LENGTH = 8;
 

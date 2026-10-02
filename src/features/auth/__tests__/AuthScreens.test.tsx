@@ -49,9 +49,9 @@ describe('LoginScreen', () => {
   test('wide layout shows the hero panel, remember me and footer', async () => {
     const text = allText(await render(<LoginScreen />, WIDE));
 
-    expect(text).toContain('Welcome to N1');
+    expect(text).toContain('Get Started');
     expect(text).toContain(
-      'N1 brings your organization, your team and your data together in one dashboard.',
+      'N1 brings your organization, your team, and your data together in one simple workspace. Stay on top of daily operations, keep your team aligned, and get a clear view of your business from one dashboard.',
     );
     expect(text).toContain('Remember me');
     expect(text).toContain('Forgot password?');
@@ -66,7 +66,7 @@ describe('LoginScreen', () => {
     expect(text).toContain('Log in to your dashboard.');
     expect(text).toContain('Create organization');
     expect(text).not.toContain('Remember me');
-    expect(text).not.toContain('Welcome to N1');
+    expect(text).not.toContain('Get Started');
   });
 
   test.each([
@@ -97,6 +97,25 @@ describe('LoginScreen', () => {
 
     expect(store.getState().session.role).toBeNull();
     expect(allText(root)).toContain('Invalid email or password.');
+  });
+
+  test('empty fields flag both email and password', async () => {
+    const store = createStore();
+    const root = await render(<LoginScreen />, PHONE, store);
+
+    await press(findText(root, 'Log in'));
+    expect(allText(root)).toContain('Email ID is required');
+    expect(allText(root)).toContain('Password is required');
+    expect(allText(root)).not.toContain('Invalid email or password.');
+    expect(store.getState().session.role).toBeNull();
+
+    // A badly formed email is flagged too; typing clears the password error.
+    await type(root, 'you@company.com', 'admin');
+    await type(root, 'Enter your password', 'Admin@123');
+    await press(findText(root, 'Log in'));
+    const text = allText(root);
+    expect(text).toContain('Enter a valid email address');
+    expect(text).not.toContain('Password is required');
   });
 
   test('remember me toggles', async () => {
@@ -157,7 +176,7 @@ describe('CreateOrganizationScreen', () => {
     const text = allText(await render(<CreateOrganizationScreen />, WIDE));
 
     expect(text).toContain(
-      'Register your organization, get its unique code, and bring your team into one dashboard.',
+      'N1 brings your organization, your team, and your data together in one simple workspace. Stay on top of daily operations, keep your team aligned, and get a clear view of your business from one dashboard.',
     );
     expect(text).toContain(
       "You'll be the admin of this organization. Fields marked ",
@@ -170,7 +189,7 @@ describe('CreateOrganizationScreen', () => {
 
     expect(text).toContain("You'll be the admin. ");
     expect(text).not.toContain(
-      'Register your organization, get its unique code, and bring your team into one dashboard.',
+      'N1 brings your organization, your team, and your data together in one simple workspace. Stay on top of daily operations, keep your team aligned, and get a clear view of your business from one dashboard.',
     );
   });
 

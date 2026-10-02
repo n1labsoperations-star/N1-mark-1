@@ -35,8 +35,8 @@ export const palette = {
   red100: '#FCE8E6',
   orange500: '#E8663D',
   pink500: '#E77FA8',
-
-  overlayLight: 'rgba(17, 17, 17, 0.45)',
+  themeBg: '#FFFAF3',
+  overlayLight: 'rgba(17, 17, 17, 0.32)',
   overlayDark: 'rgba(0, 0, 0, 0.65)',
   scanLine: '#35D07F',
 } as const;

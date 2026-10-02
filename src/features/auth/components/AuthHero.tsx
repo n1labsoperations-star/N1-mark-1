@@ -1,25 +1,35 @@
 import React from 'react';
-import { View } from 'react-native';
-import { N1Logo, N1Text, useN1Styles } from '../../../shared/components';
+import { ImageBackground, View } from 'react-native';
+import { N1Text, useN1Styles } from '../../../shared/components';
+import { AUTH_TAGLINE } from '../constants';
 import { makeAuthHeroStyles } from '../styles';
 
-type Props = {
-  tagline: string;
-};
+// Hero photo; the tagline sits on a frosted glass card over it.
+const HERO_IMAGE = require('../../../../assets/images/auth-hero.jpg');
 
-/** Dark brand panel shown beside the auth forms on wider screens. */
-function AuthHero({ tagline }: Props) {
+/** Brand panel shown beside the auth forms on wider screens. */
+function AuthHero() {
   const styles = useN1Styles(makeAuthHeroStyles);
 
   return (
-    <View style={styles.hero}>
-      <View style={styles.logo}>
-        <N1Logo size="xl" color="inverse" />
+    <ImageBackground
+      source={HERO_IMAGE}
+      resizeMode="cover"
+      style={styles.hero}
+      testID="auth-hero"
+    >
+      <View style={styles.overlay} />
+      <View style={styles.glass} testID="auth-hero-glass">
+        <N1Text
+          variant="h3"
+          weight="regular"
+          color="inverse"
+          style={styles.tagline}
+        >
+          {AUTH_TAGLINE}
+        </N1Text>
       </View>
-      <N1Text variant="h2" weight="regular" color="inverse">
-        {tagline}
-      </N1Text>
-    </View>
+    </ImageBackground>
   );
 }
 

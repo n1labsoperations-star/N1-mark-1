@@ -121,7 +121,7 @@ test('log out asks first, then returns to the login screen', async () => {
   );
   await press(confirm);
   expect(store.getState().profile.signedOut).toBe(true);
-  expect(allText(root)).toContain('Welcome to N1');
+  expect(allText(root)).toContain('Get Started');
   expect(allText(root)).not.toContain('Koushik Dasarathan');
 
   // Signing in again reloads the session.

@@ -4,7 +4,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { N1Button, N1Checklist, N1TextInput } from '../../../shared/components';
 import AuthLayout from '../components/AuthLayout';
 import AuthStep from '../components/AuthStep';
-import { RESET_PASSWORD_TAGLINE } from '../constants';
 import type {
   AuthStackParamList,
   ForgotPasswordStackParamList,
@@ -31,7 +30,7 @@ function ResetPasswordScreen() {
   };
 
   return (
-    <AuthLayout tagline={RESET_PASSWORD_TAGLINE}>
+    <AuthLayout>
       <AuthStep
         icon="lock-open"
         iconTone="success"
