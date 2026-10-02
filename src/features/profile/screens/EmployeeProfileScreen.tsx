@@ -15,7 +15,8 @@ import {
   useN1Styles,
 } from '../../../shared/components';
 import { useToggle } from '../../../shared/hooks';
-import { formatLongDate, rootNavigation } from '../../../shared/utils';
+import { useAuthSession } from '../../auth/hooks';
+import { formatLongDate } from '../../../shared/utils';
 import {
   EMPLOYEE_PROFILE_STRINGS as S,
   EMPLOYEE_ROLE_LABELS,
@@ -36,6 +37,7 @@ export function EmployeeProfileScreen() {
   const navigation = useNavigation<NavigationProp<EmployeeProfileParamList>>();
   const { profile, status, error, reload, logout } = useEmployeeProfile();
   const [logoutOpen, openLogout, closeLogout] = useToggle(false);
+  const { signOut } = useAuthSession();
 
   const openEdit = useCallback(
     () => navigation.navigate('EditProfile'),
@@ -43,13 +45,11 @@ export function EmployeeProfileScreen() {
   );
   const confirmLogout = useCallback(() => {
     closeLogout();
-    // The login screen becomes the whole history, so Back can't return here.
-    rootNavigation(navigation).reset({
-      index: 0,
-      routes: [{ name: 'Auth', params: { screen: 'Login' } }],
-    });
     logout();
-  }, [closeLogout, logout, navigation]);
+    // The root navigator swaps this area for the login screens, so Back
+    // can't return here.
+    signOut();
+  }, [closeLogout, logout, signOut]);
 
   return (
     <UserScreen
@@ -61,6 +61,7 @@ export function EmployeeProfileScreen() {
             profile && (
               <N1IconButton
                 icon="edit"
+                variant="primary"
                 size="sm"
                 accessibilityLabel={S.editProfile}
                 onPress={openEdit}

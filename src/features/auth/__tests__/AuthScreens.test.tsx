@@ -6,6 +6,7 @@ import ReactTestRenderer, { type ReactTestInstance } from 'react-test-renderer';
 import { INDUSTRY_OPTIONS } from '../constants';
 import CreateOrganizationScreen from '../screens/CreateOrganizationScreen';
 import LoginScreen from '../screens/LoginScreen';
+import { createStore } from '../../../app/store';
 import {
   PHONE,
   WIDE,
@@ -69,31 +70,32 @@ describe('LoginScreen', () => {
   });
 
   test.each([
-    ['admin@n1.com', 'Admin@123', 'Admin'],
-    ['secondadmin@n1.com', 'SecondAdmin@123', 'SecondAdmin'],
-    ['  OPERATOR@n1.com ', 'Operator@123', 'MachineOperator'],
-    ['qc@n1.com', 'Qc@12345', 'Qc'],
-  ])('%s logs in to the %s screen', async (email, password, screen) => {
-    const root = await render(<LoginScreen />, PHONE);
+    ['admin@n1.com', 'Admin@123', 'admin'],
+    ['supervisor@n1.com', 'Supervisor@123', 'supervisor'],
+    ['  OPERATOR@n1.com ', 'Operator@123', 'operator'],
+    ['qc@n1.com', 'Qc@12345', 'qc'],
+  ])('%s signs in as %s', async (email, password, role) => {
+    const store = createStore();
+    const root = await render(<LoginScreen />, PHONE, store);
 
     await type(root, 'you@company.com', email);
     await type(root, 'Enter your password', password);
     await press(findText(root, 'Log in'));
 
-    expect(mockNavigation.reset).toHaveBeenCalledWith({
-      index: 0,
-      routes: [{ name: 'Dashboard', params: { screen } }],
-    });
+    // The root navigator then shows only that role's area.
+    expect(store.getState().session.role).toBe(role);
+    expect(mockNavigation.reset).not.toHaveBeenCalled();
   });
 
   test('wrong credentials show an error and stay on Login', async () => {
-    const root = await render(<LoginScreen />, PHONE);
+    const store = createStore();
+    const root = await render(<LoginScreen />, PHONE, store);
 
     await type(root, 'you@company.com', 'admin@n1.com');
     await type(root, 'Enter your password', 'wrong');
     await press(findText(root, 'Log in'));
 
-    expect(mockNavigation.reset).not.toHaveBeenCalled();
+    expect(store.getState().session.role).toBeNull();
     expect(allText(root)).toContain('Invalid email or password.');
   });
 
@@ -200,16 +202,29 @@ describe('CreateOrganizationScreen', () => {
     expect(text).not.toContain('Enter the organization name');
   });
 
-  test('a valid form replaces the history with the Dashboard', async () => {
-    const root = await render(<CreateOrganizationScreen />, PHONE);
+  test('a valid form signs the new admin in', async () => {
+    const store = createStore();
+    const root = await render(<CreateOrganizationScreen />, PHONE, store);
 
     await fillValidForm(root);
     await press(findText(root, 'Create organization'));
 
-    expect(mockNavigation.reset).toHaveBeenCalledWith({
-      index: 0,
-      routes: [{ name: 'Dashboard' }],
-    });
+    expect(store.getState().session.role).toBe('admin');
+  });
+
+  test('an invalid GST number blocks submit; blank is fine', async () => {
+    const store = createStore();
+    const root = await render(<CreateOrganizationScreen />, WIDE, store);
+
+    await fillValidForm(root);
+    await type(root, 'e.g. 33ABCDE1234F1Z5', 'ABC123');
+    await press(findText(root, 'Create organization'));
+    expect(allText(root)).toContain('Enter a valid 15-character GST number');
+    expect(store.getState().session.role).toBeNull();
+
+    await type(root, 'e.g. 33ABCDE1234F1Z5', '');
+    await press(findText(root, 'Create organization'));
+    expect(store.getState().session.role).toBe('admin');
   });
 
   test('mismatched passwords block submit', async () => {

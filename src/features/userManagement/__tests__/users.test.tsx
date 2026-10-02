@@ -9,6 +9,7 @@ import {
   renderAdmin,
   typeInto,
 } from '../../../shared/testing/testUtils';
+import { ROLE_OPTIONS } from '../constants';
 
 let mockWidth = 1280;
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
@@ -109,7 +110,7 @@ describe('Users list (desktop)', () => {
 });
 
 describe('User details', () => {
-  test('desktop shows contact, attachments, account and permissions', async () => {
+  test('desktop shows contact, attachments and account, no permissions', async () => {
     const h = await renderAdmin('Users');
     await h.navigate('UserDetails', { userId: 'USR-2' });
     const text = allText(h.root);
@@ -120,16 +121,13 @@ describe('User details', () => {
     expect(text).toContain('1.2 MB');
     expect(text).toContain('Joined Sep 18, 2026');
     expect(text).toContain('2h ago');
+    expect(text).not.toContain('Permissions');
+    expect(text).not.toContain('Manage users');
   });
 
-  test('permission toggles and active status save to the store', async () => {
+  test('active status saves to the store', async () => {
     const h = await renderAdmin('Users');
     await h.navigate('UserDetails', { userId: 'USR-2' });
-    await press(byTestId(h.root, 'permission-manageUsers'));
-    expect(
-      h.store.getState().userManagement.entities['USR-2'].permissions
-        .manageUsers,
-    ).toBe(true);
     await press(byTestId(h.root, 'toggle-active'));
     expect(h.store.getState().userManagement.entities['USR-2'].status).toBe(
       'inactive',
@@ -183,4 +181,30 @@ test('phone list uses cards and a pinned Create User button', async () => {
   expect(hasTestId(root, 'filter-role')).toBe(false);
   await press(byTestId(root, 'create-user'));
   expect(allText(root)).toContain('Create user');
+});
+
+describe('roles', () => {
+  test('the role options are Admin, Supervisor, Operator and QC', () => {
+    expect(ROLE_OPTIONS.map(o => o.label)).toEqual([
+      'Admin',
+      'Supervisor',
+      'Operator',
+      'QC',
+    ]);
+    expect(ROLE_OPTIONS.map(o => o.value)).toEqual([
+      'admin',
+      'supervisor',
+      'operator',
+      'qc',
+    ]);
+  });
+
+  test("the users list shows each person's role", async () => {
+    const { root } = await renderAdmin('Users');
+    const text = allText(root);
+    for (const label of ['Admin', 'Supervisor', 'Operator', 'QC']) {
+      expect(text).toContain(label);
+    }
+    expect(text).not.toContain('|User|');
+  });
 });

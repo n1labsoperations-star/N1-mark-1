@@ -12,9 +12,6 @@ export const PAGE_SIZE = 10;
 /** Delay before a search box filters the list. */
 export const SEARCH_DEBOUNCE_MS = isTest ? 0 : 200;
 
-/** GST applied to invoice and quote subtotals (after discount). */
-export const GST_RATE = 0.05;
-
 export const CURRENCY_SYMBOL = '₹';
 
 export const PASSWORD_MIN_LENGTH = 8;

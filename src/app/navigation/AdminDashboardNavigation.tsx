@@ -23,7 +23,11 @@ import { CustomersNavigation } from '../../features/customers';
 import { JobCardsNavigation } from '../../features/jobCards';
 import { MachinesListScreen } from '../../features/machines';
 import { OrdersNavigation } from '../../features/orders';
-import { ProfileNavigation } from '../../features/profile';
+import {
+  OrganizationScreen,
+  ProfileNavigation,
+  useOrganizationName,
+} from '../../features/profile';
 import { UserManagementNavigation } from '../../features/userManagement';
 
 const Drawer = createDrawerNavigator<AdminDrawerParamList>();
@@ -96,15 +100,19 @@ function AdminDashboardNavigation({ initialRouteName = 'Overview' }: Props) {
     [isCompact, rail, toggleCollapse],
   );
 
+  const organizationName = useOrganizationName();
+
   const renderHeader = useCallback(
     ({ navigation }: DrawerHeaderProps) => (
       <TopBar
         compact={isCompact}
         onMenuPress={navigation.openDrawer}
         onProfilePress={() => navigation.navigate('Profile')}
+        organizationName={organizationName}
+        onOrganizationPress={() => navigation.navigate('Organization')}
       />
     ),
-    [isCompact],
+    [isCompact, organizationName],
   );
 
   return (
@@ -143,6 +151,7 @@ function AdminDashboardNavigation({ initialRouteName = 'Overview' }: Props) {
         />
       ))}
       <Drawer.Screen name="Profile" component={ProfileNavigation} />
+      <Drawer.Screen name="Organization" component={OrganizationScreen} />
     </Drawer.Navigator>
   );
 }

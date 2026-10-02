@@ -33,16 +33,16 @@ const selected = (root: ReactTestRenderer.ReactTestInstance, label: string) =>
 
 test.each([
   [
-    'secondadmin@n1.com',
-    'SecondAdmin@123',
-    'Second Admin',
+    'supervisor@n1.com',
+    'Supervisor@123',
+    'Supervisor',
     'Priya Sharma',
     'My Jobs',
   ],
   [
     'operator@n1.com',
     'Operator@123',
-    'Machine Operator',
+    'Operator',
     'Ravi Kumar',
     '4 in progress · 5 total',
   ],

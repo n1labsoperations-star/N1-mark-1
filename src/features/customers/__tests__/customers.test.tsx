@@ -156,3 +156,22 @@ test('validator and address helpers', () => {
     'Kochi, Kerala',
   );
 });
+
+test('details screen lists the customer’s orders and shared quotes', async () => {
+  const h = await renderAdmin('Customers');
+  await h.navigate('CustomerDetails', { customerId: 'CUS-1' });
+
+  const orders = allText(byTestId(h.root, 'customer-orders'));
+  expect(orders).toContain('WO #1042');
+  expect(orders).toContain('Bracket — Job A');
+  // Other customers' orders stay out.
+  expect(orders).not.toContain('WO #1041');
+
+  const quotes = allText(byTestId(h.root, 'customer-quotes'));
+  expect(quotes).toContain('QT-2026-0040');
+  expect(quotes).toContain('Accepted');
+  expect(quotes).not.toContain('QT-2026-0042');
+
+  await press(byText(byTestId(h.root, 'customer-quotes'), 'QT-2026-0040'));
+  expect(h.currentRoute()).toBe('QuoteDetails');
+});

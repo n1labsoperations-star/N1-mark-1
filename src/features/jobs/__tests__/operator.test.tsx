@@ -126,3 +126,20 @@ test('pause, resume, complete, then start the next step on a machine', async () 
     operator: 'Ravi Kumar',
   });
 });
+
+test('View Details opens the order full screen, and closes back to the job', async () => {
+  const root = await operator();
+  await press(byTestId(root, 'job-row-1042'));
+  await press(byTestId(root, 'view-order-details'));
+
+  const modal = byTestId(root, 'order-details-modal');
+  const text = allText(modal);
+  expect(text).toContain('Order Details');
+  expect(text).toContain('Acme Metalworks');
+  expect(text).toContain('Additional details');
+  expect(text).toContain('HT-99213');
+
+  await press(byLabel(modal, 'Close'));
+  expect(hasTestId(root, 'order-details-modal')).toBe(false);
+  expect(allText(root)).toContain('Job Detail');
+});

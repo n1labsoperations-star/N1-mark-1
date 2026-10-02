@@ -1,6 +1,11 @@
-import type { N1DropDownOption } from '../../shared/components';
+import type { N1DropDownOption, N1RadioOption } from '../../shared/components';
 import type { StatusMeta } from '../../shared/types';
-import type { OrderFilters, OrderPriority, OrderStatus } from './types';
+import type {
+  MaterialSource,
+  OrderFilters,
+  OrderPriority,
+  OrderStatus,
+} from './types';
 
 export const ORDER_STRINGS = {
   title: 'Orders',
@@ -20,6 +25,12 @@ export const ORDER_STRINGS = {
     priority: 'Priority',
     status: 'Status',
     due: 'Due date',
+    actions: 'Actions',
+  },
+  a11y: {
+    edit: (id: string) => `Edit order WO #${id}`,
+    createJobCard: (id: string) => `Create job card for WO #${id}`,
+    openJobCard: (id: string) => `Open job card for WO #${id}`,
   },
   stats: { open: 'Open orders', high: 'High priority' },
   workOrder: (id: string) => `WO #${id}`,
@@ -153,11 +164,8 @@ export const ORDER_STATUS_FILTER_OPTIONS: N1DropDownOption<
   })),
 ];
 
-/** Raw material suppliers (Raw Material Details). */
-export const SUPPLIER_OPTIONS: N1DropDownOption<string>[] = [
-  'Sri Balaji Steels',
-  'Tata Steel Distributors',
-  'JSW Steel Service Centre',
-  'Hindalco Metals',
-  'Jindal Stainless',
-].map(name => ({ label: name, value: name }));
+/** Where the raw material comes from (Raw Material Details). */
+export const MATERIAL_SOURCE_OPTIONS: N1RadioOption<MaterialSource>[] = [
+  { value: 'bought_out', label: 'Bought out' },
+  { value: 'in_house', label: 'In-house' },
+];

@@ -51,6 +51,6 @@ const roleTabs = (
 ];
 
 // Swap a tab's `component` (or add / remove tabs) as each role's screens land.
-export const SECOND_ADMIN_TABS = roleTabs('Second Admin', MyJobsScreen);
-export const MACHINE_OPERATOR_TABS = roleTabs('Machine Operator', MyJobsScreen);
+export const SUPERVISOR_TABS = roleTabs('Supervisor', MyJobsScreen);
+export const OPERATOR_TABS = roleTabs('Operator', MyJobsScreen);
 export const QC_TABS = roleTabs('QC', QcListScreen);

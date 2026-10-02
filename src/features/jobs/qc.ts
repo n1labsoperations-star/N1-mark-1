@@ -1,4 +1,9 @@
-import type { JobCard, JobOperation, QcEntry } from '../jobCards/types';
+import type {
+  JobCard,
+  JobOperation,
+  QcEntry,
+  RejectedMaterial,
+} from '../jobCards/types';
 import { QC_STRINGS } from './constants';
 
 /** Raw Material QC (incoming inspection) or Machine QC (after an operation). */
@@ -81,13 +86,17 @@ export function qcEntry(c: JobCard, kind: QcKind): QcEntry | undefined {
     );
 }
 
-/** Job card changes for a pass or fail: the QC history, and RM status. */
+/**
+ * Job card changes for a pass or fail: the QC history, and RM status. An RM
+ * rejection also records the material that was received.
+ */
 export function qcResult(
   c: JobCard,
   kind: QcKind,
   passed: boolean,
   remark: string,
   now: string,
+  rejectedMaterial?: RejectedMaterial,
 ): Partial<JobCard> {
   const op = machineQc(c).operation;
   const entry: QcEntry = {
@@ -104,6 +113,7 @@ export function qcResult(
     remark,
     at: now,
     operationId: kind === 'machine' ? op?.id : undefined,
+    ...(kind === 'rm' && !passed && rejectedMaterial && { rejectedMaterial }),
   };
   return {
     ...(kind === 'rm' && { materialQc: passed ? 'accepted' : 'rejected' }),

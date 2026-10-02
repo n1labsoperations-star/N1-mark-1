@@ -9,13 +9,17 @@ export const unavailableMessage = (action: string) =>
  * instead of a button that silently does nothing.
  */
 export function notifyUnavailable(action: string) {
-  const message = unavailableMessage(action);
+  notify(UNAVAILABLE_TITLE, unavailableMessage(action));
+}
+
+/** A simple OK alert on every platform. */
+export function notify(title: string, message: string) {
   if (Platform.OS === 'web') {
     // react-native-web's Alert is a no-op.
     (globalThis as { alert?: (text: string) => void }).alert?.(
-      `${UNAVAILABLE_TITLE}\n\n${message}`,
+      `${title}\n\n${message}`,
     );
     return;
   }
-  Alert.alert(UNAVAILABLE_TITLE, message);
+  Alert.alert(title, message);
 }

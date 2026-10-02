@@ -60,8 +60,8 @@ const ADMIN_URLS: [path: string, screen: string, params?: object][] = [
 ];
 
 const USER_URLS: [path: string, screen: string][] = [
-  'second-admin',
-  'machine-operator',
+  'supervisor',
+  'operator',
   'qc',
 ].flatMap(role => [
   [`/dashboard/${role}`, 'Jobs'],
@@ -69,37 +69,33 @@ const USER_URLS: [path: string, screen: string][] = [
   [`/dashboard/${role}/profile/edit`, 'EditProfile'],
 ]);
 
-const SECOND_ADMIN_URLS: [path: string, screen: string, params?: object][] = [
-  ['/dashboard/second-admin/scan', 'ScanJob'],
-  ['/dashboard/second-admin/job-code', 'EnterJobCode'],
-  ['/dashboard/second-admin/orders/1036', 'ImportOrder', { orderId: '1036' }],
+const SUPERVISOR_URLS: [path: string, screen: string, params?: object][] = [
+  ['/dashboard/supervisor/scan', 'ScanJob'],
+  ['/dashboard/supervisor/job-code', 'EnterJobCode'],
+  ['/dashboard/supervisor/orders/1036', 'ImportOrder', { orderId: '1036' }],
   [
-    '/dashboard/second-admin/orders/1036/raw-material',
+    '/dashboard/supervisor/orders/1036/raw-material',
     'RawMaterial',
     { orderId: '1036' },
   ],
   [
-    '/dashboard/second-admin/job-cards/1042',
+    '/dashboard/supervisor/job-cards/1042',
     'JobCardDetails',
     { jobCardId: '1042' },
   ],
   [
-    '/dashboard/second-admin/job-cards/1042/flow',
+    '/dashboard/supervisor/job-cards/1042/flow',
     'JobCardFlow',
     { jobCardId: '1042' },
   ],
 ];
 
 const OPERATOR_URLS: [path: string, screen: string, params?: object][] = [
-  ['/dashboard/machine-operator/scan', 'ScanJob'],
-  ['/dashboard/machine-operator/job-code', 'EnterJobCode'],
+  ['/dashboard/operator/scan', 'ScanJob'],
+  ['/dashboard/operator/job-code', 'EnterJobCode'],
+  ['/dashboard/operator/jobs/1042', 'OperatorJob', { jobCardId: '1042' }],
   [
-    '/dashboard/machine-operator/jobs/1042',
-    'OperatorJob',
-    { jobCardId: '1042' },
-  ],
-  [
-    '/dashboard/machine-operator/jobs/1042/machine',
+    '/dashboard/operator/jobs/1042/machine',
     'AssignMachine',
     { jobCardId: '1042' },
   ],
@@ -122,7 +118,7 @@ const QC_URLS: [path: string, screen: string, params?: object][] = [
 const CASES = [
   ...ADMIN_URLS,
   ...USER_URLS,
-  ...SECOND_ADMIN_URLS,
+  ...SUPERVISOR_URLS,
   ...OPERATOR_URLS,
   ...QC_URLS,
 ].map(([path, screen, params]: [string, string, object?]) => ({

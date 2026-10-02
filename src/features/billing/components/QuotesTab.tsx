@@ -1,11 +1,15 @@
 import { useNavigation } from '@react-navigation/native';
 import { useCallback, useMemo } from 'react';
+import { View } from 'react-native';
 import {
   N1Button,
+  N1IconButton,
   N1Pagination,
   N1Table,
   N1Text,
+  createN1Styles,
   useN1Breakpoint,
+  useN1Styles,
   type N1TableColumn,
 } from '../../../shared/components';
 import type { BillingNavigation } from '../types';
@@ -23,7 +27,9 @@ import {
 } from '../../../shared/hooks';
 import { notifyUnavailable } from '../../../shared/utils';
 import { BILLING_STRINGS, QUOTE_FILTER_OPTIONS } from '../constants';
-import { useQuoteStats, useQuotes } from '../hooks/useBilling';
+import { useInvoices, useQuoteStats, useQuotes } from '../hooks/useBilling';
+import { isQuoteMapped } from '../workflow';
+import { useConvertToOrder } from '../hooks/useBillingWorkflow';
 import type { Quote, QuoteStatus } from '../types';
 import { quoteSearchText } from '../utils';
 import { QuoteStatusBadge } from './BillingBadges';
@@ -34,8 +40,15 @@ type Filters = { status: QuoteStatus | 'all' };
 const INITIAL: Filters = { status: 'all' };
 const matches = (q: Quote, f: Filters) => matchesOption(f.status, q.status);
 
+const makeStyles = createN1Styles(t => ({
+  actions: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm },
+}));
+
 export function QuotesTab() {
+  const styles = useN1Styles(makeStyles);
   const navigation = useNavigation<BillingNavigation>();
+  const toOrder = useConvertToOrder();
+  const { items: invoices } = useInvoices();
   const { isCompact } = useN1Breakpoint();
   const { items, status, error, reload } = useQuotes();
   const stats = useQuoteStats();
@@ -101,17 +114,29 @@ export function QuotesTab() {
         interactive: true,
         title: S.columns.actions,
         render: q => (
-          <N1Button
-            title={BILLING_STRINGS.view}
-            leftIcon="eye"
-            variant="secondary"
-            size="sm"
-            onPress={() => view(q)}
-          />
+          <View style={styles.actions}>
+            <N1IconButton
+              icon="eye"
+              size="sm"
+              accessibilityLabel={BILLING_STRINGS.a11y.view(q.id)}
+              onPress={() => view(q)}
+            />
+            {!isQuoteMapped(q, invoices) && (
+              <N1IconButton
+                icon="package"
+                variant="primary"
+                size="sm"
+                accessibilityLabel={S.convertA11y(q.id)}
+                disabled={toOrder.convertingId !== null}
+                onPress={() => toOrder.convert(q)}
+                testID={`convert-${q.id}`}
+              />
+            )}
+          </View>
         ),
       },
     ],
-    [view],
+    [view, styles, toOrder, invoices],
   );
 
   const renderCompactItem = useCallback(

@@ -4,8 +4,8 @@ import {
   AsyncContent,
   ComingSoon,
   N1Button,
-  N1DropDown,
   N1Header,
+  N1RadioGroup,
   N1Text,
   N1TextInput,
   UserScreen,
@@ -16,15 +16,15 @@ import { COMMON_STRINGS } from '../../../shared/constants';
 import { useForm, useOnSettled, type FormErrors } from '../../../shared/hooks';
 import { isBlank } from '../../../shared/utils';
 import {
+  MATERIAL_SOURCE_OPTIONS,
   ORDER_STRINGS,
-  SUPPLIER_OPTIONS,
   useOrder,
   type WorkOrder,
 } from '../../orders';
 import {
   JOBS_STRINGS,
   RAW_MATERIAL_FIELDS,
-  SUPPLIER_FIELD,
+  MATERIAL_SOURCE_FIELD,
 } from '../constants';
 import { useMyJobs } from '../hooks/useMyJobs';
 import { useOpenOverTabs } from '../hooks/useOpenOverTabs';
@@ -49,17 +49,20 @@ const validate = (v: RawMaterialInput): FormErrors<RawMaterialInput> => {
 
 type FormProps = {
   order: WorkOrder;
+  /** Replacing material RM QC rejected: a new heat, checked again. */
+  retest: boolean;
   header: React.ReactNode;
   /** Called once the job is on My Jobs. */
   onImported: () => void;
 };
 
 // Mounted once the order has loaded, so the form starts from its values.
-function RawMaterialForm({ order, header, onImported }: FormProps) {
+function RawMaterialForm({ order, retest, header, onImported }: FormProps) {
   const styles = useN1Styles(makeStyles);
   const { importJob, importing, importError } = useMyJobs();
   const { values, errors, bind, submit } = useForm(
-    rawMaterialOf(order),
+    // New material comes from a new heat.
+    retest ? { ...rawMaterialOf(order), heatNumber: '' } : rawMaterialOf(order),
     validate,
   );
   const missing = isRawMaterialMissing(order);
@@ -68,14 +71,18 @@ function RawMaterialForm({ order, header, onImported }: FormProps) {
 
   const save = useCallback(
     (v: RawMaterialInput) =>
-      importJob(order.id, {
-        rawMaterialGrade: v.rawMaterialGrade.trim(),
-        rawMaterialSize: v.rawMaterialSize.trim(),
-        heatNumber: v.heatNumber.trim(),
-        rmPartNumber: v.rmPartNumber.trim(),
-        supplier: v.supplier,
-      }),
-    [importJob, order.id],
+      importJob(
+        order.id,
+        {
+          rawMaterialGrade: v.rawMaterialGrade.trim(),
+          rawMaterialSize: v.rawMaterialSize.trim(),
+          heatNumber: v.heatNumber.trim(),
+          rmPartNumber: v.rmPartNumber.trim(),
+          materialSource: v.materialSource,
+        },
+        retest,
+      ),
+    [importJob, order.id, retest],
   );
 
   const workOrder = ORDER_STRINGS.workOrder(order.id);
@@ -84,8 +91,8 @@ function RawMaterialForm({ order, header, onImported }: FormProps) {
       header={header}
       footer={
         <N1Button
-          title={S.continue}
-          leftIcon="arrow-right"
+          title={retest ? S.retestSubmit : S.continue}
+          leftIcon={retest ? 'refresh' : 'arrow-right'}
           size="lg"
           fullWidth
           loading={importing}
@@ -97,10 +104,14 @@ function RawMaterialForm({ order, header, onImported }: FormProps) {
     >
       <View style={styles.heading}>
         <N1Text variant="title" weight="bold">
-          {missing ? S.heading : S.confirmHeading}
+          {retest ? S.retestHeading : missing ? S.heading : S.confirmHeading}
         </N1Text>
         <N1Text variant="small" color="secondary">
-          {missing ? S.help(workOrder) : S.confirmHelp(workOrder)}
+          {retest
+            ? S.retestHelp(workOrder)
+            : missing
+            ? S.help(workOrder)
+            : S.confirmHelp(workOrder)}
         </N1Text>
       </View>
       {RAW_MATERIAL_FIELDS.map(field => (
@@ -114,14 +125,12 @@ function RawMaterialForm({ order, header, onImported }: FormProps) {
           testID={`raw-material-${field.key}`}
         />
       ))}
-      <N1DropDown
-        label={SUPPLIER_FIELD.label}
-        placeholder={SUPPLIER_FIELD.placeholder}
-        options={SUPPLIER_OPTIONS}
-        value={values.supplier || null}
-        onChange={bind('supplier')}
-        errorText={errors.supplier}
-        testID="raw-material-supplier"
+      <N1RadioGroup
+        label={MATERIAL_SOURCE_FIELD.label}
+        options={MATERIAL_SOURCE_OPTIONS}
+        value={values.materialSource || null}
+        onChange={bind('materialSource')}
+        errorText={errors.materialSource}
       />
       {importError && (
         <N1Text variant="small" color="danger">
@@ -141,7 +150,7 @@ export function RawMaterialScreen({
   route,
   navigation,
 }: JobsScreenProps<'RawMaterial'>) {
-  const { orderId } = route.params;
+  const { orderId, retest = false } = route.params;
   const { order, status, error, reload } = useOrder(orderId);
 
   const openOverTabs = useOpenOverTabs();
@@ -159,7 +168,12 @@ export function RawMaterialScreen({
   );
 
   return order ? (
-    <RawMaterialForm order={order} header={header} onImported={openJobCard} />
+    <RawMaterialForm
+      order={order}
+      retest={retest}
+      header={header}
+      onImported={openJobCard}
+    />
   ) : (
     <UserScreen header={header} testID="raw-material-screen">
       <AsyncContent status={status} error={error} onRetry={reload}>

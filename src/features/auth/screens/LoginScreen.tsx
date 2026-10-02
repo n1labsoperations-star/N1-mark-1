@@ -4,21 +4,18 @@ import { useN1Breakpoint } from '../../../shared/components';
 import AuthLayout from '../components/AuthLayout';
 import AuthPrompt from '../components/AuthPrompt';
 import LoginForm from '../components/LoginForm';
-import {
-  INVALID_CREDENTIALS_MESSAGE,
-  LOGIN_TAGLINE,
-  ROLE_HOME,
-} from '../constants';
+import { INVALID_CREDENTIALS_MESSAGE, LOGIN_TAGLINE } from '../constants';
+import { useAuthSession } from '../hooks';
 import { findMockUser } from '../utils';
 
 function LoginScreen() {
   const { isCompact } = useN1Breakpoint();
   const navigation = useNavigation();
+  const { signIn } = useAuthSession();
 
   const [error, setError] = useState<string>();
 
-  // No auth API yet: check against the mock users. reset replaces the whole
-  // history with the role's dashboard, so there is nothing to go back to.
+  // No auth API yet: check against the mock users.
   const handleSubmit = (email: string, password: string) => {
     const user = findMockUser(email, password);
     if (!user) {
@@ -26,15 +23,8 @@ function LoginScreen() {
       return;
     }
     setError(undefined);
-    navigation.reset({
-      index: 0,
-      routes: [
-        {
-          name: 'Dashboard',
-          params: { screen: ROLE_HOME[user.role] },
-        },
-      ],
-    });
+    // The root navigator swaps the login screens for this role's area.
+    signIn(user.role);
   };
 
   return (

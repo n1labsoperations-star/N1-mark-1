@@ -24,8 +24,11 @@ import { BillingSection } from '../components/BillingSection';
 import { LineItemsTable } from '../components/LineItemsTable';
 import { TotalsSummary } from '../components/TotalsSummary';
 import { BILLING_STRINGS, QUOTE_STATUS_META } from '../constants';
-import { useQuote } from '../hooks/useBilling';
+import { useInvoices, useQuote } from '../hooks/useBilling';
+import { isQuoteMapped } from '../workflow';
 import { calculateTotals } from '../utils';
+import { useGst } from '../hooks/useGst';
+import { useConvertToOrder } from '../hooks/useBillingWorkflow';
 import type { BillingScreenProps } from '../types';
 
 const Q = BILLING_STRINGS.quote;
@@ -50,18 +53,26 @@ export function QuoteDetailsScreen({
     () => navigation.navigate('QuoteForm', { quoteId }),
     [navigation, quoteId],
   );
-  const convert = useCallback(
-    () => navigation.navigate('JobCards'),
-    [navigation],
-  );
+  const toOrder = useConvertToOrder();
+  const { items: invoices } = useInvoices();
   const downloadPdf = useCallback(
     () => notifyUnavailable(BILLING_STRINGS.invoice.downloadAction),
     [],
   );
 
+  const gst = useGst(quote?.customerName ?? '');
   const totals = useMemo(
-    () => (quote ? calculateTotals(quote.lineItems, quote.quantity) : null),
-    [quote],
+    () =>
+      quote
+        ? calculateTotals(
+            quote.lineItems,
+            quote.quantity,
+            0,
+            quote.gstRate,
+            gst.supply,
+          )
+        : null,
+    [quote, gst.supply],
   );
 
   const statusLabel = quote ? QUOTE_STATUS_META[quote.status].label : '';
@@ -75,6 +86,7 @@ export function QuoteDetailsScreen({
         quote && (
           <N1IconButton
             icon="edit"
+            variant="primary"
             size="sm"
             accessibilityLabel={COMMON_STRINGS.edit}
             onPress={revise}
@@ -94,6 +106,7 @@ export function QuoteDetailsScreen({
     );
   }
 
+  const mapped = isQuoteMapped(quote, invoices);
   const stats = [
     { key: 'total', label: Q.total, value: formatCurrency(totals.total) },
     { key: 'operations', label: Q.operations, value: quote.lineItems.length },
@@ -110,13 +123,16 @@ export function QuoteDetailsScreen({
       {isCompact && <QuoteStatusBadge status={quote.status} />}
       <StatGrid items={stats} variant="muted" testID="quote-summary" />
       <View style={styles.actions}>
-        <N1Button
-          title={Q.convert}
-          leftIcon="clipboard"
-          onPress={convert}
-          fullWidth={isCompact}
-          testID="convert-quote"
-        />
+        {!mapped && (
+          <N1Button
+            title={Q.convert}
+            leftIcon="package"
+            onPress={() => toOrder.convert(quote)}
+            loading={toOrder.convertingId === quote.id}
+            fullWidth={isCompact}
+            testID="convert-quote"
+          />
+        )}
         <N1Button
           title={Q.revise}
           leftIcon="edit"
@@ -140,6 +156,23 @@ export function QuoteDetailsScreen({
           { label: Q.customer, value: quote.customerName },
           { label: Q.partName, value: quote.partName },
           { label: Q.quantity, value: `${quote.quantity} pcs` },
+          ...(quote.orderId
+            ? [
+                {
+                  label: Q.order,
+                  value: (
+                    // Opens the order it's mapped to.
+                    <N1Button
+                      title={Q.orderValue(quote.orderId)}
+                      variant="link"
+                      size="sm"
+                      onPress={() => toOrder.convert(quote)}
+                      testID="quote-order"
+                    />
+                  ),
+                },
+              ]
+            : []),
         ]}
       />
       <N1Divider />

@@ -25,6 +25,7 @@ const orders = createMockCollection<WorkOrder, OrderInput>({
 
 export const ordersApi = {
   list: orders.list,
+  get: orders.get,
   create: orders.create,
   update: orders.update,
   remove: orders.remove,

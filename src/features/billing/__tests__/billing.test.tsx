@@ -39,7 +39,7 @@ describe('totals', () => {
     expect(shaft.lineItems.map(i => lineAmount(i, 150))).toEqual([
       9000, 15000, 8000, 8000,
     ]);
-    expect(calculateTotals(shaft.lineItems, 150)).toEqual({
+    expect(calculateTotals(shaft.lineItems, 150, 0, 5)).toMatchObject({
       subtotal: 40000,
       discount: 0,
       gst: 2000,
@@ -47,14 +47,29 @@ describe('totals', () => {
     });
   });
   test('discount comes off before GST and never exceeds the subtotal', () => {
-    expect(calculateTotals(shaft.lineItems, 150, 10000)).toEqual({
+    expect(calculateTotals(shaft.lineItems, 150, 10000, 5)).toMatchObject({
       subtotal: 40000,
       discount: 10000,
+      taxable: 30000,
       gst: 1500,
       total: 31500,
     });
-    expect(calculateTotals(shaft.lineItems, 150, 99999).total).toBe(0);
-    expect(calculateTotals(shaft.lineItems, 150, -5).discount).toBe(0);
+    expect(calculateTotals(shaft.lineItems, 150, 99999, 5).total).toBe(0);
+    expect(calculateTotals(shaft.lineItems, 150, -5, 5).discount).toBe(0);
+  });
+  test('18% GST: CGST + SGST in the same state, IGST across states', () => {
+    // ₹40,000 at 18%.
+    expect(calculateTotals(shaft.lineItems, 150, 0, 18, 'intra')).toMatchObject(
+      { cgst: 3600, sgst: 3600, igst: 0, gst: 7200, total: 47200 },
+    );
+    expect(calculateTotals(shaft.lineItems, 150, 0, 18, 'inter')).toMatchObject(
+      { cgst: 0, sgst: 0, igst: 7200, gst: 7200, total: 47200 },
+    );
+    expect(calculateTotals(shaft.lineItems, 150, 0, 18, 'none')).toMatchObject({
+      gstRate: 0,
+      gst: 0,
+      total: 40000,
+    });
   });
   test('drafts keep the exact rate until the rate text is edited', () => {
     const drilling = shaft.lineItems[2];
@@ -195,10 +210,77 @@ test('quotes tab, quote details, convert and revise', async () => {
   expect(
     h.store.getState().billing.quotes.entities['QT-2026-0042'].quantity,
   ).toBe(300);
-  await press(
+  // QT-2026-0042 is billed on INV-2026-0125: already mapped, no convert.
+  expect(() =>
     byTestId(byTestId(h.root, 'quote-details-screen'), 'convert-quote'),
+  ).toThrow();
+
+  // Convert to Order creates the order and opens it.
+  await h.navigate('QuoteDetails', { quoteId: 'QT-2026-0041' });
+  const details = () => {
+    const screens = h.root.findAll(
+      n =>
+        typeof n.type === 'string' && n.props.testID === 'quote-details-screen',
+    );
+    return screens[screens.length - 1];
+  };
+  await press(byTestId(details(), 'convert-quote'));
+  expect(h.currentRoute()).toBe('OrderDetails');
+  const quote = h.store.getState().billing.quotes.entities['QT-2026-0041'];
+  expect(quote).toMatchObject({ status: 'accepted' });
+  const order = h.store.getState().orders.entities[quote!.orderId!];
+  expect(order).toMatchObject({
+    customerName: 'Sri Metal Works',
+    quoteId: 'QT-2026-0041',
+    status: 'new',
+  });
+
+  // Mapped now: the convert button is gone and the order is linked instead.
+  await h.navigate('QuoteDetails', { quoteId: 'QT-2026-0041' });
+  expect(() => byTestId(details(), 'convert-quote')).toThrow();
+  expect(allText(byTestId(details(), 'quote-order'))).toBe(`WO #${order!.id}`);
+  await press(byTestId(details(), 'quote-order'));
+  expect(h.currentRoute()).toBe('OrderDetails');
+});
+
+test('quotes list converts a quote to an order from its row', async () => {
+  const h = await renderAdmin('Billing');
+  await h.navigate('Billing', { tab: 'quotes' });
+  await press(byLabel(h.root, 'Convert QT-2026-0040 to order'));
+  expect(h.currentRoute()).toBe('OrderDetails');
+  expect(
+    h.store.getState().billing.quotes.entities['QT-2026-0040']?.orderId,
+  ).toBeTruthy();
+
+  // Mapped quotes (converted, or billed on an invoice) lose the button.
+  await h.navigate('Billing', { tab: 'quotes' });
+  expect(() => byLabel(h.root, 'Convert QT-2026-0040 to order')).toThrow();
+  expect(() => byLabel(h.root, 'Convert QT-2026-0042 to order')).toThrow();
+  expect(byLabel(h.root, 'Convert QT-2026-0041 to order')).toBeTruthy();
+});
+
+test('an invoice billed against a quote can open it to compare', async () => {
+  const h = await renderAdmin('Billing');
+  // From the list…
+  await press(byLabel(h.root, 'View quote QT-2026-0042'));
+  expect(h.currentRoute()).toBe('QuoteDetails');
+
+  // …and from the invoice.
+  await h.navigate('InvoiceDetails', { invoiceId: 'INV-2026-0125' });
+  await press(byTestId(h.root, 'view-quote'));
+  expect(h.currentRoute()).toBe('QuoteDetails');
+  expect(allText(h.root)).toContain('QT-2026-0042');
+
+  // Invoices without a quote have no such button.
+  // (Earlier screens stay mounted underneath: check the one on top.)
+  await h.navigate('InvoiceDetails', { invoiceId: 'INV-2026-0124' });
+  const screens = h.root.findAll(
+    n =>
+      typeof n.type === 'string' && n.props.testID === 'invoice-details-screen',
   );
-  expect(h.currentRoute()).toBe('JobCards');
+  const top = screens[screens.length - 1];
+  expect(allText(top)).toContain('INV-2026-0124');
+  expect(() => byTestId(top, 'view-quote')).toThrow();
 });
 
 test('creates a quote', async () => {
@@ -213,6 +295,9 @@ test('creates a quote', async () => {
   await typeInto(byTestId(form, 'quote-quantity'), '100');
   await typeInto(byTestId(form, 'line-new-1-minutes'), '1');
   await typeInto(byTestId(form, 'line-new-1-rate'), '10');
+  // New quotes use the organization's default GST rate (18%).
+  expect(allText(byTestId(form, 'totals-total'))).toBe('₹1,180');
+  await choose(form, 'quote-gst-rate', '5%');
   expect(allText(byTestId(form, 'totals-total'))).toBe('₹1,050');
   await press(byTestId(form, 'save-quote'));
   const created =
@@ -223,7 +308,38 @@ test('creates a quote', async () => {
     customerName: 'Kaveri Tools',
     quantity: 100,
     status: 'draft',
+    gstRate: 5,
   });
+});
+
+test('invoice GST: CGST + SGST in state, IGST for another state', async () => {
+  const h = await renderAdmin('Billing');
+  // ABC Engineering isn't a known customer: treated as the same state.
+  await h.navigate('InvoiceDetails', { invoiceId: 'INV-2026-0125' });
+  let text = allText(h.root);
+  expect(text).toContain('CGST 2.5%');
+  expect(text).toContain('SGST 2.5%');
+  expect(text).toContain('₹1,000');
+  expect(text).toContain('₹42,000');
+
+  // Nova Fabrication is in Karnataka; the organization is in Tamil Nadu.
+  await h.navigate('InvoiceDetails', { invoiceId: 'INV-2026-0121' });
+  text = allText(h.root);
+  expect(text).toContain('IGST 5%');
+  expect(text).not.toContain('CGST');
+});
+
+test('invoice edit picks the GST rate from the configured rates', async () => {
+  const h = await renderAdmin('Billing');
+  await h.navigate('InvoiceEdit', { invoiceId: 'INV-2026-0125' });
+  await choose(h.root, 'invoice-gst-rate', '18%');
+  // ₹40,000 + 18%.
+  expect(allText(byTestId(h.root, 'totals-total'))).toBe('₹47,200');
+  expect(allText(h.root)).toContain('CGST 9%');
+  await press(byTestId(h.root, 'save-invoice'));
+  expect(
+    h.store.getState().billing.invoices.entities['INV-2026-0125']?.gstRate,
+  ).toBe(18);
 });
 
 test('unknown invoice / quote ids', async () => {
@@ -252,4 +368,22 @@ test('phone: invoice cards, editor cards and pinned actions', async () => {
   expect(allText(edit)).toContain('min × 150');
   await h.navigate('Billing', { tab: 'quotes' });
   expect(hasTestId(h.root, 'quote-card-QT-2026-0042')).toBe(true);
+});
+
+test('table rows use icon buttons for view and edit', async () => {
+  const h = await renderAdmin('Billing');
+  expect(() => byText(h.root, 'View')).toThrow();
+  expect(() => byText(h.root, 'Edit')).toThrow();
+
+  await press(byLabel(h.root, 'View INV-2026-0125'));
+  expect(h.currentRoute()).toBe('InvoiceDetails');
+
+  await h.navigate('Billing');
+  await press(byLabel(h.root, 'Edit INV-2026-0125'));
+  expect(h.currentRoute()).toBe('InvoiceEdit');
+
+  await h.navigate('Billing');
+  await press(byText(h.root, 'Quotes'));
+  await press(byLabel(h.root, 'View QT-2026-0042'));
+  expect(h.currentRoute()).toBe('QuoteDetails');
 });

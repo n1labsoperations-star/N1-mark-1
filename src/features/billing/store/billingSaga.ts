@@ -2,6 +2,7 @@ import { all, fork } from 'redux-saga/effects';
 import { createCrudSaga } from '../../../shared/store';
 import { invoicesApi, quotesApi } from '../api/billingApi';
 import { invoiceActions, quoteActions } from './billingSlices';
+import workflowSaga from './workflowSaga';
 
 export const invoicesSaga = createCrudSaga(
   invoiceActions,
@@ -11,5 +12,9 @@ export const invoicesSaga = createCrudSaga(
 export const quotesSaga = createCrudSaga(quoteActions, quotesApi, 'quotes');
 
 export default function* billingSaga() {
-  yield all([fork(invoicesSaga.watch), fork(quotesSaga.watch)]);
+  yield all([
+    fork(invoicesSaga.watch),
+    fork(quotesSaga.watch),
+    fork(workflowSaga),
+  ]);
 }

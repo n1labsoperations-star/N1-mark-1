@@ -34,7 +34,7 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /**
- * Machine Operator's job: start the next operation (after choosing a
+ * Operator's job: start the next operation (after choosing a
  * machine), then pause or complete it.
  */
 export function OperatorJobScreen({
@@ -130,7 +130,12 @@ export function OperatorJobScreen({
           {jobCard.customerName}
         </N1Text>
       </View>
-      <JobOverview jobCard={jobCard} />
+      <JobOverview
+        jobCard={jobCard}
+        onViewDetails={() =>
+          navigation.navigate('OrderDetails', { orderId: jobCard.id })
+        }
+      />
       {saveError && (
         <N1Text variant="small" color="danger">
           {saveError}

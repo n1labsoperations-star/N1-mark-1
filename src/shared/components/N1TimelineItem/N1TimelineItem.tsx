@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { N1Icon } from '../N1Icon/N1Icon';
 import {
   createN1Styles,
@@ -21,6 +21,15 @@ export type N1TimelineItemProps = {
   status: N1TimelineStatus;
   /** Tag text. Defaults to Completed / Running / Pending. */
   statusLabel?: string;
+  /** The step being worked on now: tinted, with a stronger border. */
+  highlighted?: boolean;
+  /**
+   * Tap to show / hide the subtitle and meta. Without it the details are
+   * always shown.
+   */
+  onToggle?: () => void;
+  /** With onToggle: whether the details are showing. */
+  expanded?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 };
@@ -42,7 +51,16 @@ const makeStyles = createN1Styles(t => ({
     borderColor: t.colors.border,
     backgroundColor: t.colors.surface,
   },
+  highlighted: {
+    borderWidth: t.borderWidth.thick,
+    borderColor: t.colors.tone.info.solid,
+    backgroundColor: t.colors.tone.info.background,
+    // Keep the content where it was despite the thicker border.
+    padding: t.spacing.md - (t.borderWidth.thick - t.borderWidth.hairline),
+  },
   text: { flex: 1, gap: t.spacing.xxs },
+  right: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm },
+  pressed: { opacity: t.opacity.pressed },
 }));
 
 /** One step on a route card (Material QC ✓ Completed, Turning ● Running). */
@@ -52,6 +70,9 @@ export const N1TimelineItem = React.memo(function N1TimelineItemComponent({
   meta,
   status,
   statusLabel,
+  highlighted = false,
+  onToggle,
+  expanded = true,
   style,
   testID,
 }: N1TimelineItemProps) {
@@ -59,8 +80,9 @@ export const N1TimelineItem = React.memo(function N1TimelineItemComponent({
   const theme = useN1Theme();
   const d = defaults[status];
   const pending = status === 'pending';
-  return (
-    <View testID={testID} style={[styles.card, style]}>
+  const showDetails = !onToggle || expanded;
+  const content = (
+    <>
       <N1Icon
         name={d.icon}
         size="lg"
@@ -76,19 +98,53 @@ export const N1TimelineItem = React.memo(function N1TimelineItemComponent({
         >
           {title}
         </N1Text>
-        {subtitle && (
+        {showDetails && subtitle && (
           <N1Text variant="caption" color={pending ? 'tertiary' : 'secondary'}>
             {subtitle}
           </N1Text>
         )}
-        {meta && (
+        {showDetails && meta && (
           <N1Text variant="caption" weight="semiBold">
             {meta}
           </N1Text>
         )}
       </View>
-      <N1Badge label={statusLabel ?? d.label} tone={d.tone} />
-    </View>
+      <View style={styles.right}>
+        <N1Badge label={statusLabel ?? d.label} tone={d.tone} />
+        {onToggle && (
+          <N1Icon
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size="sm"
+            color="textSecondary"
+          />
+        )}
+      </View>
+    </>
+  );
+  const cardStyle = [styles.card, highlighted && styles.highlighted, style];
+
+  if (!onToggle) {
+    return (
+      <View
+        testID={testID}
+        accessibilityState={{ selected: highlighted }}
+        style={cardStyle}
+      >
+        {content}
+      </View>
+    );
+  }
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ selected: highlighted, expanded }}
+      onPress={onToggle}
+      style={({ pressed }) => [cardStyle, pressed && styles.pressed]}
+    >
+      {content}
+    </Pressable>
   );
 });
 N1TimelineItem.displayName = 'N1TimelineItem';

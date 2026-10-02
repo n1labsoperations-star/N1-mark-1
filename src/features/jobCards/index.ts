@@ -8,10 +8,7 @@ export { JobCardCard } from './components/JobCardCard';
 export { JobCardStatusBadge, MetaBadge } from './components/JobCardBadges';
 export { RouteCard } from './components/RouteCard';
 export { DashedTile } from './components/DashedTile';
-export {
-  JOB_CARD_STRINGS,
-  MATERIAL_QC_META,
-} from './constants';
+export { JOB_CARD_STRINGS, MATERIAL_QC_META } from './constants';
 export {
   canPauseOrComplete,
   canStart,
@@ -22,6 +19,8 @@ export {
   jobHeading,
   jobProgress,
   jobTitle,
+  materialRejection,
+  rejectedMaterialItems,
   pauseOperation,
   startOperation,
 } from './utils';
@@ -29,5 +28,6 @@ export type {
   JobCard,
   JobCardStatus,
   JobOperation,
+  RejectedMaterial,
   JobCardsStackParamList,
 } from './types';

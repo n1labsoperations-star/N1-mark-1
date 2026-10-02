@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useN1Breakpoint } from '../../hooks/useN1Breakpoint';
@@ -65,7 +65,9 @@ const makeStyles = createN1Styles(t => ({
     borderBottomWidth: t.borderWidth.hairline,
     borderBottomColor: t.colors.border,
   },
-  pressed: { backgroundColor: t.colors.background },
+  // Light grey under the pointer (web); a step darker while pressed.
+  hovered: { backgroundColor: t.colors.background },
+  pressed: { backgroundColor: t.colors.surfaceMuted },
   cell: { justifyContent: 'center' },
   left: { alignItems: 'flex-start' },
   center: { alignItems: 'center' },
@@ -93,6 +95,37 @@ function cellValue<T>(column: N1TableColumn<T>, row: T): ReactNode {
   }
   const raw = (row as Record<string, unknown>)[column.key];
   return <N1Text numberOfLines={2}>{raw == null ? '—' : String(raw)}</N1Text>;
+}
+
+type RowProps = {
+  children: ReactNode;
+  onPress?: () => void;
+  accessibilityRole?: 'button';
+  styles: ReturnType<typeof makeStyles>;
+};
+
+/**
+ * One wide-screen row, highlighted while hovered. Rows without onPress stay
+ * plain (no role, never disabled) so their own buttons keep working on web.
+ */
+function TableRow({ children, onPress, accessibilityRole, styles }: RowProps) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <Pressable
+      accessibilityRole={onPress ? accessibilityRole : undefined}
+      accessible={Boolean(onPress)}
+      onPress={onPress}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      style={({ pressed }) => [
+        styles.row,
+        hovered && styles.hovered,
+        pressed && onPress && styles.pressed,
+      ]}
+    >
+      {children}
+    </Pressable>
+  );
 }
 
 /** Data table on wide screens; stacked cards on phones. */
@@ -188,23 +221,15 @@ export const N1Table = React.memo(function N1TableComponent<T>({
             {cellValue(column, row)}
           </View>
         ));
-        // A disabled Pressable would also disable buttons inside the row on web.
-        if (!onRowPress) {
-          return (
-            <View key={keyExtractor(row)} style={styles.row}>
-              {cells}
-            </View>
-          );
-        }
         return (
-          <Pressable
+          <TableRow
             key={keyExtractor(row)}
             accessibilityRole={rowRole}
-            onPress={() => onRowPress(row)}
-            style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+            onPress={onRowPress && (() => onRowPress(row))}
+            styles={styles}
           >
             {cells}
-          </Pressable>
+          </TableRow>
         );
       })}
       {footer && <View style={styles.footer}>{footer}</View>}

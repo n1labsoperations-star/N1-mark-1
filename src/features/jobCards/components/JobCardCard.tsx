@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import {
+  N1Badge,
   N1Button,
   N1Text,
   createN1Styles,
@@ -35,6 +36,7 @@ const makeStyles = createN1Styles(t => ({
     gap: t.spacing.sm,
   },
   title: { flex: 1 },
+  badges: { alignItems: 'flex-end', gap: t.spacing.xs },
 }));
 
 type Props = {
@@ -60,7 +62,17 @@ export const JobCardCard = memo(function JobCardCardComponent({
         <N1Text variant="title" weight="bold" style={styles.title}>
           {jobHeading(jobCard)}
         </N1Text>
-        <JobCardStatusBadge status={jobCard.status} />
+        <View style={styles.badges}>
+          <JobCardStatusBadge status={jobCard.status} />
+          {jobCard.materialQc === 'rejected' && (
+            <N1Badge
+              label={S.rmQcFailed}
+              tone="danger"
+              dot
+              testID={`rm-qc-failed-${jobCard.id}`}
+            />
+          )}
+        </View>
       </View>
       <N1Text variant="small" color="secondary">
         {where || COMMON_STRINGS.dash}

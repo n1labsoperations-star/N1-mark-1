@@ -89,11 +89,11 @@ describe('verification code helpers', () => {
 describe('findMockUser', () => {
   test('matches each role and rejects bad credentials', () => {
     expect(findMockUser('admin@n1.com', 'Admin@123')?.role).toBe('admin');
-    expect(findMockUser('secondadmin@n1.com', 'SecondAdmin@123')?.role).toBe(
-      'second-admin',
+    expect(findMockUser('supervisor@n1.com', 'Supervisor@123')?.role).toBe(
+      'supervisor',
     );
     expect(findMockUser(' Operator@N1.com ', 'Operator@123')?.role).toBe(
-      'machine-operator',
+      'operator',
     );
     expect(findMockUser('qc@n1.com', 'Qc@12345')?.role).toBe('qc');
     expect(findMockUser('admin@n1.com', 'Qc@12345')).toBeUndefined();

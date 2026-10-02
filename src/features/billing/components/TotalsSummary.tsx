@@ -7,7 +7,7 @@ import {
   useN1Breakpoint,
   useN1Styles,
 } from '../../../shared/components';
-import { formatCurrency } from '../../../shared/utils';
+import { formatCurrency, formatRate } from '../../../shared/utils';
 import { BILLING_STRINGS } from '../constants';
 import type { Totals } from '../types';
 
@@ -49,7 +49,10 @@ function Row({
   );
 }
 
-/** Subtotal, discount, GST and total, right-aligned under the operations. */
+/**
+ * Subtotal, discount, GST (CGST + SGST or IGST) and total, right-aligned
+ * under the operations.
+ */
 export const TotalsSummary = memo(function TotalsSummaryComponent({
   totals,
 }: {
@@ -63,7 +66,25 @@ export const TotalsSummary = memo(function TotalsSummaryComponent({
       {totals.discount > 0 && (
         <Row label={T.discount} value={formatCurrency(-totals.discount)} />
       )}
-      <Row label={T.gst} value={formatCurrency(totals.gst)} />
+      {totals.supply === 'none' ? (
+        <Row label={T.noGst} value={formatCurrency(0)} />
+      ) : totals.supply === 'inter' ? (
+        <Row
+          label={T.igst(formatRate(totals.gstRate))}
+          value={formatCurrency(totals.igst)}
+        />
+      ) : (
+        <>
+          <Row
+            label={T.cgst(formatRate(totals.gstRate / 2))}
+            value={formatCurrency(totals.cgst)}
+          />
+          <Row
+            label={T.sgst(formatRate(totals.gstRate / 2))}
+            value={formatCurrency(totals.sgst)}
+          />
+        </>
+      )}
       <N1Divider spacing="xs" />
       <Row label={T.total} value={formatCurrency(totals.total)} strong />
     </View>

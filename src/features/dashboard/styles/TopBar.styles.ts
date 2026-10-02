@@ -30,4 +30,6 @@ export const makeTopBarStyles = createN1Styles(t => ({
     gap: t.spacing.md,
   },
   pressed: { opacity: t.opacity.pressed },
+  // Shrinks before the user block when the name is long.
+  organization: { flexShrink: 1 },
 }));

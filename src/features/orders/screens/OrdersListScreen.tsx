@@ -1,5 +1,5 @@
 import { useNavigation } from '@react-navigation/native';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { View } from 'react-native';
 import {
   N1Button,
@@ -8,10 +8,12 @@ import {
   N1Pagination,
   N1Table,
   N1Text,
+  createN1Styles,
   useN1Breakpoint,
+  useN1Styles,
   type N1TableColumn,
 } from '../../../shared/components';
-import type { OrdersNavigation } from '../types';
+import type { OrdersScreenProps } from '../types';
 import {
   AdminScreen,
   AsyncContent,
@@ -20,7 +22,12 @@ import {
   ToolbarFilter,
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
-import { useListFilter, usePagination } from '../../../shared/hooks';
+import {
+  useListFilter,
+  useOnSettled,
+  usePagination,
+} from '../../../shared/hooks';
+import { jobCardFromOrder, useJobCards } from '../../jobCards';
 import { formatDayMonth } from '../../../shared/utils';
 import { OrderCard } from '../components/OrderCard';
 import { OrderStatusBadge, PriorityBadge } from '../components/OrderBadges';
@@ -38,6 +45,10 @@ import {
   orderSearchText,
   orderTitle,
 } from '../utils';
+
+const makeStyles = createN1Styles(t => ({
+  actions: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm },
+}));
 
 const COLUMNS: N1TableColumn<WorkOrder>[] = [
   {
@@ -82,8 +93,12 @@ const COLUMNS: N1TableColumn<WorkOrder>[] = [
 
 const renderCompactItem = (o: WorkOrder) => <OrderCard order={o} />;
 
+type Navigation = OrdersScreenProps<'OrdersList'>['navigation'];
+
 export function OrdersListScreen() {
-  const navigation = useNavigation<OrdersNavigation>();
+  const styles = useN1Styles(makeStyles);
+  const navigation = useNavigation<Navigation>();
+  const jobCards = useJobCards();
   const { isCompact } = useN1Breakpoint();
   const { items, status, error, reload } = useOrders();
   const stats = useOrderStats();
@@ -105,6 +120,97 @@ export function OrdersListScreen() {
   const openDetails = useCallback(
     (o: WorkOrder) => navigation.navigate('OrderDetails', { orderId: o.id }),
     [navigation],
+  );
+
+  const openEdit = useCallback(
+    (o: WorkOrder) => navigation.navigate('OrderForm', { orderId: o.id }),
+    [navigation],
+  );
+
+  // Opens the order's job card in Job Cards (Back returns here): its details
+  // once it has a route card, else Create flow.
+  const openJobCard = useCallback(
+    (orderId: string, screen: 'JobCardDetails' | 'JobCardFlow') =>
+      navigation.navigate('JobCards', {
+        screen,
+        params: { jobCardId: orderId },
+        initial: false,
+      }),
+    [navigation],
+  );
+  const creating = useRef<string | null>(null);
+  useOnSettled(jobCards.saving, jobCards.saveError, () => {
+    if (creating.current) {
+      openJobCard(creating.current, 'JobCardFlow');
+      creating.current = null;
+    }
+  });
+  const jobCardFor = useCallback(
+    (o: WorkOrder) => jobCards.items.find(c => c.id === o.id),
+    [jobCards.items],
+  );
+  const createJobCard = useCallback(
+    (o: WorkOrder) => {
+      const existing = jobCardFor(o);
+      if (existing) {
+        openJobCard(
+          o.id,
+          existing.operations.length ? 'JobCardDetails' : 'JobCardFlow',
+        );
+      } else {
+        creating.current = o.id;
+        jobCards.create(jobCardFromOrder(o));
+      }
+    },
+    [jobCardFor, openJobCard, jobCards],
+  );
+
+  const columns = useMemo<N1TableColumn<WorkOrder>[]>(
+    () => [
+      ...COLUMNS,
+      {
+        key: 'actions',
+        title: S.columns.actions,
+        flex: 0.8,
+        align: 'right',
+        interactive: true,
+        render: o => {
+          const hasFlow = Boolean(jobCardFor(o)?.operations.length);
+          return (
+            <View style={styles.actions}>
+              <N1IconButton
+                icon="clipboard"
+                size="sm"
+                accessibilityLabel={
+                  hasFlow
+                    ? S.a11y.openJobCard(o.id)
+                    : S.a11y.createJobCard(o.id)
+                }
+                disabled={jobCards.status !== 'succeeded' || jobCards.saving}
+                onPress={() => createJobCard(o)}
+                testID={`job-card-${o.id}`}
+              />
+              <N1IconButton
+                icon="edit"
+                variant="primary"
+                size="sm"
+                accessibilityLabel={S.a11y.edit(o.id)}
+                onPress={() => openEdit(o)}
+                testID={`edit-order-${o.id}`}
+              />
+            </View>
+          );
+        },
+      },
+    ],
+    [
+      styles,
+      jobCardFor,
+      jobCards.status,
+      jobCards.saving,
+      createJobCard,
+      openEdit,
+    ],
   );
 
   const statItems = useMemo(
@@ -167,7 +273,7 @@ export function OrdersListScreen() {
         hasData={items.length > 0}
       >
         <N1Table
-          columns={COLUMNS}
+          columns={columns}
           data={pager.pageItems}
           keyExtractor={o => o.id}
           onRowPress={openDetails}

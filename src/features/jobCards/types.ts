@@ -34,6 +34,13 @@ export type JobOperation = {
   completedAt: ISODateString | null;
 };
 
+/** What RM QC recorded about material it rejected. */
+export type RejectedMaterial = {
+  grade: string;
+  heatNumber: string;
+  size: string;
+};
+
 export type QcEntry = {
   id: string;
   stage: string;
@@ -42,6 +49,8 @@ export type QcEntry = {
   at: ISODateString;
   /** The route card step a machine QC check inspected. */
   operationId?: string;
+  /** RM QC rejection: the grade, heat number and size received. */
+  rejectedMaterial?: RejectedMaterial;
 };
 
 /**

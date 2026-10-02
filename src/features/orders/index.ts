@@ -10,10 +10,11 @@ export {
   PriorityMarker,
 } from './components/OrderBadges';
 export { DrawingPreview } from './components/DrawingPreview';
-export { ORDER_STRINGS, SUPPLIER_OPTIONS } from './constants';
+export { MATERIAL_SOURCE_OPTIONS, ORDER_STRINGS } from './constants';
 export { orderHeading, orderTitle } from './utils';
 export type {
   WorkOrder,
+  MaterialSource,
   OrderPriority,
   OrderStatus,
   OrdersStackParamList,

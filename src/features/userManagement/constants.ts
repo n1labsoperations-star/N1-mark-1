@@ -1,3 +1,4 @@
+import { ROLE_LABELS } from '../auth/constants';
 import type { N1DropDownOption } from '../../shared/components';
 import type { StatusMeta } from '../../shared/types';
 import type {
@@ -63,7 +64,6 @@ export const USER_STRINGS = {
     organization: 'Organization',
     joinedLabel: 'Joined',
     attachments: 'Attachments',
-    permissions: 'Permissions',
     role: 'Role',
     status: 'Status',
     notFound: 'This user no longer exists.',
@@ -85,8 +85,10 @@ export const USER_STRINGS = {
 } as const;
 
 export const ROLE_META: Record<UserRole, StatusMeta> = {
-  admin: { label: 'Admin', tone: 'info' },
-  user: { label: 'User', tone: 'neutral' },
+  admin: { label: ROLE_LABELS.admin, tone: 'info' },
+  supervisor: { label: ROLE_LABELS.supervisor, tone: 'warning' },
+  operator: { label: ROLE_LABELS.operator, tone: 'neutral' },
+  qc: { label: ROLE_LABELS.qc, tone: 'success' },
 };
 
 export const STATUS_META: Record<UserStatus, StatusMeta> = {
@@ -94,12 +96,6 @@ export const STATUS_META: Record<UserStatus, StatusMeta> = {
   invited: { label: 'Invited', tone: 'info' },
   suspended: { label: 'Suspended', tone: 'danger' },
   inactive: { label: 'Inactive', tone: 'neutral' },
-};
-
-export const PERMISSION_LABELS: Record<UserPermissionKey, string> = {
-  viewOrders: 'View orders',
-  manageUsers: 'Manage users',
-  exportReports: 'Export reports',
 };
 
 export const ROLE_OPTIONS: N1DropDownOption<UserRole>[] = (
@@ -123,5 +119,7 @@ export const DEFAULT_PERMISSIONS: Record<
   Record<UserPermissionKey, boolean>
 > = {
   admin: { viewOrders: true, manageUsers: true, exportReports: true },
-  user: { viewOrders: true, manageUsers: false, exportReports: false },
+  supervisor: { viewOrders: true, manageUsers: false, exportReports: true },
+  operator: { viewOrders: true, manageUsers: false, exportReports: false },
+  qc: { viewOrders: true, manageUsers: false, exportReports: false },
 };

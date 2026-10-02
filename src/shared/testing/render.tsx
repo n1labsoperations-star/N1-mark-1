@@ -14,7 +14,9 @@ import {
   SafeAreaProvider,
   initialWindowMetrics,
 } from 'react-native-safe-area-context';
+import { Provider } from 'react-redux';
 import { N1ThemeProvider } from '../../theme';
+import { createStore, type AppStore } from '../../app/store';
 
 export const WIDE = 1280;
 export const PHONE = 390;
@@ -22,21 +24,28 @@ export const PHONE = 390;
 /** Set by `render`; read by each test file's useN1Breakpoint mock. */
 export const screenSize = { width: WIDE };
 
-export async function render(screen: React.ReactElement, width: number) {
+/** Pass a store to read its state afterwards (e.g. who signed in). */
+export async function render(
+  screen: React.ReactElement,
+  width: number,
+  store: AppStore = createStore(),
+) {
   screenSize.width = width;
   let renderer: Renderer | undefined;
   await ReactTestRenderer.act(() => {
     renderer = ReactTestRenderer.create(
-      <SafeAreaProvider
-        initialMetrics={
-          initialWindowMetrics ?? {
-            frame: { x: 0, y: 0, width, height: 800 },
-            insets: { top: 0, left: 0, right: 0, bottom: 0 },
+      <Provider store={store}>
+        <SafeAreaProvider
+          initialMetrics={
+            initialWindowMetrics ?? {
+              frame: { x: 0, y: 0, width, height: 800 },
+              insets: { top: 0, left: 0, right: 0, bottom: 0 },
+            }
           }
-        }
-      >
-        <N1ThemeProvider>{screen}</N1ThemeProvider>
-      </SafeAreaProvider>,
+        >
+          <N1ThemeProvider>{screen}</N1ThemeProvider>
+        </SafeAreaProvider>
+      </Provider>,
     );
   });
   return (renderer as Renderer).root;

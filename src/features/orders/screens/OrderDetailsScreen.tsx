@@ -115,6 +115,7 @@ export function OrderDetailsScreen({
   const editIcon = (
     <N1IconButton
       icon="edit"
+      variant="primary"
       size="sm"
       accessibilityLabel={D.edit}
       onPress={edit}

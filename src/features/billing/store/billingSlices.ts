@@ -1,6 +1,7 @@
 import { combineReducers } from '@reduxjs/toolkit';
 import { createCrudSlice } from '../../../shared/store';
 import type { Invoice, InvoiceInput, Quote, QuoteInput } from '../types';
+import workflowReducer from './workflowSlice';
 
 // Newest number first.
 const byIdDesc = (a: { id: string }, b: { id: string }) =>
@@ -21,4 +22,5 @@ export const quoteActions = quotesCrud.actions;
 export default combineReducers({
   invoices: invoicesCrud.reducer,
   quotes: quotesCrud.reducer,
+  workflow: workflowReducer,
 });

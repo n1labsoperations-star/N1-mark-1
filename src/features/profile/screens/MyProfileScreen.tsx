@@ -24,9 +24,11 @@ import {
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
 import { useToggle } from '../../../shared/hooks';
-import { formatDate, rootNavigation } from '../../../shared/utils';
+import { useAuthSession } from '../../auth/hooks';
+import { formatDate } from '../../../shared/utils';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { EditProfileModal } from '../components/EditProfileModal';
+import { ROLE_LABELS } from '../../auth/constants';
 import { PROFILE_STRINGS as S } from '../constants';
 import { useSession } from '../hooks/useSession';
 import type { ProfileScreenProps } from '../types';
@@ -51,18 +53,16 @@ export function MyProfileScreen({
   const [editOpen, openEdit, closeEdit] = useToggle(false);
   const [passwordOpen, openPassword, closePassword] = useToggle(false);
   const [logoutOpen, openLogout, closeLogout] = useToggle(false);
+  const { signOut } = useAuthSession();
 
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
   const confirmLogout = useCallback(() => {
     closeLogout();
-    // Leave the admin area: the login screen becomes the whole history, so
-    // Back can't return to the dashboard.
-    rootNavigation(navigation).reset({
-      index: 0,
-      routes: [{ name: 'Auth', params: { screen: 'Login' } }],
-    });
     logout();
-  }, [closeLogout, logout, navigation]);
+    // The root navigator swaps this area for the login screens, so Back
+    // can't return here.
+    signOut();
+  }, [closeLogout, logout, signOut]);
 
   const orgLine = organization
     ? `${organization.name} · ${organization.code}`
@@ -109,9 +109,7 @@ export function MyProfileScreen({
     );
   }
 
-  const roleBadge = (
-    <N1Badge label={profile.role === 'admin' ? S.admin : S.user} tone="info" />
-  );
+  const roleBadge = <N1Badge label={ROLE_LABELS[profile.role]} tone="info" />;
   const statusBadge = <N1Badge label={S.active} tone="success" dot />;
 
   const hero = (

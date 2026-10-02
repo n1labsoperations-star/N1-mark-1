@@ -11,6 +11,8 @@ import type {
   ISODateString,
 } from '../../shared/types';
 
+/** Where the raw material comes from. */
+export type MaterialSource = 'bought_out' | 'in_house';
 export type OrderPriority = 'high' | 'medium' | 'low';
 export type OrderStatus = 'new' | 'in_progress' | 'qc_pending' | 'completed';
 
@@ -41,8 +43,10 @@ export type WorkOrder = {
   heatNumber: string;
   projectId: string;
   rawMaterialGrade: string;
-  /** Raw material supplier; filled in when the job card is created. */
-  supplier: string;
+  /** Bought out or made in-house; set when the job card is created. */
+  materialSource: MaterialSource | '';
+  /** The quote this order was converted from; blank when created directly. */
+  quoteId: string;
   notes: string;
   designFile: Attachment | null;
   documents: Attachment[];

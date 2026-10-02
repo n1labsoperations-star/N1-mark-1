@@ -17,6 +17,8 @@ export type AdminDrawerParamList = {
   Billing: NavigatorScreenParams<BillingStackParamList> | undefined;
   /** Not in the menu; opened from the signed-in user in the top bar. */
   Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
+  /** Not in the menu; opened from the organization name in the top bar. */
+  Organization: undefined;
 };
 
 // Stack nested inside the drawer's "Overview" item.
@@ -25,7 +27,10 @@ export type DashboardStackParamList = {
 };
 
 /** Drawer items listed in the sidebar menu. */
-export type AdminRoute = Exclude<keyof AdminDrawerParamList, 'Profile'>;
+export type AdminRoute = Exclude<
+  keyof AdminDrawerParamList,
+  'Profile' | 'Organization'
+>;
 
 export type MenuItem = {
   route: AdminRoute;

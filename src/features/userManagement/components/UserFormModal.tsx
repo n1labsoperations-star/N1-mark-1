@@ -27,7 +27,7 @@ const EMPTY: FormValues = {
   designation: '',
   email: '',
   password: '',
-  role: 'user',
+  role: 'operator',
   status: 'active',
 };
 

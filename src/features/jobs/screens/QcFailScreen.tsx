@@ -16,8 +16,17 @@ import {
 import { COMMON_STRINGS } from '../../../shared/constants';
 import { useOnSettled } from '../../../shared/hooks';
 import { isBlank, notifyUnavailable } from '../../../shared/utils';
-import { JOB_CARD_STRINGS, jobHeading, useJobCard } from '../../jobCards';
-import { QC_STATUS_META, QC_STRINGS } from '../constants';
+import {
+  JOB_CARD_STRINGS,
+  jobHeading,
+  useJobCard,
+  type RejectedMaterial,
+} from '../../jobCards';
+import {
+  QC_STATUS_META,
+  QC_STRINGS,
+  REJECTED_MATERIAL_FIELDS,
+} from '../constants';
 import { qcResult } from '../qc';
 import type { JobsScreenProps } from '../types';
 
@@ -26,6 +35,7 @@ const S = QC_STRINGS.fail;
 const makeStyles = createN1Styles(t => ({
   summary: { gap: t.spacing.xs, alignItems: 'flex-start' },
   field: { gap: t.spacing.sm },
+  heading: { gap: t.spacing.xs },
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -34,9 +44,12 @@ const makeStyles = createN1Styles(t => ({
   },
 }));
 
+const NO_MATERIAL: RejectedMaterial = { grade: '', heatNumber: '', size: '' };
+
 /**
- * Why a QC check failed. Remarks are required; Submit Fail marks the item
- * failed and returns to the QC list.
+ * Why a QC check failed. Remarks are required, and an RM QC failure also
+ * records the rejected material's grade, heat number and size. Submit Fail
+ * marks the item failed and returns to the QC list.
  */
 export function QcFailScreen({ route, navigation }: JobsScreenProps<'QcFail'>) {
   const styles = useN1Styles(makeStyles);
@@ -45,6 +58,11 @@ export function QcFailScreen({ route, navigation }: JobsScreenProps<'QcFail'>) {
     useJobCard(jobCardId);
   const [remarks, setRemarks] = useState('');
   const [missing, setMissing] = useState(false);
+  const [material, setMaterial] = useState(NO_MATERIAL);
+  const [missingMaterial, setMissingMaterial] = useState<
+    (keyof RejectedMaterial)[]
+  >([]);
+  const isRm = kind === 'rm';
 
   // Close both Fail Remarks and the QC Check under it.
   useOnSettled(saving, saveError, () => navigation.pop(2));
@@ -71,14 +89,37 @@ export function QcFailScreen({ route, navigation }: JobsScreenProps<'QcFail'>) {
   }
 
   const submit = () => {
-    if (isBlank(remarks)) {
-      setMissing(true);
+    const blankMaterial = isRm
+      ? REJECTED_MATERIAL_FIELDS.map(f => f.key).filter(key =>
+          isBlank(material[key]),
+        )
+      : [];
+    setMissing(isBlank(remarks));
+    setMissingMaterial(blankMaterial);
+    if (isBlank(remarks) || blankMaterial.length) {
       return;
     }
     update(
       jobCard.id,
-      qcResult(jobCard, kind, false, remarks.trim(), new Date().toISOString()),
+      qcResult(
+        jobCard,
+        kind,
+        false,
+        remarks.trim(),
+        new Date().toISOString(),
+        isRm
+          ? {
+              grade: material.grade.trim(),
+              heatNumber: material.heatNumber.trim(),
+              size: material.size.trim(),
+            }
+          : undefined,
+      ),
     );
+  };
+  const setField = (key: keyof RejectedMaterial) => (value: string) => {
+    setMaterial(prev => ({ ...prev, [key]: value }));
+    setMissingMaterial(prev => prev.filter(k => k !== key));
   };
 
   const failed = QC_STATUS_META.failed;
@@ -108,6 +149,32 @@ export function QcFailScreen({ route, navigation }: JobsScreenProps<'QcFail'>) {
           {jobCard.customerName}
         </N1Text>
       </View>
+      {isRm && (
+        <>
+          <View style={styles.heading}>
+            <N1Text weight="bold">{S.rejectedMaterial}</N1Text>
+            <N1Text variant="small" color="secondary">
+              {S.rejectedHelp}
+            </N1Text>
+          </View>
+          {REJECTED_MATERIAL_FIELDS.map(field => (
+            <N1TextInput
+              key={field.key}
+              label={field.label}
+              required
+              placeholder={field.placeholder}
+              value={material[field.key]}
+              onChangeText={setField(field.key)}
+              errorText={
+                missingMaterial.includes(field.key)
+                  ? COMMON_STRINGS.required
+                  : undefined
+              }
+              testID={`qc-rejected-${field.key}`}
+            />
+          ))}
+        </>
+      )}
       <View style={styles.field}>
         <View style={styles.labelRow}>
           <N1FieldLabel label={S.remarks} required />

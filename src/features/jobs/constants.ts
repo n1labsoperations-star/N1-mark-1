@@ -1,10 +1,10 @@
 import type { StatusMeta } from '../../shared/types';
-import type { OperationStatus } from '../jobCards/types';
+import type { OperationStatus, RejectedMaterial } from '../jobCards/types';
 import type { EmployeeRole } from '../profile/types';
 import type { RawMaterialInput } from './types';
 
 /**
- * How each role works its jobs. Second Admin imports to the order (then raw
+ * How each role works its jobs. Supervisor imports to the order (then raw
  * material and job card) and sees progress cards; the shop floor imports
  * straight to the job and sees simple rows.
  */
@@ -12,8 +12,8 @@ export const ROLE_JOBS: Record<
   EmployeeRole,
   { importTo: 'order' | 'job' | 'qc'; list: 'cards' | 'rows' }
 > = {
-  'second-admin': { importTo: 'order', list: 'cards' },
-  'machine-operator': { importTo: 'job', list: 'rows' },
+  supervisor: { importTo: 'order', list: 'cards' },
+  operator: { importTo: 'job', list: 'rows' },
   qc: { importTo: 'qc', list: 'rows' },
 };
 
@@ -54,6 +54,10 @@ export const QC_STRINGS = {
     voiceNote: 'Voice note',
     voiceNotes: 'Voice notes',
     submit: 'Submit Fail',
+    /** RM QC: what was received, all required. */
+    rejectedMaterial: 'Rejected material',
+    rejectedHelp:
+      'Record the grade, heat number and size of the material received.',
   },
 } as const;
 
@@ -112,6 +116,10 @@ export const JOBS_STRINGS = {
     createJobCard: 'Create Job Card',
     viewJobCard: 'View Job Card',
   },
+  orderDetails: {
+    title: 'Order Details',
+    open: 'View Details',
+  },
   operatorJob: {
     title: 'Job Detail',
     activeStation: 'Active station',
@@ -149,12 +157,17 @@ export const JOBS_STRINGS = {
     confirmHelp: (workOrder: string) =>
       `Confirm the raw material details for ${workOrder} before the job card is created.`,
     continue: 'Continue',
+    /** Re-initiate RM QC: the replacement for rejected material. */
+    retestHeading: 'Replacement material',
+    retestHelp: (workOrder: string) =>
+      `Enter the new material for ${workOrder}. RM QC will inspect it again.`,
+    retestSubmit: 'Re-initiate RM QC',
   },
 } as const;
 
 /** Raw Material Details fields, in form order. All are required. */
 export const RAW_MATERIAL_FIELDS: {
-  key: Exclude<keyof RawMaterialInput, 'supplier'>;
+  key: Exclude<keyof RawMaterialInput, 'materialSource'>;
   label: string;
   placeholder: string;
 }[] = [
@@ -172,7 +185,15 @@ export const RAW_MATERIAL_FIELDS: {
   { key: 'rmPartNumber', label: 'RM part number', placeholder: 'e.g. RM-4092' },
 ];
 
-export const SUPPLIER_FIELD = {
-  label: 'Supplier',
-  placeholder: 'Select supplier',
-} as const;
+export const MATERIAL_SOURCE_FIELD = { label: 'Material source' } as const;
+
+/** RM QC Fail: the rejected material's details, in form order. */
+export const REJECTED_MATERIAL_FIELDS: {
+  key: keyof RejectedMaterial;
+  label: string;
+  placeholder: string;
+}[] = [
+  { key: 'grade', label: 'RM grade', placeholder: 'e.g. EN8' },
+  { key: 'heatNumber', label: 'Heat number', placeholder: 'e.g. HT-99213' },
+  { key: 'size', label: 'RM size', placeholder: 'e.g. 25mm dia x 200mm' },
+];

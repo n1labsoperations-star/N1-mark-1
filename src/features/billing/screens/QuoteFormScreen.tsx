@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import {
   N1Card,
@@ -34,9 +34,11 @@ import type {
   QuoteStatus,
 } from '../types';
 import { calculateTotals } from '../utils';
+import { gstRateOptions, useGst } from '../hooks/useGst';
 
 const Q = BILLING_STRINGS.quote;
 const L = BILLING_STRINGS.lineItems;
+const T = BILLING_STRINGS.totals;
 
 type Values = {
   customerName: string;
@@ -127,6 +129,12 @@ export function QuoteFormScreen({
   const form = useForm<Values>(toValues(quote), validate);
   const lines = useLineItems(quote?.lineItems ?? STARTER_LINES);
   const { values, errors, bind, submit, reset } = form;
+  const gst = useGst(values.customerName);
+  // A new quote follows the organization's default rate until one is picked.
+  const [pickedRate, setPickedRate] = useState<number | null>(
+    quote?.gstRate ?? null,
+  );
+  const gstRate = pickedRate ?? gst.defaultRate;
 
   const { reset: resetLines } = lines;
   const loadedId = useRef<string | null>(null);
@@ -135,6 +143,7 @@ export function QuoteFormScreen({
       loadedId.current = quote.id;
       reset(toValues(quote));
       resetLines(quote.lineItems);
+      setPickedRate(quote.gstRate);
     }
   }, [quote, reset, resetLines]);
 
@@ -147,8 +156,8 @@ export function QuoteFormScreen({
 
   const quantity = toNumber(values.quantity);
   const totals = useMemo(
-    () => calculateTotals(lines.items, quantity),
-    [lines.items, quantity],
+    () => calculateTotals(lines.items, quantity, 0, gstRate, gst.supply),
+    [lines.items, quantity, gstRate, gst.supply],
   );
   const noLines = lines.items.length === 0;
 
@@ -164,14 +173,15 @@ export function QuoteFormScreen({
         material: v.material.trim(),
         status: v.status,
         lineItems: lines.items,
+        gstRate,
       };
       if (quoteId) {
         update(quoteId, input);
       } else {
-        create(input);
+        create({ ...input, orderId: null });
       }
     },
-    [lines.items, quoteId, create, update],
+    [lines.items, quoteId, gstRate, create, update],
   );
 
   const header = (
@@ -258,6 +268,19 @@ export function QuoteFormScreen({
           <View />
         )}
       </FormRow>
+      {gst.registered && (
+        <FormRow>
+          <N1DropDown
+            label={T.gstRate}
+            options={gstRateOptions(gst.rates, gstRate)}
+            value={gstRate}
+            onChange={setPickedRate}
+            placeholder={T.gstRatePlaceholder}
+            testID="quote-gst-rate"
+          />
+          <View />
+        </FormRow>
+      )}
       <N1Divider />
       <BillingSection
         title={L.title}

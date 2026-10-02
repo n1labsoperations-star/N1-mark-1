@@ -26,6 +26,7 @@ export const RowActions = memo(function RowActionsComponent({
       {onEdit && (
         <N1IconButton
           icon="edit"
+          variant="primary"
           size="sm"
           accessibilityLabel={editLabel}
           onPress={onEdit}

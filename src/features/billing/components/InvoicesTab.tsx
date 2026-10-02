@@ -3,6 +3,7 @@ import { useCallback, useMemo } from 'react';
 import { View } from 'react-native';
 import {
   N1Button,
+  N1IconButton,
   N1Pagination,
   N1Table,
   N1Text,
@@ -69,6 +70,10 @@ export function InvoicesTab() {
     (i: Invoice) => navigation.navigate('InvoiceEdit', { invoiceId: i.id }),
     [navigation],
   );
+  const viewQuote = useCallback(
+    (quoteId: string) => navigation.navigate('QuoteDetails', { quoteId }),
+    [navigation],
+  );
   const exportList = useCallback(
     () => notifyUnavailable(BILLING_STRINGS.exportAction),
     [],
@@ -126,27 +131,37 @@ export function InvoicesTab() {
         key: 'actions',
         interactive: true,
         title: S.columns.actions,
-        flex: 1.4,
+        flex: 1.2,
         render: i => (
           <View style={styles.actions}>
-            <N1Button
-              title={BILLING_STRINGS.view}
-              leftIcon="eye"
-              variant="secondary"
+            <N1IconButton
+              icon="eye"
               size="sm"
+              accessibilityLabel={BILLING_STRINGS.a11y.view(i.id)}
               onPress={() => view(i)}
             />
-            <N1Button
-              title={BILLING_STRINGS.edit}
-              leftIcon="edit"
+            {i.quoteId && (
+              // Billed against a quote: open it to compare.
+              <N1IconButton
+                icon="file"
+                size="sm"
+                accessibilityLabel={BILLING_STRINGS.a11y.viewQuote(i.quoteId)}
+                onPress={() => viewQuote(i.quoteId as string)}
+                testID={`view-quote-${i.id}`}
+              />
+            )}
+            <N1IconButton
+              icon="edit"
+              variant="primary"
               size="sm"
+              accessibilityLabel={BILLING_STRINGS.a11y.edit(i.id)}
               onPress={() => edit(i)}
             />
           </View>
         ),
       },
     ],
-    [styles, view, edit],
+    [styles, view, edit, viewQuote],
   );
 
   const renderCompactItem = useCallback(

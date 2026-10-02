@@ -11,7 +11,7 @@ export type UserTabParamList = {
 };
 
 // Each non-admin role: its tabs, with Edit Profile and the role's own
-// screens (e.g. the Second Admin's job import flow) opening over them.
+// screens (e.g. the Supervisor's job import flow) opening over them.
 export type RoleStackParamList = {
   Tabs: NavigatorScreenParams<UserTabParamList>;
   EditProfile: undefined;
@@ -20,8 +20,8 @@ export type RoleStackParamList = {
 // Dashboard stack (nested inside the root "Dashboard" screen)
 export type MainStackParamList = {
   Admin: NavigatorScreenParams<AdminDrawerParamList>;
-  SecondAdmin: NavigatorScreenParams<RoleStackParamList>;
-  MachineOperator: NavigatorScreenParams<RoleStackParamList>;
+  Supervisor: NavigatorScreenParams<RoleStackParamList>;
+  Operator: NavigatorScreenParams<RoleStackParamList>;
   Qc: NavigatorScreenParams<RoleStackParamList>;
 };
 

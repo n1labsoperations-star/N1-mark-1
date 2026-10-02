@@ -43,7 +43,7 @@ function* ensureJobCard(order: WorkOrder) {
 
 export function* importJob(action: PayloadAction<ImportJobPayload>) {
   try {
-    const { role, orderId, rawMaterial } = action.payload;
+    const { role, orderId, rawMaterial, retest } = action.payload;
     if (rawMaterial) {
       const order: WorkOrder = yield call(
         ordersApi.update,
@@ -51,7 +51,12 @@ export function* importJob(action: PayloadAction<ImportJobPayload>) {
         rawMaterial,
       );
       yield put(orderActions.saveSuccess(order));
-      const jobCard: JobCard = yield call(ensureJobCard, order);
+      let jobCard: JobCard = yield call(ensureJobCard, order);
+      if (retest) {
+        jobCard = yield call(jobCardsApi.update, jobCard.id, {
+          materialQc: 'pending',
+        });
+      }
       yield put(jobCardActions.saveSuccess(jobCard));
     }
     const ids: string[] = yield call(myJobsApi.add, role, orderId);

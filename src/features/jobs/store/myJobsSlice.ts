@@ -26,8 +26,10 @@ const initialState: MyJobsState = {
 export type ImportJobPayload = {
   role: EmployeeRole;
   orderId: string;
-  /** Second Admin only: saved to the order, and the job card is created. */
+  /** Supervisor only: saved to the order, and the job card is created. */
   rawMaterial?: RawMaterialInput;
+  /** New material after an RM QC rejection: RM QC checks it again. */
+  retest?: boolean;
 };
 
 const myJobsSlice = createSlice({
@@ -47,7 +49,7 @@ const myJobsSlice = createSlice({
       state.status = 'failed';
       state.error = action.payload;
     },
-    /** Adds a job to the list (Second Admin: saves raw material and creates the job card first). */
+    /** Adds a job to the list (Supervisor: saves raw material and creates the job card first). */
     importRequest: (state, _action: PayloadAction<ImportJobPayload>) => {
       state.importing = true;
       state.importError = null;

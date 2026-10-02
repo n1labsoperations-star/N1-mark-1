@@ -35,18 +35,28 @@ export const INDUSTRY_OPTIONS: N1DropDownOption<string>[] = [
 
 export const USER_ROLES = {
   ADMIN: 'admin',
-  SECOND_ADMIN: 'second-admin',
-  MACHINE_OPERATOR: 'machine-operator',
+  SUPERVISOR: 'supervisor',
+  OPERATOR: 'operator',
   QC: 'qc',
 } as const;
 
 export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 
-/** Dashboard stack screen each role lands on after login. */
+export const ROLE_LABELS: Record<UserRole, string> = {
+  [USER_ROLES.ADMIN]: 'Admin',
+  [USER_ROLES.SUPERVISOR]: 'Supervisor',
+  [USER_ROLES.OPERATOR]: 'Operator',
+  [USER_ROLES.QC]: 'QC',
+};
+
+/**
+ * Dashboard stack screen each role lands on after login: Admin gets the
+ * dashboard; the others get the shop-floor app (jobs and scanning).
+ */
 export const ROLE_HOME = {
   [USER_ROLES.ADMIN]: 'Admin',
-  [USER_ROLES.SECOND_ADMIN]: 'SecondAdmin',
-  [USER_ROLES.MACHINE_OPERATOR]: 'MachineOperator',
+  [USER_ROLES.SUPERVISOR]: 'Supervisor',
+  [USER_ROLES.OPERATOR]: 'Operator',
   [USER_ROLES.QC]: 'Qc',
 } as const satisfies Record<UserRole, string>;
 
@@ -60,14 +70,14 @@ export type MockUser = {
 export const MOCK_USERS: MockUser[] = [
   { email: 'admin@n1.com', password: 'Admin@123', role: USER_ROLES.ADMIN },
   {
-    email: 'secondadmin@n1.com',
-    password: 'SecondAdmin@123',
-    role: USER_ROLES.SECOND_ADMIN,
+    email: 'supervisor@n1.com',
+    password: 'Supervisor@123',
+    role: USER_ROLES.SUPERVISOR,
   },
   {
     email: 'operator@n1.com',
     password: 'Operator@123',
-    role: USER_ROLES.MACHINE_OPERATOR,
+    role: USER_ROLES.OPERATOR,
   },
   { email: 'qc@n1.com', password: 'Qc@12345', role: USER_ROLES.QC },
 ];

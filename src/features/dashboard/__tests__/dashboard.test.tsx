@@ -1,66 +1,192 @@
-import {
-  allText,
-  byTestId,
-  byText,
-  press,
-  renderAdmin,
-} from '../../../shared/testing/testUtils';
+/**
+ * @format
+ */
 
-let mockWidth = 1280;
-jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
-  __esModule: true,
-  default: () => ({ width: mockWidth, height: 900, scale: 1, fontScale: 1 }),
+import type React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import ReactTestRenderer, { type ReactTestInstance } from 'react-test-renderer';
+import {
+  PHONE,
+  WIDE,
+  allText,
+  press,
+  render,
+  type,
+} from '../../../shared/testing/render';
+import { ROLE_FILTER_OPTIONS, STATUS_FILTER_OPTIONS } from '../constants';
+import DashboardNavigation from '../navigation/DashboardNavigation';
+import UsersScreen from '../screens/UsersScreen';
+
+// The drawer's web view listens for CSS transitions on a DOM node, which the
+// test renderer doesn't have. Render the drawer content and screen side by side.
+jest.mock(
+  '../../../../node_modules/react-native-drawer-layout/lib/module/views/Drawer',
+  () => {
+    const { View } = jest.requireActual('react-native');
+    return {
+      Drawer: ({
+        renderDrawerContent,
+        children,
+      }: {
+        renderDrawerContent: () => React.ReactNode;
+        children: React.ReactNode;
+      }) => (
+        <View>
+          <View>{renderDrawerContent()}</View>
+          <View>{children}</View>
+        </View>
+      ),
+    };
+  },
+);
+
+jest.mock('../../../shared/hooks/useN1Breakpoint', () => ({
+  useN1Breakpoint: () => {
+    const { width } = jest.requireActual(
+      '../../../shared/testing/render',
+    ).screenSize;
+    return { width, isCompact: width < 768, isDesktop: width >= 1024 };
+  },
 }));
 
-beforeEach(() => {
-  mockWidth = 1280;
+const byLabel = (root: ReactTestInstance, label: string) =>
+  root.findAll(
+    node =>
+      typeof node.type === 'string' && node.props.accessibilityLabel === label,
+  )[0];
+
+const menuLinks = (root: ReactTestInstance) =>
+  root
+    .findAll(
+      node =>
+        typeof node.type === 'string' &&
+        node.props.accessibilityRole === 'link' &&
+        node.props.accessibilityState,
+    )
+    .map(node => node.props.accessibilityLabel);
+
+const renderDashboard = (width: number) =>
+  render(
+    <NavigationContainer>
+      <DashboardNavigation />
+    </NavigationContainer>,
+    width,
+  );
+
+describe('DashboardNavigation', () => {
+  test('wide screens show the full sidebar and the organization bar', async () => {
+    const root = await renderDashboard(WIDE);
+
+    expect(menuLinks(root)).toEqual([
+      'Dashboard',
+      'Users',
+      'Customers',
+      'Orders',
+      'Job Cards',
+      'Machines',
+      'Billing',
+    ]);
+    expect(allText(root)).toContain('ABC Engineering Pvt Ltd');
+    expect(allText(root)).toContain('MAIN MENU');
+  });
+
+  test('phones show the short menu, the user card and a menu button', async () => {
+    const root = await renderDashboard(PHONE);
+
+    expect(menuLinks(root)).toEqual(['Dashboard', 'Users', 'Orders']);
+    expect(allText(root)).toContain('Admin · ABC Engineering');
+    expect(byLabel(root, 'Open menu')).toBeDefined();
+    expect(byLabel(root, 'Close menu')).toBeDefined();
+  });
+
+  test('choosing a menu item opens that section', async () => {
+    const root = await renderDashboard(WIDE);
+
+    await press(byLabel(root, 'Orders'));
+
+    expect(allText(root)).toContain('This section is coming soon.');
+    expect(byLabel(root, 'Orders').props.accessibilityState).toMatchObject({
+      selected: true,
+    });
+  });
+
+  test('the sidebar search narrows the menu', async () => {
+    const root = await renderDashboard(WIDE);
+
+    await ReactTestRenderer.act(() => {
+      byLabel(root, 'Search menu').props.onChangeText('bill');
+    });
+
+    expect(menuLinks(root)).toEqual(['Billing']);
+  });
+
+  test('collapsing hides labels and search, expanding brings them back', async () => {
+    const root = await renderDashboard(WIDE);
+
+    await press(byLabel(root, 'Collapse sidebar'));
+    expect(byLabel(root, 'Search menu')).toBeUndefined();
+    expect(allText(root)).not.toContain('MAIN MENU');
+
+    await press(byLabel(root, 'Expand sidebar'));
+    expect(byLabel(root, 'Search menu')).toBeDefined();
+  });
 });
 
-test('stats, distribution and priority jobs come from the other modules', async () => {
-  const { root } = await renderAdmin('Dashboard');
-  expect(allText(root)).toContain('Overview for ABC Engineering Pvt Ltd.');
-  expect(allText(byTestId(root, 'stat-newOrders'))).toContain('3');
-  const dist = allText(byTestId(root, 'distribution-card'));
-  expect(dist).toContain('30 active orders');
-  [
-    'Acme Metalworks',
-    '40%',
-    'Bright Steel Co.',
-    '27%',
-    'Nova Fabrication',
-    '17%',
-    'Silverline Industries',
-    '10%',
-  ].forEach(t => expect(dist).toContain(t));
-  // Only the top four customers are listed.
-  expect(dist).not.toContain('Meridian Components');
-  const jobs = allText(byTestId(root, 'priority-jobs-card'));
-  expect(jobs).toContain('View all (10)');
-  expect(jobs.indexOf('Job A')).toBeLessThan(jobs.indexOf('Job B'));
-  expect(jobs).toContain('HI');
-  expect(jobs).toContain('QC pending');
-});
+describe('UsersScreen', () => {
+  const rowNames = (root: ReactTestInstance) =>
+    root
+      .findAll(
+        node =>
+          typeof node.type === 'string' &&
+          /^Edit /.test(String(node.props.accessibilityLabel)),
+      )
+      .map(node => String(node.props.accessibilityLabel).slice('Edit '.length));
 
-test('links go to customers and orders', async () => {
-  const h = await renderAdmin('Dashboard');
-  await press(byText(h.root, 'Bright Steel Co.'));
-  expect(h.currentRoute()).toBe('CustomerDetails');
-  await h.navigate('Dashboard');
-  await press(byTestId(h.root, 'view-more-customers'));
-  expect(h.currentRoute()).toBe('Customers');
-  await h.navigate('Dashboard');
-  await press(byTestId(h.root, 'priority-job-1039'));
-  expect(h.currentRoute()).toBe('OrderDetails');
-  await h.navigate('Dashboard');
-  await press(byTestId(h.root, 'view-all-jobs'));
-  expect(h.currentRoute()).toBe('Orders');
-});
+  const pick = async (
+    root: ReactTestInstance,
+    options: unknown,
+    value: string,
+  ) => {
+    await ReactTestRenderer.act(() => {
+      root.find(node => node.props.options === options).props.onChange(value);
+    });
+  };
 
-test('phone layout lists order counts per customer', async () => {
-  mockWidth = 390;
-  const { root } = await renderAdmin('Dashboard');
-  const dist = allText(byTestId(root, 'distribution-card'));
-  expect(dist).toContain('30 active');
-  expect(dist).toContain('12 orders');
-  expect(dist).toContain('Billed: ₹18,42,000');
+  test('lists every user with role, status and joined date', async () => {
+    const root = await render(<UsersScreen />, WIDE);
+    const text = allText(root);
+
+    expect(rowNames(root)).toHaveLength(5);
+    expect(text).toContain('Suspended');
+    expect(text).toContain('Sep 12, 2026');
+    expect(text).toContain('Manage everyone in ABC Engineering Pvt Ltd.');
+  });
+
+  test('search, role and status filters narrow the table', async () => {
+    const root = await render(<UsersScreen />, WIDE);
+
+    await type(root, 'Search users', 'rao');
+    expect(rowNames(root)).toEqual(['Divya Rao']);
+
+    await type(root, 'Search users', '');
+    await pick(root, ROLE_FILTER_OPTIONS, 'admin');
+    expect(rowNames(root)).toEqual(['Koushik Dasarathan']);
+
+    await pick(root, ROLE_FILTER_OPTIONS, 'all');
+    await pick(root, STATUS_FILTER_OPTIONS, 'invited');
+    expect(rowNames(root)).toEqual(['Arjun Mehta']);
+  });
+
+  test('shows a message when nothing matches', async () => {
+    const root = await render(<UsersScreen />, PHONE);
+
+    await type(root, 'Search users', 'nobody');
+
+    expect(allText(root)).toContain('No users match these filters.');
+  });
+
+  test('row actions are labelled per user', async () => {
+    const root = await render(<UsersScreen />, WIDE);
+    expect(byLabel(root, 'Delete Priya Sharma')).toBeDefined();
+  });
 });

@@ -3,8 +3,9 @@ import type { EmployeeRole } from '../../profile/types';
 
 /** Jobs already on each role's list (work order numbers). */
 const SEED: Record<EmployeeRole, string[]> = {
-  'second-admin': ['1042', '1040', '1035', '1034', '1038'],
-  'machine-operator': ['1042', '1039', '1034', '1041', '1037'],
+  // 1041 is waiting on a re-initiate: RM QC rejected its material.
+  supervisor: ['1041', '1042', '1040', '1035', '1034', '1038'],
+  operator: ['1042', '1039', '1034', '1041', '1037'],
   qc: ['1042', '1039', '1041', '1034', '1036'],
 };
 
