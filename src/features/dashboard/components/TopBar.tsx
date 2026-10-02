@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   N1Avatar,
@@ -9,19 +9,22 @@ import {
   useN1Styles,
   useN1Theme,
 } from '../../../shared/components';
+import { NAV_STRINGS } from '../../../shared/constants';
 import { CURRENT_USER, ORGANIZATION } from '../constants';
 import { makeTopBarStyles } from '../styles';
 
 type Props = {
   compact: boolean;
   onMenuPress: () => void;
+  /** Opens My profile from the signed-in user. */
+  onProfilePress: () => void;
 };
 
 /**
  * Wide screens: organization name and the signed-in user.
  * Phones: menu button, logo and the user's avatar.
  */
-function TopBar({ compact, onMenuPress }: Props) {
+function TopBar({ compact, onMenuPress, onProfilePress }: Props) {
   const styles = useN1Styles(makeTopBarStyles);
   const theme = useN1Theme();
   const insets = useSafeAreaInsets();
@@ -45,7 +48,15 @@ function TopBar({ compact, onMenuPress }: Props) {
           />
           <N1Logo size="sm" color="inverse" />
         </View>
-        <N1Avatar name={CURRENT_USER.name} size="sm" tone="neutral" />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={NAV_STRINGS.openProfile}
+          onPress={onProfilePress}
+          style={({ pressed }) => pressed && styles.pressed}
+          testID="open-profile"
+        >
+          <N1Avatar name={CURRENT_USER.name} size="sm" tone="neutral" />
+        </Pressable>
       </View>
     );
   }
@@ -55,7 +66,13 @@ function TopBar({ compact, onMenuPress }: Props) {
       <N1Text variant="h3" numberOfLines={1}>
         {ORGANIZATION.name}
       </N1Text>
-      <View style={styles.user}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={NAV_STRINGS.openProfile}
+        onPress={onProfilePress}
+        style={({ pressed }) => [styles.user, pressed && styles.pressed]}
+        testID="open-profile"
+      >
         <N1Avatar name={CURRENT_USER.name} />
         <View>
           <N1Text variant="title">{CURRENT_USER.name}</N1Text>
@@ -63,7 +80,7 @@ function TopBar({ compact, onMenuPress }: Props) {
             {CURRENT_USER.email}
           </N1Text>
         </View>
-      </View>
+      </Pressable>
     </View>
   );
 }

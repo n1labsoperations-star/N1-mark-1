@@ -7,19 +7,65 @@ export const linking: LinkingOptions<RootStackParamList> = {
   prefixes: ['n1mark1://'],
   config: {
     screens: {
+      // Admin modules: /dashboard, /dashboard/orders/1042, /dashboard/job-cards/1042/flow…
       Dashboard: {
         path: 'dashboard',
         screens: {
           Admin: {
             path: '',
             screens: {
-              Overview: '',
-              Users: 'users',
-              Customers: 'customers',
-              Orders: 'orders',
-              JobCards: 'job-cards',
+              Overview: {
+                path: '',
+                screens: { DashboardHome: '' },
+              },
+              Users: {
+                path: 'users',
+                screens: {
+                  UsersList: '',
+                  UserDetails: ':userId',
+                },
+              },
+              Customers: {
+                path: 'customers',
+                screens: {
+                  CustomersList: '',
+                  CustomerDetails: ':customerId',
+                },
+              },
+              Orders: {
+                path: 'orders',
+                screens: {
+                  OrdersList: '',
+                  // Optional id: blank creates a new order.
+                  OrderForm: 'form/:orderId?',
+                  OrderDetails: ':orderId',
+                },
+              },
+              JobCards: {
+                path: 'job-cards',
+                screens: {
+                  JobCardsList: '',
+                  JobCardDetails: ':jobCardId',
+                  JobCardFlow: ':jobCardId/flow',
+                },
+              },
               Machines: 'machines',
-              Billing: 'billing',
+              Profile: {
+                path: 'profile',
+                screens: { MyProfile: '' },
+              },
+              Billing: {
+                path: 'billing',
+                screens: {
+                  // ?tab=quotes opens the Quotes tab.
+                  BillingHome: '',
+                  InvoiceDetails: 'invoices/:invoiceId',
+                  InvoiceEdit: 'invoices/:invoiceId/edit',
+                  // Optional id: blank creates a new quote.
+                  QuoteForm: 'quotes/form/:quoteId?',
+                  QuoteDetails: 'quotes/:quoteId',
+                },
+              },
             },
           },
           User: 'user',
@@ -37,30 +83,6 @@ export const linking: LinkingOptions<RootStackParamList> = {
               ResetPassword: 'reset',
             },
           },
-        },
-      },
-      Details: 'details/:id',
-      Components: 'components',
-      Admin: {
-        path: 'admin',
-        screens: {
-          Dashboard: '',
-          Users: 'users',
-          UserDetails: 'users/:userId',
-          MyProfile: 'profile',
-          Customers: 'customers',
-          CustomerDetails: 'customers/:customerId',
-          Orders: 'orders',
-          OrderDetails: 'orders/:orderId',
-          // Optional id: blank creates a new order.
-          OrderForm: 'order-form/:orderId?',
-          JobCards: 'job-cards',
-          Machines: 'machines',
-          Billing: 'billing',
-          InvoiceDetails: 'invoices/:invoiceId',
-          InvoiceEdit: 'invoices/:invoiceId/edit',
-          QuoteDetails: 'quotes/:quoteId',
-          QuoteForm: 'quote-form/:quoteId?',
         },
       },
     },

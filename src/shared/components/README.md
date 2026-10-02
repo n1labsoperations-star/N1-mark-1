@@ -17,9 +17,6 @@ import {
 </N1ThemeProvider>;
 ```
 
-Open **N1 Components** from the app drawer to see every component live
-(`src/features/gallery/screens/N1GalleryScreen.tsx`).
-
 ## Components
 
 | Component                        | Use it for                 | Key props                                                                                                             |

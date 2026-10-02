@@ -14,7 +14,7 @@ import {
   useN1Styles,
   type N1TableColumn,
 } from '../../../shared/components';
-import type { AdminNavigation } from '../../../app/navigation/admin/types';
+import type { CustomersNavigation } from '../types';
 import {
   AdminScreen,
   AsyncContent,
@@ -46,7 +46,7 @@ type FormTarget = { customer: Customer | null } | null;
 
 export function CustomersListScreen() {
   const styles = useN1Styles(makeStyles);
-  const navigation = useNavigation<AdminNavigation>();
+  const navigation = useNavigation<CustomersNavigation>();
   const { isCompact } = useN1Breakpoint();
   const organizationName = useOrganizationName();
   const { items, status, error, reload, remove, deletingId, deleteError } =

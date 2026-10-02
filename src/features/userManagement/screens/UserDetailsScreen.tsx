@@ -12,7 +12,7 @@ import {
   useN1Breakpoint,
   useN1Styles,
 } from '../../../shared/components';
-import type { AdminScreenProps } from '../../../app/navigation/admin/types';
+import type { UserManagementScreenProps } from '../types';
 import {
   ActivityCard,
   AdminScreen,
@@ -51,7 +51,7 @@ const makeStyles = createN1Styles(t => ({
 export function UserDetailsScreen({
   route,
   navigation,
-}: AdminScreenProps<'UserDetails'>) {
+}: UserManagementScreenProps<'UserDetails'>) {
   const styles = useN1Styles(makeStyles);
   const { isCompact } = useN1Breakpoint();
   const { organization } = useSession();

@@ -10,11 +10,13 @@ export function useSession() {
   const state = useAppSelector(selectProfileState);
   const shellUser = useAppSelector(selectShellUser);
 
+  // Logout resets the store to idle and leaves the admin area, so the next
+  // admin screen to mount (after signing in again) reloads the session.
   useEffect(() => {
-    if (state.status === 'idle' && !state.signedOut) {
+    if (state.status === 'idle') {
       dispatch(profileActions.fetchSessionRequest());
     }
-  }, [dispatch, state.status, state.signedOut]);
+  }, [dispatch, state.status]);
 
   const reload = useCallback(
     () => dispatch(profileActions.fetchSessionRequest()),

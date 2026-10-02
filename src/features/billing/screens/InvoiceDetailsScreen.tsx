@@ -10,7 +10,6 @@ import {
   useN1Breakpoint,
   useN1Styles,
 } from '../../../shared/components';
-import type { AdminScreenProps } from '../../../app/navigation/admin/types';
 import {
   AdminScreen,
   AsyncContent,
@@ -26,6 +25,7 @@ import { TotalsSummary } from '../components/TotalsSummary';
 import { BILLING_STRINGS, INVOICE_STATUS_META } from '../constants';
 import { useInvoice } from '../hooks/useBilling';
 import { calculateTotals } from '../utils';
+import type { BillingScreenProps } from '../types';
 
 const I = BILLING_STRINGS.invoice;
 
@@ -45,7 +45,7 @@ const makeStyles = createN1Styles(t => ({
 export function InvoiceDetailsScreen({
   route,
   navigation,
-}: AdminScreenProps<'InvoiceDetails'>) {
+}: BillingScreenProps<'InvoiceDetails'>) {
   const styles = useN1Styles(makeStyles);
   const { isCompact } = useN1Breakpoint();
   const { invoiceId } = route.params;

@@ -10,7 +10,6 @@ import {
   useN1Breakpoint,
   useN1Styles,
 } from '../../../shared/components';
-import type { AdminScreenProps } from '../../../app/navigation/admin/types';
 import {
   AdminScreen,
   AsyncContent,
@@ -27,6 +26,7 @@ import { TotalsSummary } from '../components/TotalsSummary';
 import { BILLING_STRINGS, QUOTE_STATUS_META } from '../constants';
 import { useQuote } from '../hooks/useBilling';
 import { calculateTotals } from '../utils';
+import type { BillingScreenProps } from '../types';
 
 const Q = BILLING_STRINGS.quote;
 
@@ -39,7 +39,7 @@ const makeStyles = createN1Styles(t => ({
 export function QuoteDetailsScreen({
   route,
   navigation,
-}: AdminScreenProps<'QuoteDetails'>) {
+}: BillingScreenProps<'QuoteDetails'>) {
   const styles = useN1Styles(makeStyles);
   const { isCompact } = useN1Breakpoint();
   const { quoteId } = route.params;

@@ -8,7 +8,7 @@ import {
   useN1Breakpoint,
   type N1TableColumn,
 } from '../../../shared/components';
-import type { AdminNavigation } from '../../../app/navigation/admin/types';
+import type { BillingNavigation } from '../types';
 import {
   AsyncContent,
   ListToolbar,
@@ -35,7 +35,7 @@ const INITIAL: Filters = { status: 'all' };
 const matches = (q: Quote, f: Filters) => matchesOption(f.status, q.status);
 
 export function QuotesTab() {
-  const navigation = useNavigation<AdminNavigation>();
+  const navigation = useNavigation<BillingNavigation>();
   const { isCompact } = useN1Breakpoint();
   const { items, status, error, reload } = useQuotes();
   const stats = useQuoteStats();

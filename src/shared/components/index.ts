@@ -136,7 +136,6 @@ export { N1ConfirmDialog, type N1ConfirmDialogProps } from './N1ConfirmDialog';
 // App-level primitives
 export { AppText } from './AppText';
 export { Icon, type IconName } from './Icon';
-export { PlaceholderScreen } from './PlaceholderScreen';
 
 // Admin layout and screen building blocks.
 export * from './AdminLayout';

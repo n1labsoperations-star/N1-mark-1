@@ -44,4 +44,5 @@ export const makeSidebarStyles = createN1Styles(t => ({
   userCardText: {
     flex: 1,
   },
+  userCardPressed: { opacity: t.opacity.pressed },
 }));

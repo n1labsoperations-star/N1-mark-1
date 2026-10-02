@@ -1,8 +1,8 @@
 import { all, fork } from 'redux-saga/effects';
-import { counterSaga } from '../../features/counter';
-import { usersSaga } from '../../features/users';
+
 import billingSaga from '../../features/billing/store/billingSaga';
 import customersSaga from '../../features/customers/store/customersSaga';
+import jobCardsSaga from '../../features/jobCards/store/jobCardsSaga';
 import machinesSaga from '../../features/machines/store/machinesSaga';
 import ordersSaga from '../../features/orders/store/ordersSaga';
 import profileSaga from '../../features/profile/store/profileSaga';
@@ -10,12 +10,11 @@ import userManagementSaga from '../../features/userManagement/store/userManageme
 
 export default function* rootSaga() {
   yield all([
-    fork(counterSaga),
-    fork(usersSaga),
     fork(userManagementSaga),
     fork(profileSaga),
     fork(customersSaga),
     fork(ordersSaga),
+    fork(jobCardsSaga),
     fork(machinesSaga),
     fork(billingSaga),
   ]);

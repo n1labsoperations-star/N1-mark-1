@@ -1,22 +1,21 @@
 import { combineReducers } from '@reduxjs/toolkit';
-import { counterReducer } from '../../features/counter';
-import { usersReducer } from '../../features/users';
+
 // Admin features: import the slices directly, not the feature index, so the
 // store doesn't pull in screens (and an import cycle through store/hooks).
 import billingReducer from '../../features/billing/store/billingSlices';
 import customersReducer from '../../features/customers/store/customersSlice';
+import jobCardsReducer from '../../features/jobCards/store/jobCardsSlice';
 import machinesReducer from '../../features/machines/store/machinesSlice';
 import ordersReducer from '../../features/orders/store/ordersSlice';
 import profileReducer from '../../features/profile/store/profileSlice';
 import userManagementReducer from '../../features/userManagement/store/userManagementSlice';
 
 const rootReducer = combineReducers({
-  counter: counterReducer,
-  users: usersReducer,
   userManagement: userManagementReducer,
   profile: profileReducer,
   customers: customersReducer,
   orders: ordersReducer,
+  jobCards: jobCardsReducer,
   machines: machinesReducer,
   billing: billingReducer,
 });

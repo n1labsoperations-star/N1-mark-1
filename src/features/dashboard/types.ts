@@ -1,17 +1,31 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { N1IconName } from '../../shared/components';
+import type { BillingStackParamList } from '../billing/types';
+import type { CustomersStackParamList } from '../customers/types';
+import type { JobCardsStackParamList } from '../jobCards/types';
+import type { OrdersStackParamList } from '../orders/types';
+import type { ProfileStackParamList } from '../profile/types';
 
 // Screens in the admin sidebar / drawer.
 export type AdminDrawerParamList = {
   Overview: undefined;
   Users: undefined;
-  Customers: undefined;
-  Orders: undefined;
-  JobCards: undefined;
+  Customers: NavigatorScreenParams<CustomersStackParamList> | undefined;
+  Orders: NavigatorScreenParams<OrdersStackParamList> | undefined;
+  JobCards: NavigatorScreenParams<JobCardsStackParamList> | undefined;
   Machines: undefined;
-  Billing: undefined;
+  Billing: NavigatorScreenParams<BillingStackParamList> | undefined;
+  /** Not in the menu; opened from the signed-in user in the top bar. */
+  Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };
 
-export type AdminRoute = keyof AdminDrawerParamList;
+// Stack nested inside the drawer's "Overview" item.
+export type DashboardStackParamList = {
+  DashboardHome: undefined;
+};
+
+/** Drawer items listed in the sidebar menu. */
+export type AdminRoute = Exclude<keyof AdminDrawerParamList, 'Profile'>;
 
 export type MenuItem = {
   route: AdminRoute;

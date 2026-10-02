@@ -1,3 +1,4 @@
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ActivityEntry, ISODateString } from '../../shared/types';
 
 export type Organization = {
@@ -29,3 +30,11 @@ export type PasswordChangeInput = {
 };
 
 export type Session = { profile: MyProfile; organization: Organization };
+
+// Stack nested inside the admin drawer's hidden "Profile" item.
+export type ProfileStackParamList = {
+  MyProfile: undefined;
+};
+
+export type ProfileScreenProps<R extends keyof ProfileStackParamList> =
+  NativeStackScreenProps<ProfileStackParamList, R>;

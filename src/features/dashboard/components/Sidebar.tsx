@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -10,6 +10,7 @@ import {
   useN1Styles,
   useN1Theme,
 } from '../../../shared/components';
+import { NAV_STRINGS } from '../../../shared/constants';
 import { CURRENT_USER, MENU_ITEMS, ORGANIZATION } from '../constants';
 import { makeSidebarStyles } from '../styles';
 import type { MenuItem } from '../types';
@@ -44,6 +45,11 @@ function Sidebar({
     if (compact) {
       navigation.closeDrawer();
     }
+  };
+
+  const openProfile = () => {
+    navigation.navigate('Profile');
+    navigation.closeDrawer();
   };
 
   return (
@@ -113,7 +119,16 @@ function Sidebar({
       {compact ? (
         <>
           <View style={styles.spacer} />
-          <View style={styles.userCard}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={NAV_STRINGS.openProfile}
+            onPress={openProfile}
+            style={({ pressed }) => [
+              styles.userCard,
+              pressed && styles.userCardPressed,
+            ]}
+            testID="sidebar-open-profile"
+          >
             <N1Avatar name={CURRENT_USER.name} tone="info" />
             <View style={styles.userCardText}>
               <N1Text variant="title" color="inverse" numberOfLines={1}>
@@ -123,7 +138,7 @@ function Sidebar({
                 {`${CURRENT_USER.roleLabel} · ${ORGANIZATION.shortName}`}
               </N1Text>
             </View>
-          </View>
+          </Pressable>
         </>
       ) : null}
     </View>

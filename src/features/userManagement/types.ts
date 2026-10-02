@@ -1,4 +1,8 @@
 import type {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from '@react-navigation/native-stack';
+import type {
   ActivityEntry,
   Attachment,
   ISODateString,
@@ -43,3 +47,16 @@ export type UserFilters = {
   role: UserRole | 'all';
   status: UserStatus | 'all';
 };
+
+// Stack nested inside the admin drawer's "Users" item.
+export type UserManagementStackParamList = {
+  UsersList: undefined;
+  UserDetails: { userId: string };
+};
+
+export type UserManagementNavigation =
+  NativeStackNavigationProp<UserManagementStackParamList>;
+
+export type UserManagementScreenProps<
+  R extends keyof UserManagementStackParamList,
+> = NativeStackScreenProps<UserManagementStackParamList, R>;

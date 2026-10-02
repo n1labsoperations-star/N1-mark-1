@@ -1,3 +1,4 @@
+import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useNavigation } from '@react-navigation/native';
 import { useCallback, useMemo } from 'react';
 import { View } from 'react-native';
@@ -7,7 +8,7 @@ import {
   useN1Breakpoint,
   useN1Styles,
 } from '../../../shared/components';
-import type { AdminNavigation } from '../../../app/navigation/admin/types';
+
 import {
   AdminScreen,
   AsyncContent,
@@ -19,6 +20,7 @@ import { DistributionCard } from '../components/DistributionCard';
 import { PriorityJobsCard } from '../components/PriorityJobsCard';
 import { DASHBOARD_STRINGS as S } from '../constants';
 import { useDashboard } from '../hooks/useDashboard';
+import type { AdminDrawerParamList } from '../types';
 
 const makeStyles = createN1Styles(t => ({
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: t.spacing.lg },
@@ -29,14 +31,20 @@ const makeStyles = createN1Styles(t => ({
 
 export function DashboardScreen() {
   const styles = useN1Styles(makeStyles);
-  const navigation = useNavigation<AdminNavigation>();
+  const navigation =
+    useNavigation<DrawerNavigationProp<AdminDrawerParamList>>();
   const { isDesktop } = useN1Breakpoint();
   const organizationName = useOrganizationName();
   const dashboard = useDashboard();
 
   const openCustomer = useCallback(
     (customerId: string) =>
-      navigation.navigate('CustomerDetails', { customerId }),
+      navigation.navigate('Customers', {
+        screen: 'CustomerDetails',
+        params: { customerId },
+        // Keep the list underneath so Back returns to it.
+        initial: false,
+      }),
     [navigation],
   );
   const openCustomers = useCallback(
@@ -44,7 +52,13 @@ export function DashboardScreen() {
     [navigation],
   );
   const openOrder = useCallback(
-    (orderId: string) => navigation.navigate('OrderDetails', { orderId }),
+    (orderId: string) =>
+      navigation.navigate('Orders', {
+        screen: 'OrderDetails',
+        params: { orderId },
+        // Keep the list underneath so Back returns to it.
+        initial: false,
+      }),
     [navigation],
   );
   const openOrders = useCallback(

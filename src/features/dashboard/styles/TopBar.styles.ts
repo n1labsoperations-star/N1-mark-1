@@ -29,4 +29,5 @@ export const makeTopBarStyles = createN1Styles(t => ({
     alignItems: 'center',
     gap: t.spacing.md,
   },
+  pressed: { opacity: t.opacity.pressed },
 }));

@@ -1,7 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text, View } from 'react-native';
-import { DashboardNavigation } from '../../features/dashboard';
+import AdminDashboardNavigation from './AdminDashboardNavigation';
 import type { MainStackParamList } from './types';
 
 // Placeholder until the real User dashboard exists.
@@ -21,7 +21,7 @@ const Stack = createNativeStackNavigator<MainStackParamList>();
 function MainStackNavigation() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Admin" component={DashboardNavigation} />
+      <Stack.Screen name="Admin" component={AdminDashboardNavigation} />
       <Stack.Screen name="User" component={UserScreen} />
     </Stack.Navigator>
   );

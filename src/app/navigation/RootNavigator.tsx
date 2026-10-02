@@ -7,7 +7,6 @@ import {
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthNavigation } from '../../features/auth';
 import MainStackNavigation from './MainStackNavigation';
-import { AdminNavigator } from './admin';
 import type { RootStackParamList } from './types';
 import { linking } from './linking';
 import { fontFamily } from '../../theme/fonts';
@@ -37,11 +36,6 @@ function RootNavigator() {
         <Stack.Screen
           name="Dashboard"
           component={MainStackNavigation}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Admin"
-          component={AdminNavigator}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>
