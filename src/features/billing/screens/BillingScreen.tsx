@@ -6,17 +6,16 @@ import {
   N1Tabs,
   useN1Breakpoint,
 } from '../../../shared/components';
-import type { AdminScreenProps } from '../../../app/navigation/admin/types';
 import { AdminScreen } from '../../../shared/components';
 import { InvoicesTab } from '../components/InvoicesTab';
 import { QuotesTab } from '../components/QuotesTab';
 import { BILLING_STRINGS as S, BILLING_TABS } from '../constants';
-import type { BillingTab } from '../types';
+import type { BillingScreenProps, BillingTab } from '../types';
 
 export function BillingScreen({
   route,
   navigation,
-}: AdminScreenProps<'Billing'>) {
+}: BillingScreenProps<'BillingHome'>) {
   const { isCompact } = useN1Breakpoint();
   // The tab lives in the route so Back from a quote returns to the Quotes tab.
   const tab: BillingTab = route.params?.tab ?? 'invoices';

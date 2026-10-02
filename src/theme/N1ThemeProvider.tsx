@@ -1,4 +1,9 @@
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  type ReactNode,
+} from 'react';
 import { StyleSheet, useColorScheme } from 'react-native';
 import { darkTheme, lightTheme, type N1Theme } from './themes';
 
@@ -12,14 +17,18 @@ type Props = {
   children: ReactNode;
 };
 
-export function N1ThemeProvider({ mode = 'light', children }: Props) {
+export const N1ThemeProvider = React.memo(function N1ThemeProviderComponent({
+  mode = 'light',
+  children,
+}: Props) {
   const scheme = useColorScheme();
   const resolved = mode === 'system' ? scheme ?? 'light' : mode;
   const theme = resolved === 'dark' ? darkTheme : lightTheme;
   return (
     <N1ThemeContext.Provider value={theme}>{children}</N1ThemeContext.Provider>
   );
-}
+});
+N1ThemeProvider.displayName = 'N1ThemeProvider';
 
 /** The active theme. Without a provider, components fall back to light. */
 export function useN1Theme(): N1Theme {

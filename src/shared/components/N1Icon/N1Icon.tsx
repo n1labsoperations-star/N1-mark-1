@@ -1,3 +1,4 @@
+import React from 'react';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { useN1Theme } from '../../../theme/N1ThemeProvider';
 import type { N1Colors } from '../../../theme/themes';
@@ -76,6 +77,14 @@ const icons = {
   lock: [
     { x: 3, y: 11, width: 18, height: 11, rx: 2 },
     { d: 'M7 11V7a5 5 0 0 1 10 0v4' },
+  ],
+  'lock-open': [
+    { x: 3, y: 11, width: 18, height: 11, rx: 2 },
+    { d: 'M7 11V7a5 5 0 0 1 9.9-1' },
+  ],
+  mail: [
+    { x: 2, y: 4, width: 20, height: 16, rx: 2 },
+    { d: 'm22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7' },
   ],
   message: [
     { d: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
@@ -210,7 +219,7 @@ function colorFor(colors: N1Colors, color: N1IconColor): string {
   return colors[color];
 }
 
-export function N1Icon({
+export const N1Icon = React.memo(function N1IconComponent({
   name,
   size = 'md',
   color = 'textPrimary',
@@ -253,4 +262,5 @@ export function N1Icon({
       })}
     </Svg>
   );
-}
+});
+N1Icon.displayName = 'N1Icon';

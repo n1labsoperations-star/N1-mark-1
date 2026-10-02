@@ -1,0 +1,239 @@
+import { useNavigation } from '@react-navigation/native';
+import { useCallback, useMemo } from 'react';
+import { View } from 'react-native';
+import {
+  AdminScreen,
+  AsyncContent,
+  ListToolbar,
+  N1IconButton,
+  N1PageHeader,
+  N1Pagination,
+  N1Table,
+  N1Text,
+  StatGrid,
+  ToolbarFilter,
+  createN1Styles,
+  useN1Breakpoint,
+  useN1Styles,
+  type N1TableColumn,
+} from '../../../shared/components';
+import { COMMON_STRINGS } from '../../../shared/constants';
+import { useListFilter, usePagination } from '../../../shared/hooks';
+import { notifyUnavailable } from '../../../shared/utils';
+import { FlowActionButton } from '../components/FlowActionButton';
+import { JobCardCard } from '../components/JobCardCard';
+import { JobProgress } from '../components/JobProgress';
+import { INITIAL_JOB_CARD_FILTERS, JOB_CARD_STRINGS as S } from '../constants';
+import { useJobCardStats, useJobCards } from '../hooks/useJobCards';
+import type { JobCard, JobCardsNavigation } from '../types';
+import {
+  currentOperation,
+  jobCardSearchText,
+  jobProgress,
+  jobTitle,
+  matchesJobCardFilters,
+  optionsFrom,
+} from '../utils';
+
+const makeStyles = createN1Styles(t => ({
+  actions: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm },
+}));
+
+const dash = (value?: string) => value || COMMON_STRINGS.dash;
+const openDrawing = () => notifyUnavailable(S.openDrawing);
+
+export function JobCardsListScreen() {
+  const styles = useN1Styles(makeStyles);
+  const navigation = useNavigation<JobCardsNavigation>();
+  const { isCompact } = useN1Breakpoint();
+  const { items, status, error, reload } = useJobCards();
+  const stats = useJobCardStats();
+
+  const { query, setQuery, filters, setFilter, filtered } = useListFilter(
+    items,
+    {
+      getSearchText: jobCardSearchText,
+      initialFilters: INITIAL_JOB_CARD_FILTERS,
+      matchesFilters: matchesJobCardFilters,
+    },
+  );
+  const pager = usePagination(filtered);
+
+  const operationOptions = useMemo(
+    () =>
+      optionsFrom(
+        items.map(c => currentOperation(c)?.name ?? ''),
+        S.allOperations,
+      ),
+    [items],
+  );
+  const operatorOptions = useMemo(
+    () =>
+      optionsFrom(
+        items.map(c => currentOperation(c)?.operator ?? ''),
+        S.allOperators,
+      ),
+    [items],
+  );
+
+  const openDetails = useCallback(
+    (c: JobCard) => navigation.navigate('JobCardDetails', { jobCardId: c.id }),
+    [navigation],
+  );
+  const openFlow = useCallback(
+    (c: JobCard) => navigation.navigate('JobCardFlow', { jobCardId: c.id }),
+    [navigation],
+  );
+
+  const columns = useMemo<N1TableColumn<JobCard>[]>(
+    () => [
+      {
+        key: 'order',
+        title: S.columns.order,
+        flex: 0.8,
+        render: c => <N1Text weight="bold">{S.workOrder(c.id)}</N1Text>,
+      },
+      {
+        key: 'part',
+        title: S.columns.part,
+        flex: 1.2,
+        render: c => <N1Text>{dash(jobTitle(c))}</N1Text>,
+      },
+      {
+        key: 'operation',
+        title: S.columns.operation,
+        render: c => <N1Text>{dash(currentOperation(c)?.name)}</N1Text>,
+      },
+      {
+        key: 'machine',
+        title: S.columns.machine,
+        render: c => <N1Text>{dash(currentOperation(c)?.machine)}</N1Text>,
+      },
+      {
+        key: 'operator',
+        title: S.columns.operator,
+        render: c => <N1Text>{dash(currentOperation(c)?.operator)}</N1Text>,
+      },
+      {
+        key: 'diagram',
+        title: S.columns.diagram,
+        flex: 0.6,
+        interactive: true,
+        render: c => (
+          <N1IconButton
+            icon="file"
+            variant="soft"
+            size="sm"
+            accessibilityLabel={S.a11y.diagram(c.id)}
+            onPress={openDrawing}
+          />
+        ),
+      },
+      {
+        key: 'progress',
+        title: S.columns.progress,
+        render: c => (
+          <JobProgress value={jobProgress(c)} testID={`progress-${c.id}`} />
+        ),
+      },
+      {
+        key: 'actions',
+        title: S.columns.actions,
+        flex: 0.7,
+        align: 'right',
+        interactive: true,
+        render: c => (
+          <View style={styles.actions}>
+            <N1IconButton
+              icon="eye"
+              size="sm"
+              accessibilityLabel={S.a11y.view(c.id)}
+              onPress={() => openDetails(c)}
+            />
+            <FlowActionButton jobCard={c} onPress={openFlow} />
+          </View>
+        ),
+      },
+    ],
+    [styles, openDetails, openFlow],
+  );
+
+  const renderCompactItem = useCallback(
+    (c: JobCard) => (
+      <JobCardCard jobCard={c} onView={openDetails} onFlow={openFlow} />
+    ),
+    [openDetails, openFlow],
+  );
+
+  const statItems = useMemo(
+    () => [
+      { key: 'active', label: S.stats.active, value: stats.active },
+      { key: 'completed', label: S.stats.completed, value: stats.completed },
+    ],
+    [stats],
+  );
+
+  return (
+    <AdminScreen testID="job-cards-screen">
+      <N1PageHeader
+        title={S.title}
+        subtitle={isCompact ? undefined : S.subtitle}
+      />
+      {isCompact && (
+        <StatGrid items={statItems} variant="muted" testID="job-card-stats" />
+      )}
+      <ListToolbar
+        query={query}
+        onQueryChange={setQuery}
+        searchPlaceholder={S.search}
+      >
+        <ToolbarFilter
+          label={S.operationFilter}
+          options={operationOptions}
+          value={filters.operation}
+          onChange={v => setFilter('operation', v)}
+          testID="filter-operation"
+        />
+        <ToolbarFilter
+          label={S.operatorFilter}
+          options={operatorOptions}
+          value={filters.operator}
+          onChange={v => setFilter('operator', v)}
+          testID="filter-operator"
+        />
+      </ListToolbar>
+      <AsyncContent
+        status={status}
+        error={error}
+        onRetry={reload}
+        hasData={items.length > 0}
+      >
+        <N1Table
+          columns={columns}
+          data={pager.pageItems}
+          keyExtractor={c => c.id}
+          renderCompactItem={renderCompactItem}
+          emptyText={
+            items.length ? COMMON_STRINGS.noResults : COMMON_STRINGS.empty
+          }
+          footer={
+            (!isCompact || pager.pageCount > 1) && (
+              <N1Pagination
+                summary={COMMON_STRINGS.showing(
+                  pager.shownCount,
+                  pager.total,
+                  S.noun,
+                )}
+                hasPrevious={pager.hasPrevious}
+                hasNext={pager.hasNext}
+                onPrevious={pager.previous}
+                onNext={pager.next}
+              />
+            )
+          }
+          testID="job-cards-table"
+        />
+      </AsyncContent>
+    </AdminScreen>
+  );
+}

@@ -1,3 +1,4 @@
+import React from 'react';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
 import { N1Text } from '../N1Text/N1Text';
 
@@ -12,7 +13,11 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** Field label with the red asterisk used for required fields. */
-export function N1FieldLabel({ label, required, nativeID }: Props) {
+export const N1FieldLabel = React.memo(function N1FieldLabelComponent({
+  label,
+  required,
+  nativeID,
+}: Props) {
   const styles = useN1Styles(makeStyles);
   return (
     <N1Text variant="label" nativeID={nativeID}>
@@ -24,7 +29,8 @@ export function N1FieldLabel({ label, required, nativeID }: Props) {
       )}
     </N1Text>
   );
-}
+});
+N1FieldLabel.displayName = 'N1FieldLabel';
 
 type HelperProps = {
   helperText?: string;
@@ -32,7 +38,10 @@ type HelperProps = {
 };
 
 /** Error text wins over helper text, so only one line shows under a field. */
-export function N1FieldHelper({ helperText, errorText }: HelperProps) {
+export const N1FieldHelper = React.memo(function N1FieldHelperComponent({
+  helperText,
+  errorText,
+}: HelperProps) {
   if (errorText) {
     return (
       <N1Text variant="caption" color="danger" accessibilityLiveRegion="polite">
@@ -48,4 +57,5 @@ export function N1FieldHelper({ helperText, errorText }: HelperProps) {
     );
   }
   return null;
-}
+});
+N1FieldHelper.displayName = 'N1FieldHelper';

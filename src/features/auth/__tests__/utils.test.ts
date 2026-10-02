@@ -1,0 +1,86 @@
+import {
+  checkPassword,
+  generateOrganizationCode,
+  isCompleteCode,
+  isPasswordValid,
+  isValidEmail,
+  passwordChecklist,
+  sanitizeCode,
+} from '../utils';
+
+describe('generateOrganizationCode', () => {
+  test('uses the first letters and digits, upper-cased', () => {
+    expect(generateOrganizationCode('ABC Engineering Pvt Ltd')).toBe('ABCENG');
+    expect(generateOrganizationCode('n1 labs')).toBe('N1LABS');
+  });
+
+  test('ignores punctuation and handles short or empty names', () => {
+    expect(generateOrganizationCode('A&B')).toBe('AB');
+    expect(generateOrganizationCode('  ')).toBe('');
+  });
+});
+
+describe('isValidEmail', () => {
+  test.each([
+    ['owner@abc.com', true],
+    ['  owner@abc.com  ', true],
+    ['owner@abc', false],
+    ['owner abc.com', false],
+    ['', false],
+  ])('%p → %p', (email, expected) => {
+    expect(isValidEmail(email)).toBe(expected);
+  });
+});
+
+describe('checkPassword', () => {
+  test('all rules pass for a strong matching password', () => {
+    expect(checkPassword('secret123', 'secret123')).toEqual({
+      minLength: true,
+      lettersAndNumbers: true,
+      matches: true,
+    });
+  });
+
+  test('flags short, letters-only and mismatched passwords', () => {
+    expect(checkPassword('abc', 'abd')).toEqual({
+      minLength: false,
+      lettersAndNumbers: false,
+      matches: false,
+    });
+  });
+
+  test('two empty passwords do not count as matching', () => {
+    expect(checkPassword('', '').matches).toBe(false);
+  });
+});
+
+describe('isPasswordValid', () => {
+  test('needs every rule to pass', () => {
+    expect(isPasswordValid(checkPassword('secret123', 'secret123'))).toBe(true);
+    expect(isPasswordValid(checkPassword('secret123', 'secret124'))).toBe(
+      false,
+    );
+  });
+});
+
+describe('passwordChecklist', () => {
+  test('maps rules to checklist rows', () => {
+    expect(passwordChecklist(checkPassword('secret123', 'x'))).toEqual([
+      { label: 'Minimum 8 characters', done: true },
+      { label: 'Letters and numbers', done: true },
+      { label: 'Passwords match', done: false },
+    ]);
+  });
+});
+
+describe('verification code helpers', () => {
+  test('sanitizeCode keeps digits only, capped at 6', () => {
+    expect(sanitizeCode('12-34 56 78')).toBe('123456');
+    expect(sanitizeCode('abc')).toBe('');
+  });
+
+  test('isCompleteCode needs exactly 6 digits', () => {
+    expect(isCompleteCode('123456')).toBe(true);
+    expect(isCompleteCode('12345')).toBe(false);
+  });
+});

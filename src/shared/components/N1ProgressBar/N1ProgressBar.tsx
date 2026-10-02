@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import {
   createN1Styles,
@@ -33,7 +34,7 @@ const makeStyles = createN1Styles(t => ({
   fill: { height: '100%', borderRadius: t.radius.pill },
 }));
 
-export function N1ProgressBar({
+export const N1ProgressBar = React.memo(function N1ProgressBarComponent({
   value,
   label,
   showValue = Boolean(label),
@@ -76,4 +77,5 @@ export function N1ProgressBar({
       </View>
     </View>
   );
-}
+});
+N1ProgressBar.displayName = 'N1ProgressBar';

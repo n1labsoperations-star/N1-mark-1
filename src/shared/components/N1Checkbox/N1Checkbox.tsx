@@ -1,3 +1,4 @@
+import React from 'react';
 import { Pressable, View } from 'react-native';
 import { N1Icon } from '../N1Icon/N1Icon';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
@@ -32,7 +33,7 @@ const makeStyles = createN1Styles(t => ({
   disabled: { opacity: t.opacity.disabled },
 }));
 
-export function N1Checkbox({
+export const N1Checkbox = React.memo(function N1CheckboxComponent({
   label,
   checked,
   onChange,
@@ -59,4 +60,5 @@ export function N1Checkbox({
       {label && <N1Text variant="small">{label}</N1Text>}
     </Pressable>
   );
-}
+});
+N1Checkbox.displayName = 'N1Checkbox';

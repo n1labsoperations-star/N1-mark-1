@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ReactNode } from 'react';
 import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
@@ -39,7 +40,7 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** A pickable option card (Assign Machine). Use several as a single-choice list. */
-export function N1SelectCard({
+export const N1SelectCard = React.memo(function N1SelectCardComponent({
   title,
   subtitle,
   right,
@@ -78,4 +79,5 @@ export function N1SelectCard({
       {right}
     </Pressable>
   );
-}
+});
+N1SelectCard.displayName = 'N1SelectCard';

@@ -11,7 +11,7 @@ import {
   useN1Styles,
   type N1TableColumn,
 } from '../../../shared/components';
-import type { AdminNavigation } from '../../../app/navigation/admin/types';
+import type { BillingNavigation } from '../types';
 import {
   AsyncContent,
   ListToolbar,
@@ -47,7 +47,7 @@ const makeStyles = createN1Styles(t => ({
 
 export function InvoicesTab() {
   const styles = useN1Styles(makeStyles);
-  const navigation = useNavigation<AdminNavigation>();
+  const navigation = useNavigation<BillingNavigation>();
   const { isCompact } = useN1Breakpoint();
   const { items, status, error, reload } = useInvoices();
   const stats = useInvoiceStats();

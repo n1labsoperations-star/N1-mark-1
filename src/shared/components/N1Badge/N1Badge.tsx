@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import {
   createN1Styles,
@@ -39,7 +40,7 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** Status tag. */
-export function N1Badge({
+export const N1Badge = React.memo(function N1BadgeComponent({
   label,
   tone = 'neutral',
   dot = false,
@@ -63,4 +64,5 @@ export function N1Badge({
       </N1Text>
     </View>
   );
-}
+});
+N1Badge.displayName = 'N1Badge';

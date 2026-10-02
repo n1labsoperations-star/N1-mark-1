@@ -1,3 +1,4 @@
+import React from 'react';
 import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
 import { N1Text } from '../N1Text/N1Text';
@@ -34,7 +35,7 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** Outlined pill for key facts (Priority, Due, Qty) or filters. */
-export function N1Chip({
+export const N1Chip = React.memo(function N1ChipComponent({
   label,
   value,
   onPress,
@@ -80,4 +81,5 @@ export function N1Chip({
       {content}
     </Pressable>
   );
-}
+});
+N1Chip.displayName = 'N1Chip';

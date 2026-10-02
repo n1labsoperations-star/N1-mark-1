@@ -4,6 +4,7 @@ export { InvoiceDetailsScreen } from './screens/InvoiceDetailsScreen';
 export { InvoiceEditScreen } from './screens/InvoiceEditScreen';
 export { QuoteDetailsScreen } from './screens/QuoteDetailsScreen';
 export { QuoteFormScreen } from './screens/QuoteFormScreen';
+export { default as BillingNavigation } from './navigation/BillingNavigation';
 export { useInvoices, useQuotes, useBillingSummary } from './hooks/useBilling';
 export { calculateTotals } from './utils';
 export type {
@@ -12,4 +13,5 @@ export type {
   LineItem,
   InvoiceStatus,
   QuoteStatus,
+  BillingStackParamList,
 } from './types';

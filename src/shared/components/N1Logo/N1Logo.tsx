@@ -1,3 +1,4 @@
+import React from 'react';
 import { View } from 'react-native';
 import Svg, { Polygon } from 'react-native-svg';
 import {
@@ -8,7 +9,7 @@ import {
 import { N1Text } from '../N1Text/N1Text';
 
 export type N1LogoProps = {
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   /** 'inverse' for dark bars (white logo). */
   color?: 'primary' | 'inverse';
   testID?: string;
@@ -37,14 +38,19 @@ function starPoints(): string {
 
 const STAR = starPoints();
 
-const variantFor = { sm: 'h3', md: 'h2', lg: 'display' } as const;
+const variantFor = {
+  sm: 'h3',
+  md: 'h2',
+  lg: 'display',
+  xl: 'hero',
+} as const;
 
 const makeStyles = createN1Styles(t => ({
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: t.spacing.xxs },
 }));
 
 /** The "N1✱" wordmark. */
-export function N1Logo({
+export const N1Logo = React.memo(function N1LogoComponent({
   size = 'md',
   color = 'primary',
   testID,
@@ -70,4 +76,5 @@ export function N1Logo({
       </Svg>
     </View>
   );
-}
+});
+N1Logo.displayName = 'N1Logo';

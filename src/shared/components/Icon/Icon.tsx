@@ -1,3 +1,4 @@
+import React from 'react';
 import { StyleSheet, Text, type StyleProp, type TextStyle } from 'react-native';
 import selection from '../../../../assets/icons/selection.json';
 
@@ -36,4 +37,4 @@ const styles = StyleSheet.create({
   glyph: { fontFamily: 'icomoon' },
 });
 
-export default Icon;
+export default React.memo(Icon);

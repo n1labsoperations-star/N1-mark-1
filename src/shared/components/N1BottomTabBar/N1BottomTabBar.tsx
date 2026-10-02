@@ -1,3 +1,4 @@
+import React from 'react';
 import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { N1Icon, type N1IconName } from '../N1Icon/N1Icon';
@@ -34,12 +35,9 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** Phone tab bar (Jobs / Profile). */
-export function N1BottomTabBar<K extends string>({
-  tabs,
-  value,
-  onChange,
-  style,
-}: N1BottomTabBarProps<K>) {
+export const N1BottomTabBar = React.memo(function N1BottomTabBarComponent<
+  K extends string,
+>({ tabs, value, onChange, style }: N1BottomTabBarProps<K>) {
   const styles = useN1Styles(makeStyles);
   return (
     <SafeAreaView edges={['bottom']} style={[styles.bar, style]}>
@@ -73,4 +71,4 @@ export function N1BottomTabBar<K extends string>({
       </View>
     </SafeAreaView>
   );
-}
+}) as <K extends string>(props: N1BottomTabBarProps<K>) => React.ReactNode;

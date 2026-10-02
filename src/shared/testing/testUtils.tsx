@@ -12,13 +12,11 @@ import ReactTestRenderer, {
   type ReactTestRenderer as Renderer,
 } from 'react-test-renderer';
 import { N1ThemeProvider } from '../components';
-import { AdminNavigator } from '../../app/navigation/admin/AdminNavigator';
-import type {
-  AdminRouteName,
-  AdminStackParamList,
-} from '../../app/navigation/admin/types';
+import AdminDashboardNavigation from '../../app/navigation/AdminDashboardNavigation';
+import type { AdminDrawerParamList } from '../../features/dashboard/types';
 import { customersApi } from '../../features/customers/api/customersApi';
 import { invoicesApi, quotesApi } from '../../features/billing/api/billingApi';
+import { jobCardsApi } from '../../features/jobCards/api/jobCardsApi';
 import { machinesApi } from '../../features/machines/api/machinesApi';
 import { ordersApi } from '../../features/orders/api/ordersApi';
 import { profileApi } from '../../features/profile/api/profileApi';
@@ -36,6 +34,7 @@ export function resetMockApis() {
     customersApi,
     invoicesApi,
     quotesApi,
+    jobCardsApi,
     machinesApi,
     ordersApi,
     profileApi,
@@ -61,50 +60,109 @@ export async function render(element: ReactElement): Promise<Renderer> {
   return renderer as Renderer;
 }
 
+type DrawerRoute = keyof AdminDrawerParamList;
+
+/** Screens of each drawer item's stack; the first is the stack's initial screen. */
+const DRAWER_STACKS: Record<DrawerRoute, string[]> = {
+  Overview: ['DashboardHome'],
+  Users: ['UsersList', 'UserDetails'],
+  Customers: ['CustomersList', 'CustomerDetails'],
+  Orders: ['OrdersList', 'OrderDetails', 'OrderForm'],
+  JobCards: ['JobCardsList', 'JobCardDetails', 'JobCardFlow'],
+  Machines: ['MachinesList'],
+  Profile: ['MyProfile'],
+  Billing: [
+    'BillingHome',
+    'InvoiceDetails',
+    'InvoiceEdit',
+    'QuoteDetails',
+    'QuoteForm',
+  ],
+};
+
+const ROUTE_ALIASES: Record<string, string> = { Dashboard: 'Overview' };
+
+/** Each stack's first screen is reported by its drawer item ("Orders"). */
+const STACK_HOME_NAMES: Record<string, string> = Object.fromEntries(
+  (Object.keys(DRAWER_STACKS) as DrawerRoute[])
+    .filter(drawer => drawer !== 'Profile')
+    .map(drawer => [
+      DRAWER_STACKS[drawer][0],
+      drawer === 'Overview' ? 'Dashboard' : drawer,
+    ]),
+);
+
+/**
+ * Turns a drawer item ("Machines") or a nested screen ("OrderDetails") into
+ * the drawer route plus nested screen React Navigation needs.
+ */
+function resolveRoute(name: string, params?: object) {
+  const route = ROUTE_ALIASES[name] ?? name;
+  if (route in DRAWER_STACKS) {
+    const drawer = route as DrawerRoute;
+    return { drawer, screen: DRAWER_STACKS[drawer][0], params };
+  }
+  const drawer = (Object.keys(DRAWER_STACKS) as DrawerRoute[]).find(d =>
+    DRAWER_STACKS[d].includes(route),
+  );
+  if (!drawer) {
+    throw new Error(`Unknown admin route "${name}"`);
+  }
+  return { drawer, screen: route, params };
+}
+
 export type AdminHarness = {
   renderer: Renderer;
   root: ReactTestInstance;
   store: ReturnType<typeof createStore>;
-  navigate: <R extends AdminRouteName>(
-    route: R,
-    params?: AdminStackParamList[R],
-  ) => Promise<void>;
+  /** A drawer item ("Machines") or a nested screen ("OrderDetails"). */
+  navigate: (route: string, params?: object) => Promise<void>;
+  /** The focused screen; a stack's first screen is named by its drawer item. */
   currentRoute: () => string | undefined;
 };
 
-/** Renders the whole admin module (shell + stack) with a fresh store. */
+/** Renders the whole admin module (drawer + feature stacks) with a fresh store. */
 export async function renderAdmin(
-  initialRouteName: AdminRouteName = 'Dashboard',
+  initialRoute: string = 'Overview',
 ): Promise<AdminHarness> {
   resetMockApis();
   const store = createStore();
-  const navRef = createNavigationContainerRef<AdminStackParamList>();
+  const navRef = createNavigationContainerRef<AdminDrawerParamList>();
+  const initial = resolveRoute(initialRoute);
   const renderer = await render(
     <Provider store={store}>
       <SafeAreaProvider initialMetrics={SAFE_AREA}>
         <N1ThemeProvider>
           <NavigationContainer ref={navRef}>
-            <AdminNavigator initialRouteName={initialRouteName} />
+            <AdminDashboardNavigation initialRouteName={initial.drawer} />
           </NavigationContainer>
         </N1ThemeProvider>
       </SafeAreaProvider>
     </Provider>,
   );
+  const navigate = async (route: string, params?: object) => {
+    const target = resolveRoute(route, params);
+    await ReactTestRenderer.act(() => {
+      // Nested params are typed per drawer item; the harness takes any route.
+      (navRef.navigate as (r: string, p: object) => void)(target.drawer, {
+        screen: target.screen,
+        params: target.params,
+      });
+    });
+    await flush();
+  };
+  if (initial.screen !== DRAWER_STACKS[initial.drawer][0]) {
+    await navigate(initialRoute);
+  }
   return {
     renderer,
     root: renderer.root,
     store,
-    navigate: async (route, params) => {
-      await ReactTestRenderer.act(() => {
-        // Params are optional for most admin routes.
-        (navRef.navigate as (r: string, p?: object) => void)(
-          route,
-          params as object | undefined,
-        );
-      });
-      await flush();
+    navigate,
+    currentRoute: () => {
+      const name = navRef.getCurrentRoute()?.name;
+      return name ? STACK_HOME_NAMES[name] ?? name : name;
     },
-    currentRoute: () => navRef.getCurrentRoute()?.name,
   };
 }
 

@@ -1,3 +1,10 @@
+import type { DrawerScreenProps } from '@react-navigation/drawer';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from '@react-navigation/native-stack';
+import type { AdminDrawerParamList } from '../dashboard/types';
 import type {
   ActivityEntry,
   Attachment,
@@ -51,3 +58,20 @@ export type OrderFilters = {
   priority: OrderPriority | 'all';
   status: OrderStatus | 'all';
 };
+
+// Stack nested inside the admin drawer's "Orders" item.
+export type OrdersStackParamList = {
+  OrdersList: undefined;
+  OrderDetails: { orderId: string };
+  /** Without an id the form creates a new order. */
+  OrderForm: { orderId?: string } | undefined;
+};
+
+export type OrdersNavigation = NativeStackNavigationProp<OrdersStackParamList>;
+
+/** Screen props that can also reach the other admin drawer items. */
+export type OrdersScreenProps<R extends keyof OrdersStackParamList> =
+  CompositeScreenProps<
+    NativeStackScreenProps<OrdersStackParamList, R>,
+    DrawerScreenProps<AdminDrawerParamList>
+  >;

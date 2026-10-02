@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import {
   createN1Styles,
@@ -44,7 +45,7 @@ const makeStyles = createN1Styles(t => ({
   lg: { width: t.avatarSize.lg, height: t.avatarSize.lg },
 }));
 
-export function N1Avatar({
+export const N1Avatar = React.memo(function N1AvatarComponent({
   name = '',
   label,
   size = 'md',
@@ -79,4 +80,5 @@ export function N1Avatar({
       </N1Text>
     </View>
   );
-}
+});
+N1Avatar.displayName = 'N1Avatar';

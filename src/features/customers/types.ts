@@ -1,3 +1,7 @@
+import type {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from '@react-navigation/native-stack';
 import type { ActivityEntry, ISODateString } from '../../shared/types';
 
 export type CustomerType = 'business' | 'individual';
@@ -49,3 +53,15 @@ export type CustomerShare = {
   outstandingBalance: number;
   color: string;
 };
+
+// Stack nested inside the admin drawer's "Customers" item.
+export type CustomersStackParamList = {
+  CustomersList: undefined;
+  CustomerDetails: { customerId: string };
+};
+
+export type CustomersNavigation =
+  NativeStackNavigationProp<CustomersStackParamList>;
+
+export type CustomersScreenProps<R extends keyof CustomersStackParamList> =
+  NativeStackScreenProps<CustomersStackParamList, R>;

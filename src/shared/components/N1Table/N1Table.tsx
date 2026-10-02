@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ReactNode } from 'react';
 import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useN1Breakpoint } from '../../hooks/useN1Breakpoint';
@@ -95,7 +96,7 @@ function cellValue<T>(column: N1TableColumn<T>, row: T): ReactNode {
 }
 
 /** Data table on wide screens; stacked cards on phones. */
-export function N1Table<T>({
+export const N1Table = React.memo(function N1TableComponent<T>({
   columns,
   data,
   keyExtractor,
@@ -209,4 +210,4 @@ export function N1Table<T>({
       {footer && <View style={styles.footer}>{footer}</View>}
     </View>
   );
-}
+}) as <T>(props: N1TableProps<T>) => React.ReactNode;

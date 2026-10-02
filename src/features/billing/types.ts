@@ -1,3 +1,10 @@
+import type { DrawerScreenProps } from '@react-navigation/drawer';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from '@react-navigation/native-stack';
+import type { AdminDrawerParamList } from '../dashboard/types';
 import type { ISODateString } from '../../shared/types';
 
 /** One process operation, charged per minute per piece. */
@@ -61,3 +68,23 @@ export type Totals = {
 };
 
 export type BillingTab = 'invoices' | 'quotes';
+
+// Stack nested inside the admin drawer's "Billing" item.
+export type BillingStackParamList = {
+  BillingHome: { tab?: BillingTab } | undefined;
+  InvoiceDetails: { invoiceId: string };
+  InvoiceEdit: { invoiceId: string };
+  QuoteDetails: { quoteId: string };
+  /** Without an id the form creates a new quote. */
+  QuoteForm: { quoteId?: string } | undefined;
+};
+
+export type BillingNavigation =
+  NativeStackNavigationProp<BillingStackParamList>;
+
+/** Screen props that can also reach the other admin drawer items. */
+export type BillingScreenProps<R extends keyof BillingStackParamList> =
+  CompositeScreenProps<
+    NativeStackScreenProps<BillingStackParamList, R>,
+    DrawerScreenProps<AdminDrawerParamList>
+  >;

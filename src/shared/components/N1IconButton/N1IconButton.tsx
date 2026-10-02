@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   Pressable,
   type PressableProps,
@@ -17,7 +18,10 @@ export type N1IconButtonVariant =
   | 'soft'
   | 'primary'
   | 'danger'
-  | 'overlay';
+  | 'overlay'
+  | 'ghost'
+  | 'ghostDanger'
+  | 'inverse';
 
 export type N1IconButtonProps = Omit<PressableProps, 'style' | 'children'> & {
   icon: N1IconName;
@@ -29,6 +33,9 @@ export type N1IconButtonProps = Omit<PressableProps, 'style' | 'children'> & {
    * primary: black circle
    * danger: outlined circle with a red icon (delete)
    * overlay: dark circle with a white icon, for the camera screen
+   * ghost: icon only, no circle (row actions such as edit)
+   * ghostDanger: red icon only, no circle (row delete)
+   * inverse: outlined circle with a light icon, for dark surfaces (sidebar)
    */
   variant?: N1IconButtonVariant;
   size?: N1Size;
@@ -41,6 +48,9 @@ const iconColor: Record<N1IconButtonVariant, N1IconColor> = {
   primary: 'onPrimary',
   danger: 'danger',
   overlay: 'textInverse',
+  ghost: 'textPrimary',
+  ghostDanger: 'danger',
+  inverse: 'textInverse',
 };
 
 const makeStyles = createN1Styles(t => ({
@@ -62,11 +72,17 @@ const makeStyles = createN1Styles(t => ({
   primary: { backgroundColor: t.colors.primary },
   danger: { backgroundColor: t.colors.surface, borderColor: t.colors.border },
   overlay: { backgroundColor: t.colors.scannerControl },
+  ghost: { backgroundColor: 'transparent' },
+  ghostDanger: { backgroundColor: 'transparent' },
+  inverse: {
+    backgroundColor: 'transparent',
+    borderColor: t.colors.surfaceInverseActive,
+  },
   pressed: { opacity: t.opacity.pressed },
   disabled: { opacity: t.opacity.disabled },
 }));
 
-export function N1IconButton({
+export const N1IconButton = React.memo(function N1IconButtonComponent({
   icon,
   variant = 'secondary',
   size = 'md',
@@ -102,4 +118,5 @@ export function N1IconButton({
       />
     </Pressable>
   );
-}
+});
+N1IconButton.displayName = 'N1IconButton';

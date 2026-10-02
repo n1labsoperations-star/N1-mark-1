@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { N1Text, type N1TextProps } from '../N1Text/N1Text';
 
 const SECOND_MS = 1000;
@@ -26,7 +26,7 @@ export type N1TimerProps = Omit<N1TextProps, 'children'> & {
 };
 
 /** Live elapsed time, HH:MM:SS. */
-export function N1Timer({
+export const N1Timer = React.memo(function N1TimerComponent({
   startedAt,
   running = true,
   offsetSeconds = 0,
@@ -51,4 +51,5 @@ export function N1Timer({
       {formatElapsed(elapsed)}
     </N1Text>
   );
-}
+});
+N1Timer.displayName = 'N1Timer';

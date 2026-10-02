@@ -13,7 +13,7 @@ import {
   useN1Styles,
   type N1DropDownOption,
 } from '../../../shared/components';
-import type { AdminScreenProps } from '../../../app/navigation/admin/types';
+import type { OrdersScreenProps } from '../types';
 import { pickDocument } from '../../../services/files/pickDocument';
 import {
   AdminScreen,
@@ -48,7 +48,7 @@ type Step = 1 | 2;
 export function OrderFormScreen({
   route,
   navigation,
-}: AdminScreenProps<'OrderForm'>) {
+}: OrdersScreenProps<'OrderForm'>) {
   const styles = useN1Styles(makeStyles);
   const { isCompact } = useN1Breakpoint();
   const orderId = route.params?.orderId;

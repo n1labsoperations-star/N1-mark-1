@@ -13,7 +13,7 @@ import {
   useN1Breakpoint,
   useN1Styles,
 } from '../../../shared/components';
-import type { AdminScreenProps } from '../../../app/navigation/admin/types';
+import type { CustomersScreenProps } from '../types';
 import {
   ActivityCard,
   AdminScreen,
@@ -52,7 +52,7 @@ const orDash = (value: string) => value || COMMON_STRINGS.dash;
 export function CustomerDetailsScreen({
   route,
   navigation,
-}: AdminScreenProps<'CustomerDetails'>) {
+}: CustomersScreenProps<'CustomerDetails'>) {
   const styles = useN1Styles(makeStyles);
   const { isCompact } = useN1Breakpoint();
   const organizationName = useOrganizationName();

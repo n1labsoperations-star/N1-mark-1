@@ -80,7 +80,7 @@ test('details show the full work order', async () => {
   expect(h.currentRoute()).toBe('CustomerDetails');
 });
 
-test('route card opens Job Cards; print explains it is not wired yet', async () => {
+test('route card opens the job card; print explains it is not wired yet', async () => {
   const alert = jest.fn();
   (globalThis as { alert?: unknown }).alert = alert;
   const os = Platform.OS;
@@ -98,8 +98,10 @@ test('route card opens Job Cards; print explains it is not wired yet', async () 
   expect(alert).toHaveBeenCalledTimes(2);
   Platform.OS = os;
   await press(byTestId(screen, 'view-route-card'));
-  expect(h.currentRoute()).toBe('JobCards');
-  expect(allText(h.root)).toContain('Job Cards are on the way');
+  expect(h.currentRoute()).toBe('JobCardDetails');
+  expect(allText(byTestId(h.root, 'job-card-details-screen'))).toContain(
+    'WO #1042 · Acme Metalworks',
+  );
 });
 
 test('creates an order over two steps', async () => {

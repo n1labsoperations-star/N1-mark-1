@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ReactNode } from 'react';
 import {
   Pressable,
@@ -93,7 +94,7 @@ const makeStyles = createN1Styles(t => {
 });
 
 /** QR viewfinder: corner brackets, scan line and instructions on black. */
-export function N1ScanFrame({
+export const N1ScanFrame = React.memo(function N1ScanFrameComponent({
   children,
   title = 'Align the QR code within the frame',
   message,
@@ -143,4 +144,5 @@ export function N1ScanFrame({
       )}
     </View>
   );
-}
+});
+N1ScanFrame.displayName = 'N1ScanFrame';

@@ -1,4 +1,4 @@
-import { isValidElement, type ReactNode } from 'react';
+import React, { isValidElement, type ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
 import { N1Text } from '../N1Text/N1Text';
@@ -44,7 +44,7 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** Label on the left, value on the right (Employee ID, Material, Quantity…). */
-export function N1KeyValueList({
+export const N1KeyValueList = React.memo(function N1KeyValueListComponent({
   items,
   title,
   dividers = false,
@@ -79,4 +79,5 @@ export function N1KeyValueList({
       ))}
     </View>
   );
-}
+});
+N1KeyValueList.displayName = 'N1KeyValueList';

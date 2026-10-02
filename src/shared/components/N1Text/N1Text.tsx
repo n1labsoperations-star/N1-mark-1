@@ -1,3 +1,4 @@
+import React from 'react';
 import { Text, type TextProps } from 'react-native';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
 import type { N1Tone } from '../../../theme/themes';
@@ -59,7 +60,7 @@ const makeStyles = createN1Styles(t => ({
   right: { textAlign: 'right' },
 }));
 
-export function N1Text({
+export const N1Text = React.memo(function N1TextComponent({
   variant = 'body',
   weight,
   color,
@@ -82,4 +83,5 @@ export function N1Text({
       {...rest}
     />
   );
-}
+});
+N1Text.displayName = 'N1Text';

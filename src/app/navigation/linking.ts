@@ -3,50 +3,86 @@ import type { RootStackParamList } from './types';
 
 // Maps every screen to a URL path. On web this drives the browser address bar
 // (and refresh / back / forward); on native it handles n1mark1:// deep links.
-// Main, Home and Feed only group screens, so they add no path segment.
 export const linking: LinkingOptions<RootStackParamList> = {
   prefixes: ['n1mark1://'],
   config: {
     screens: {
-      Main: {
+      // Admin modules: /dashboard, /dashboard/orders/1042, /dashboard/job-cards/1042/flow…
+      Dashboard: {
+        path: 'dashboard',
         screens: {
-          Home: {
+          Admin: {
+            path: '',
             screens: {
-              Feed: {
+              Overview: {
+                path: '',
+                screens: { DashboardHome: '' },
+              },
+              Users: {
+                path: 'users',
                 screens: {
-                  Latest: 'feed/latest',
-                  Popular: 'feed/popular',
+                  UsersList: '',
+                  UserDetails: ':userId',
                 },
               },
-              Search: 'search',
-              Profile: 'profile',
+              Customers: {
+                path: 'customers',
+                screens: {
+                  CustomersList: '',
+                  CustomerDetails: ':customerId',
+                },
+              },
+              Orders: {
+                path: 'orders',
+                screens: {
+                  OrdersList: '',
+                  // Optional id: blank creates a new order.
+                  OrderForm: 'form/:orderId?',
+                  OrderDetails: ':orderId',
+                },
+              },
+              JobCards: {
+                path: 'job-cards',
+                screens: {
+                  JobCardsList: '',
+                  JobCardDetails: ':jobCardId',
+                  JobCardFlow: ':jobCardId/flow',
+                },
+              },
+              Machines: 'machines',
+              Profile: {
+                path: 'profile',
+                screens: { MyProfile: '' },
+              },
+              Billing: {
+                path: 'billing',
+                screens: {
+                  // ?tab=quotes opens the Quotes tab.
+                  BillingHome: '',
+                  InvoiceDetails: 'invoices/:invoiceId',
+                  InvoiceEdit: 'invoices/:invoiceId/edit',
+                  // Optional id: blank creates a new quote.
+                  QuoteForm: 'quotes/form/:quoteId?',
+                  QuoteDetails: 'quotes/:quoteId',
+                },
+              },
             },
           },
-          Settings: 'settings',
+          User: 'user',
         },
       },
-      Details: 'details/:id',
-      Components: 'components',
-      Admin: {
-        path: 'admin',
+      Auth: {
         screens: {
-          Dashboard: '',
-          Users: 'users',
-          UserDetails: 'users/:userId',
-          MyProfile: 'profile',
-          Customers: 'customers',
-          CustomerDetails: 'customers/:customerId',
-          Orders: 'orders',
-          OrderDetails: 'orders/:orderId',
-          // Optional id: blank creates a new order.
-          OrderForm: 'order-form/:orderId?',
-          JobCards: 'job-cards',
-          Machines: 'machines',
-          Billing: 'billing',
-          InvoiceDetails: 'invoices/:invoiceId',
-          InvoiceEdit: 'invoices/:invoiceId/edit',
-          QuoteDetails: 'quotes/:quoteId',
-          QuoteForm: 'quote-form/:quoteId?',
+          Login: 'login',
+          CreateOrganization: 'create-organization',
+          ForgotPasswordFlow: {
+            path: 'forgot-password',
+            screens: {
+              ForgotPassword: '',
+              VerifyCode: 'verify',
+              ResetPassword: 'reset',
+            },
+          },
         },
       },
     },

@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -77,7 +78,7 @@ const makeStyles = createN1Styles(t => ({
  * Dialog for forms (Create user, Add customer, Add machine…).
  * Centred card on wide screens, full-screen page on phones.
  */
-export function N1Modal({
+export const N1Modal = React.memo(function N1ModalComponent({
   visible,
   onClose,
   title,
@@ -171,4 +172,5 @@ export function N1Modal({
       </Pressable>
     </Modal>
   );
-}
+});
+N1Modal.displayName = 'N1Modal';

@@ -1,13 +1,12 @@
+import React from 'react';
 import {
   DefaultTheme,
   NavigationContainer,
   type Theme,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import DrawerNavigator from './DrawerNavigator';
-import { DetailsScreen } from '../../features/feed';
-import { N1GalleryScreen } from '../../features/gallery';
-import { AdminNavigator } from './admin';
+import { AuthNavigation } from '../../features/auth';
+import MainStackNavigation from './MainStackNavigation';
 import type { RootStackParamList } from './types';
 import { linking } from './linking';
 import { fontFamily } from '../../theme/fonts';
@@ -30,19 +29,13 @@ function RootNavigator() {
     <NavigationContainer theme={theme} linking={linking}>
       <Stack.Navigator>
         <Stack.Screen
-          name="Main"
-          component={DrawerNavigator}
+          name="Auth"
+          component={AuthNavigation}
           options={{ headerShown: false }}
         />
-        <Stack.Screen name="Details" component={DetailsScreen} />
         <Stack.Screen
-          name="Components"
-          component={N1GalleryScreen}
-          options={{ title: 'N1 Components' }}
-        />
-        <Stack.Screen
-          name="Admin"
-          component={AdminNavigator}
+          name="Dashboard"
+          component={MainStackNavigation}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>
@@ -50,4 +43,4 @@ function RootNavigator() {
   );
 }
 
-export default RootNavigator;
+export default React.memo(RootNavigator);

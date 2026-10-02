@@ -12,7 +12,7 @@ import {
   useN1Breakpoint,
   useN1Styles,
 } from '../../../shared/components';
-import type { AdminScreenProps } from '../../../app/navigation/admin/types';
+import type { OrdersScreenProps } from '../types';
 import {
   ActivityCard,
   AdminScreen,
@@ -55,7 +55,7 @@ const makeStyles = createN1Styles(t => ({
 export function OrderDetailsScreen({
   route,
   navigation,
-}: AdminScreenProps<'OrderDetails'>) {
+}: OrdersScreenProps<'OrderDetails'>) {
   const styles = useN1Styles(makeStyles);
   const { isCompact } = useN1Breakpoint();
   const { order, status, error, reload } = useOrder(route.params.orderId);
@@ -67,12 +67,23 @@ export function OrderDetailsScreen({
   );
   const openCustomer = useCallback(() => {
     if (order?.customerId) {
-      navigation.navigate('CustomerDetails', { customerId: order.customerId });
+      navigation.navigate('Customers', {
+        screen: 'CustomerDetails',
+        params: { customerId: order.customerId },
+        // Keep the list underneath so Back returns to it.
+        initial: false,
+      });
     }
   }, [navigation, order?.customerId]);
   const openRouteCard = useCallback(
-    () => navigation.navigate('JobCards'),
-    [navigation],
+    () =>
+      navigation.navigate('JobCards', {
+        screen: 'JobCardDetails',
+        params: { jobCardId: route.params.orderId },
+        // Keep the list underneath so Back returns to it.
+        initial: false,
+      }),
+    [navigation, route.params.orderId],
   );
   const printDrawing = useCallback(() => notifyUnavailable(D.printDrawing), []);
   const download = useCallback(() => notifyUnavailable(D.downloadAction), []);

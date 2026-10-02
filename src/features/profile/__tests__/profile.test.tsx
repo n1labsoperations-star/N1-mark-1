@@ -1,14 +1,20 @@
+import { Provider } from 'react-redux';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { runSaga } from 'redux-saga';
 import type { UnknownAction } from '@reduxjs/toolkit';
 import {
   allText,
   byLabel,
   byTestId,
-  byText,
   press,
+  render,
   renderAdmin,
+  resetMockApis,
   typeInto,
 } from '../../../shared/testing/testUtils';
+import RootNavigator from '../../../app/navigation/RootNavigator';
+import { createStore } from '../../../app/store';
+import { N1ThemeProvider } from '../../../shared/components';
 import { profileApi } from '../api/profileApi';
 import {
   changePassword,
@@ -16,6 +22,11 @@ import {
   updateProfile,
 } from '../store/profileSaga';
 import { profileActions } from '../store/profileSlice';
+
+const SAFE_AREA = {
+  frame: { x: 0, y: 0, width: 1280, height: 900 },
+  insets: { top: 0, left: 0, right: 0, bottom: 0 },
+};
 
 let mockWidth = 1280;
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
@@ -80,18 +91,36 @@ test('change password checks the rules before saving', async () => {
   );
 });
 
-test('log out asks first, then shows the signed-out placeholder', async () => {
-  const h = await renderAdmin('MyProfile');
-  await press(byTestId(h.root, 'logout'));
-  expect(allText(h.root)).toContain('Log out?');
-  const [, confirm] = h.root.findAll(
+test('log out asks first, then returns to the login screen', async () => {
+  resetMockApis();
+  const store = createStore();
+  const app = await render(
+    <Provider store={store}>
+      <SafeAreaProvider initialMetrics={SAFE_AREA}>
+        <N1ThemeProvider>
+          <RootNavigator />
+        </N1ThemeProvider>
+      </SafeAreaProvider>
+    </Provider>,
+  );
+  const root = app.root;
+  await press(byLabel(root, 'Log in'));
+  await press(byLabel(root, 'Open my profile'));
+  await press(byTestId(root, 'logout'));
+  expect(allText(root)).toContain('Log out?');
+  const [, confirm] = root.findAll(
     n => typeof n.type === 'string' && n.props.accessibilityLabel === 'Log out',
   );
   await press(confirm);
-  expect(h.store.getState().profile.signedOut).toBe(true);
-  expect(allText(h.root)).toContain('You’re signed out');
-  await press(byText(h.root, 'Sign in again'));
-  expect(allText(h.root)).toContain('Koushik Dasarathan');
+  expect(store.getState().profile.signedOut).toBe(true);
+  expect(allText(root)).toContain('Welcome to N1');
+  expect(allText(root)).not.toContain('Koushik Dasarathan');
+
+  // Signing in again reloads the session.
+  await press(byLabel(root, 'Log in'));
+  await press(byLabel(root, 'Open my profile'));
+  expect(store.getState().profile.status).toBe('succeeded');
+  expect(allText(root)).toContain('Signed in as the account owner');
 });
 
 test('phone layout: logout icon in the header, contact card', async () => {
@@ -142,4 +171,23 @@ test('profile sagas report failures', async () => {
       }),
     ),
   ).toEqual([profileActions.changePasswordFailure('wrong password')]);
+});
+
+test('the user in the top bar opens My profile; back returns', async () => {
+  const h = await renderAdmin('Billing');
+  await press(byLabel(h.root, 'Open my profile'));
+  expect(h.currentRoute()).toBe('MyProfile');
+  expect(allText(h.root)).toContain('Signed in as the account owner');
+  await press(byLabel(h.root, 'Back'));
+  expect(h.currentRoute()).toBe('Billing');
+});
+
+test('phone: the avatar and the menu user card open My profile', async () => {
+  mockWidth = 390;
+  const h = await renderAdmin('Orders');
+  await press(byTestId(h.root, 'open-profile'));
+  expect(h.currentRoute()).toBe('MyProfile');
+  await h.navigate('Orders');
+  await press(byTestId(h.root, 'sidebar-open-profile'));
+  expect(h.currentRoute()).toBe('MyProfile');
 });

@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ReactNode } from 'react';
 import { Modal, View } from 'react-native';
 import { N1Icon, type N1IconName } from '../N1Icon/N1Icon';
@@ -61,7 +62,7 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** "Are you sure?" dialog (e.g. Delete customer). */
-export function N1ConfirmDialog({
+export const N1ConfirmDialog = React.memo(function N1ConfirmDialogComponent({
   visible,
   title,
   message,
@@ -124,4 +125,5 @@ export function N1ConfirmDialog({
       </View>
     </Modal>
   );
-}
+});
+N1ConfirmDialog.displayName = 'N1ConfirmDialog';

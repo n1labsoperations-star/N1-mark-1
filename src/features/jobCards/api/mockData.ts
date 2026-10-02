@@ -1,0 +1,337 @@
+import type { JobCard, JobOperation, OperationStatus } from '../types';
+import { statusFor } from '../utils';
+
+type Seed = Pick<
+  JobCard,
+  | 'id'
+  | 'customerId'
+  | 'customerName'
+  | 'partName'
+  | 'jobName'
+  | 'material'
+  | 'quantity'
+  | 'priority'
+  | 'dueDate'
+> &
+  Partial<Omit<JobCard, 'status'>>;
+
+const DAY = '2026-09-25';
+
+/** Steps before `running` are done, then one running step, then pending. */
+function route(
+  id: string,
+  steps: [name: string, machine: string, operator: string][],
+  doneCount: number,
+  current: OperationStatus = 'running',
+): JobOperation[] {
+  return steps.map(([name, machine, operator], i) => {
+    const status: OperationStatus =
+      i < doneCount ? 'completed' : i === doneCount ? current : 'pending';
+    const started = status !== 'pending';
+    return {
+      id: `${id}-op${i + 1}`,
+      name,
+      machine: started ? machine : '',
+      operator: started ? operator : '',
+      status,
+      startedAt: started ? `${DAY}T${pad(8 + i)}:30:00` : null,
+      completedAt: status === 'completed' ? `${DAY}T${pad(9 + i)}:15:00` : null,
+    };
+  });
+}
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
+const pendingOp = (id: string, name: string): JobOperation => ({
+  id,
+  name,
+  machine: '',
+  operator: '',
+  status: 'pending',
+  startedAt: null,
+  completedAt: null,
+});
+
+function card(seed: Seed): JobCard {
+  const operations = seed.operations ?? [];
+  return {
+    designFile: {
+      id: 'design',
+      name: 'drawing.pdf',
+      kind: 'Design file',
+      sizeBytes: 480 * 1024,
+    },
+    designApproval: 'approved',
+    materialSource: 'company',
+    materialQc: 'accepted',
+    qcHistory: [],
+    quotation: 'accepted',
+    billing: 'not_invoiced',
+    ...seed,
+    operations,
+    status: statusFor(operations),
+  };
+}
+
+export const MOCK_JOB_CARDS: JobCard[] = [
+  card({
+    id: '1042',
+    customerId: 'CUS-1',
+    customerName: 'Acme Metalworks',
+    partName: 'Bracket',
+    jobName: 'Job A',
+    material: 'MS Round Bar',
+    quantity: 200,
+    priority: 'high',
+    dueDate: '2026-10-02',
+    operations: [
+      {
+        id: '1042-op1',
+        name: 'Material QC',
+        machine: 'QC Bay 1',
+        operator: 'Suresh Babu',
+        status: 'completed',
+        startedAt: `${DAY}T09:10:00`,
+        completedAt: `${DAY}T09:45:00`,
+      },
+      {
+        id: '1042-op2',
+        name: 'Facing (Lathe)',
+        machine: 'Lathe-01',
+        operator: 'Ravi Kumar',
+        status: 'completed',
+        startedAt: `${DAY}T09:50:00`,
+        completedAt: `${DAY}T10:20:00`,
+      },
+      {
+        id: '1042-op3',
+        name: 'Turning (Lathe)',
+        machine: 'CNC-02',
+        operator: 'Arun Prakash',
+        status: 'running',
+        startedAt: `${DAY}T10:25:00`,
+        completedAt: null,
+      },
+      pendingOp('1042-op4', 'Deburring'),
+      pendingOp('1042-op5', 'Marking'),
+      pendingOp('1042-op6', 'Final check'),
+    ],
+    qcHistory: [
+      {
+        id: 'qc1',
+        stage: 'Material QC',
+        result: 'accepted',
+        remark: 'Voice + text note',
+        at: '2026-09-24',
+      },
+      {
+        id: 'qc2',
+        stage: 'Facing - QC',
+        result: 'passed',
+        remark: '',
+        at: '2026-09-25',
+      },
+    ],
+  }),
+  card({
+    id: '1040',
+    customerId: 'CUS-2',
+    customerName: 'Bright Steel Co.',
+    partName: 'Bracket',
+    jobName: 'Job B',
+    material: 'MS Round Bar',
+    quantity: 120,
+    priority: 'high',
+    dueDate: '2026-10-03',
+    operations: route(
+      '1040',
+      [
+        ['Material QC', 'QC Bay 1', 'Suresh Babu'],
+        ['CNC Turning', 'CNC-04', 'Arun Prakash'],
+        ['Deburring', 'Bench 2', 'Ravi Kumar'],
+        ['Marking', 'Bench 1', 'Ravi Kumar'],
+        ['QC Inspection', 'QC Bay 1', 'Suresh Babu'],
+      ],
+      4,
+    ),
+    qcHistory: [
+      {
+        id: 'qc1',
+        stage: 'Material QC',
+        result: 'accepted',
+        remark: '',
+        at: '2026-09-22',
+      },
+    ],
+  }),
+  card({
+    id: '1037',
+    customerId: 'CUS-1',
+    customerName: 'Acme Metalworks',
+    partName: 'Bracket',
+    jobName: 'Job F',
+    material: 'MS Round Bar',
+    quantity: 200,
+    priority: 'high',
+    dueDate: '2026-10-10',
+    operations: route(
+      '1037',
+      [
+        ['Material QC', 'QC Bay 2', 'Meena Lakshmi'],
+        ['Welding', 'Weld Station 1', 'Arun Prakash'],
+        ['QC Inspection', 'QC Bay 2', 'Meena Lakshmi'],
+        ['Packing', 'Pack Station 1', 'Suresh Babu'],
+      ],
+      1,
+    ),
+    quotation: 'pending',
+  }),
+  card({
+    id: '1033',
+    customerId: 'CUS-5',
+    customerName: 'Meridian Components',
+    partName: 'Shaft',
+    jobName: 'Job J',
+    material: 'EN8 Round Bar',
+    quantity: 35,
+    priority: 'high',
+    dueDate: '2026-10-18',
+    materialSource: 'customer',
+    operations: route(
+      '1033',
+      [
+        ['Material QC', 'QC Bay 2', 'Meena Lakshmi'],
+        ['CNC Turning', 'CNC-01', 'Divya Ramesh'],
+        ['Drilling', 'Drill-01', 'Karthik Iyer'],
+        ['QC Inspection', 'QC Bay 2', 'Meena Lakshmi'],
+      ],
+      3,
+    ),
+  }),
+  card({
+    id: '1039',
+    customerId: 'CUS-3',
+    customerName: 'Nova Fabrication',
+    partName: 'Flange',
+    jobName: 'Job C',
+    material: 'SS Plate',
+    quantity: 80,
+    priority: 'medium',
+    dueDate: '2026-10-05',
+    operations: route(
+      '1039',
+      [
+        ['Material QC', 'QC Bay 1', 'Suresh Babu'],
+        ['CNC Milling', 'CNC-02', 'Karthik Iyer'],
+        ['Drilling', 'Drill-01', 'Karthik Iyer'],
+        ['Deburring', 'Bench 2', 'Ravi Kumar'],
+        ['QC Inspection', 'QC Bay 1', 'Suresh Babu'],
+      ],
+      1,
+    ),
+  }),
+  card({
+    id: '1041',
+    customerId: 'CUS-4',
+    customerName: 'Silverline Industries',
+    partName: 'Housing',
+    jobName: 'Job D',
+    material: 'Aluminium Billet',
+    quantity: 50,
+    priority: 'medium',
+    dueDate: '2026-10-07',
+    operations: route(
+      '1041',
+      [
+        ['Material QC', 'QC Bay 1', 'Suresh Babu'],
+        ['CNC Milling', 'CNC-03', 'Karthik Iyer'],
+        ['Welding', 'Weld Station 2', 'Divya Ramesh'],
+        ['QC Inspection', 'QC Bay 1', 'Suresh Babu'],
+        ['Packing', 'Pack Station 2', 'Meena Lakshmi'],
+      ],
+      2,
+    ),
+  }),
+  card({
+    id: '1036',
+    customerId: 'CUS-2',
+    customerName: 'Bright Steel Co.',
+    partName: 'Coupling',
+    jobName: 'Job G',
+    material: 'Aluminium Billet',
+    quantity: 60,
+    priority: 'medium',
+    dueDate: '2026-10-12',
+    designApproval: 'pending',
+    materialQc: 'pending',
+    quotation: 'pending',
+  }),
+  card({
+    id: '1034',
+    customerId: 'CUS-4',
+    customerName: 'Silverline Industries',
+    partName: 'Housing',
+    jobName: 'Job I',
+    material: 'Aluminium Billet',
+    quantity: 55,
+    priority: 'medium',
+    dueDate: '2026-10-16',
+    operations: route(
+      '1034',
+      [
+        ['Material QC', 'QC Bay 1', 'Suresh Babu'],
+        ['CNC Milling', 'CNC-03', 'Karthik Iyer'],
+        ['Drilling', 'Drill-01', 'Karthik Iyer'],
+        ['Deburring', 'Bench 2', 'Ravi Kumar'],
+        ['QC Inspection', 'QC Bay 1', 'Suresh Babu'],
+      ],
+      3,
+      'paused',
+    ),
+  }),
+  card({
+    id: '1038',
+    customerId: 'CUS-5',
+    customerName: 'Meridian Components',
+    partName: 'Shaft',
+    jobName: 'Job E',
+    material: 'EN8 Round Bar',
+    quantity: 40,
+    priority: 'low',
+    dueDate: '2026-10-09',
+    operations: route(
+      '1038',
+      [
+        ['Material QC', 'QC Bay 2', 'Meena Lakshmi'],
+        ['CNC Turning', 'CNC-01', 'Divya Ramesh'],
+        ['Marking', 'Bench 1', 'Ravi Kumar'],
+        ['QC Inspection', 'QC Bay 2', 'Meena Lakshmi'],
+        ['Packing', 'Pack Station 1', 'Meena Lakshmi'],
+      ],
+      4,
+    ),
+    billing: 'invoiced',
+  }),
+  card({
+    id: '1035',
+    customerId: 'CUS-3',
+    customerName: 'Nova Fabrication',
+    partName: 'Flange',
+    jobName: 'Job H',
+    material: 'SS Plate',
+    quantity: 90,
+    priority: 'low',
+    dueDate: '2026-10-14',
+    operations: route(
+      '1035',
+      [
+        ['Material QC', 'QC Bay 1', 'Suresh Babu'],
+        ['CNC Milling', 'CNC-02', 'Karthik Iyer'],
+        ['QC Inspection', 'QC Bay 1', 'Suresh Babu'],
+        ['Packing', 'Pack Station 2', 'Suresh Babu'],
+      ],
+      4,
+    ),
+    billing: 'invoiced',
+  }),
+];

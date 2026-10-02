@@ -14,7 +14,6 @@ import {
   useN1Breakpoint,
   useN1Styles,
 } from '../../../shared/components';
-import type { AdminScreenProps } from '../../../app/navigation/admin/types';
 import {
   ActivityCard,
   AdminScreen,
@@ -25,11 +24,12 @@ import {
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
 import { useToggle } from '../../../shared/hooks';
-import { formatDate } from '../../../shared/utils';
+import { formatDate, rootNavigation } from '../../../shared/utils';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { EditProfileModal } from '../components/EditProfileModal';
 import { PROFILE_STRINGS as S } from '../constants';
 import { useSession } from '../hooks/useSession';
+import type { ProfileScreenProps } from '../types';
 
 const makeStyles = createN1Styles(t => ({
   topRow: {
@@ -42,7 +42,9 @@ const makeStyles = createN1Styles(t => ({
   grow: { flex: 1 },
 }));
 
-export function MyProfileScreen({ navigation }: AdminScreenProps<'MyProfile'>) {
+export function MyProfileScreen({
+  navigation,
+}: ProfileScreenProps<'MyProfile'>) {
   const styles = useN1Styles(makeStyles);
   const { isCompact } = useN1Breakpoint();
   const { profile, organization, status, error, reload, logout } = useSession();
@@ -53,8 +55,14 @@ export function MyProfileScreen({ navigation }: AdminScreenProps<'MyProfile'>) {
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
   const confirmLogout = useCallback(() => {
     closeLogout();
+    // Leave the admin area: the login screen becomes the whole history, so
+    // Back can't return to the dashboard.
+    rootNavigation(navigation).reset({
+      index: 0,
+      routes: [{ name: 'Auth', params: { screen: 'Login' } }],
+    });
     logout();
-  }, [closeLogout, logout]);
+  }, [closeLogout, logout, navigation]);
 
   const orgLine = organization
     ? `${organization.name} · ${organization.code}`

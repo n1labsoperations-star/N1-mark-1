@@ -1,4 +1,4 @@
-import { Children, type ReactNode } from 'react';
+import React, { Children, type ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
@@ -29,7 +29,11 @@ const makeStyles = createN1Styles(t => ({
  * (Save changes, Pass / Fail, Start / Stop, Confirm & Start).
  * Buttons inside should use `fullWidth`.
  */
-export function N1BottomBar({ children, style, testID }: N1BottomBarProps) {
+export const N1BottomBar = React.memo(function N1BottomBarComponent({
+  children,
+  style,
+  testID,
+}: N1BottomBarProps) {
   const styles = useN1Styles(makeStyles);
   return (
     <SafeAreaView
@@ -46,4 +50,5 @@ export function N1BottomBar({ children, style, testID }: N1BottomBarProps) {
       </View>
     </SafeAreaView>
   );
-}
+});
+N1BottomBar.displayName = 'N1BottomBar';

@@ -11,7 +11,7 @@ import {
   useN1Breakpoint,
   type N1TableColumn,
 } from '../../../shared/components';
-import type { AdminNavigation } from '../../../app/navigation/admin/types';
+import type { OrdersNavigation } from '../types';
 import {
   AdminScreen,
   AsyncContent,
@@ -83,7 +83,7 @@ const COLUMNS: N1TableColumn<WorkOrder>[] = [
 const renderCompactItem = (o: WorkOrder) => <OrderCard order={o} />;
 
 export function OrdersListScreen() {
-  const navigation = useNavigation<AdminNavigation>();
+  const navigation = useNavigation<OrdersNavigation>();
   const { isCompact } = useN1Breakpoint();
   const { items, status, error, reload } = useOrders();
   const stats = useOrderStats();
