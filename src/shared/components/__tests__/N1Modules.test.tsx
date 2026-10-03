@@ -695,7 +695,8 @@ describe('N1Table', () => {
         emptyText="No customers yet"
       />,
     );
-    expect(allText(r.root)).toBe('No customers yet');
+    // Wide screens keep the column headings above the empty message.
+    expect(allText(r.root)).toBe('Customer|Amount|Status|No customers yet');
   });
 });
 

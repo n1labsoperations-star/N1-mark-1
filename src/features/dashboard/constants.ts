@@ -155,6 +155,9 @@ export const DASHBOARD_STRINGS = {
     title: 'Priority jobs (by due date)',
     viewAll: (n: number) => `View all (${n})`,
     open: (title: string) => `Open ${title}`,
+    /** "RC-2210 (Acme Metalworks)" */
+    heading: (routeCard: string, customer: string) =>
+      customer ? `${routeCard} (${customer})` : routeCard,
     progress: 'Progress',
     noProcess: 'No process yet',
     unassigned: 'Unassigned',

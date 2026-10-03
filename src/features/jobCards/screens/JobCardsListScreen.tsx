@@ -11,11 +11,12 @@ import {
   N1Pagination,
   N1Table,
   N1Text,
+  FilterMenu,
   StatGrid,
-  ToolbarFilter,
   createN1Styles,
   useN1Breakpoint,
   useN1Styles,
+  type FilterValues,
   type N1TableColumn,
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
@@ -30,14 +31,14 @@ import { JobCardCard } from '../components/JobCardCard';
 import { JobProgress } from '../components/JobProgress';
 import { INITIAL_JOB_CARD_FILTERS, JOB_CARD_STRINGS as S } from '../constants';
 import { useJobCardStats, useJobCards } from '../hooks/useJobCards';
-import type { JobCard, JobCardsNavigation } from '../types';
+import type { JobCard, JobCardFilters, JobCardsNavigation } from '../types';
 import {
   currentOperation,
+  distinctOptions,
   jobCardSearchText,
   jobProgress,
   jobTitle,
   matchesJobCardFilters,
-  optionsFrom,
 } from '../utils';
 
 const makeStyles = createN1Styles(t => ({
@@ -67,21 +68,45 @@ export function JobCardsListScreen() {
   );
   const pager = usePagination(filtered);
 
-  const operationOptions = useMemo(
-    () =>
-      optionsFrom(
-        items.map(c => currentOperation(c)?.name ?? ''),
-        S.allOperations,
-      ),
+  const filterGroups = useMemo(
+    () => [
+      {
+        key: 'operation',
+        label: S.operationFilter,
+        options: distinctOptions(
+          items.map(c => currentOperation(c)?.name ?? ''),
+        ),
+      },
+      {
+        key: 'operator',
+        label: S.operatorFilter,
+        options: distinctOptions(
+          items.map(c => currentOperation(c)?.operator ?? ''),
+        ),
+      },
+      {
+        key: 'machine',
+        label: S.machineFilter,
+        options: distinctOptions(
+          items.map(c => currentOperation(c)?.machine ?? ''),
+        ),
+      },
+    ],
     [items],
   );
-  const operatorOptions = useMemo(
-    () =>
-      optionsFrom(
-        items.map(c => currentOperation(c)?.operator ?? ''),
-        S.allOperators,
-      ),
-    [items],
+  const applyFilters = useCallback(
+    (next: FilterValues) => {
+      setFilter('operation', [
+        ...(next.operation ?? []),
+      ] as JobCardFilters['operation']);
+      setFilter('operator', [
+        ...(next.operator ?? []),
+      ] as JobCardFilters['operator']);
+      setFilter('machine', [
+        ...(next.machine ?? []),
+      ] as JobCardFilters['machine']);
+    },
+    [setFilter],
   );
 
   const openDetails = useCallback(
@@ -183,47 +208,51 @@ export function JobCardsListScreen() {
     [stats],
   );
 
-  return (
-    <AdminScreen testID="job-cards-screen">
-      <N1PageHeader
-        title={S.title}
-        subtitle={isCompact ? undefined : S.subtitle}
+  const firstLoad =
+    (status === 'idle' || status === 'loading') && items.length === 0;
+
+  const toolbar = (
+    <ListToolbar
+      align="end"
+      filled
+      query={query}
+      onQueryChange={setQuery}
+      searchPlaceholder={S.search}
+    >
+      <FilterMenu
+        groups={filterGroups}
+        value={filters}
+        onApply={applyFilters}
+        testID="job-cards-filter"
       />
+    </ListToolbar>
+  );
+
+  return (
+    <AdminScreen testID="job-cards-screen" fixed>
+      {/* Wide screens: the title lives in the table's toolbar. */}
+      {isCompact && <N1PageHeader title={S.title} />}
       {isCompact && (
         <StatGrid items={statItems} variant="muted" testID="job-card-stats" />
       )}
-      <ListToolbar
-        query={query}
-        onQueryChange={setQuery}
-        searchPlaceholder={S.search}
-      >
-        <ToolbarFilter
-          label={S.operationFilter}
-          options={operationOptions}
-          value={filters.operation}
-          onChange={v => setFilter('operation', v)}
-          testID="filter-operation"
-        />
-        <ToolbarFilter
-          label={S.operatorFilter}
-          options={operatorOptions}
-          value={filters.operator}
-          onChange={v => setFilter('operator', v)}
-          testID="filter-operator"
-        />
-      </ListToolbar>
+      {/* The table shows its own loading state; AsyncContent only takes over
+          when the first load fails. */}
       <AsyncContent
-        status={status}
+        status={firstLoad ? 'succeeded' : status}
         error={error}
         onRetry={reload}
         hasData={items.length > 0}
       >
         <N1Table
+          loading={firstLoad}
           columns={columns}
           data={pager.pageItems}
           keyExtractor={c => c.id}
           onRowPress={openDetails}
           renderCompactItem={renderCompactItem}
+          toolbarTitle={isCompact ? undefined : S.title}
+          toolbar={toolbar}
+          scrollable={!isCompact}
           emptyText={
             items.length ? COMMON_STRINGS.noResults : COMMON_STRINGS.empty
           }
@@ -239,6 +268,9 @@ export function JobCardsListScreen() {
                 hasNext={pager.hasNext}
                 onPrevious={pager.previous}
                 onNext={pager.next}
+                page={pager.page}
+                pageCount={pager.pageCount}
+                onPageChange={pager.goTo}
               />
             )
           }

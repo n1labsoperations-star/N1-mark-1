@@ -1,7 +1,8 @@
 import { useNavigation } from '@react-navigation/native';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 import { View } from 'react-native';
 import {
+  FilterMenu,
   N1Button,
   N1IconButton,
   N1Pagination,
@@ -10,6 +11,7 @@ import {
   createN1Styles,
   useN1Breakpoint,
   useN1Styles,
+  type FilterValues,
   type N1TableColumn,
 } from '../../../shared/components';
 import type { BillingNavigation } from '../types';
@@ -17,36 +19,40 @@ import {
   AsyncContent,
   ListToolbar,
   StatGrid,
-  ToolbarFilter,
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
-import {
-  matchesOption,
-  useListFilter,
-  usePagination,
-} from '../../../shared/hooks';
+import { useListFilter, usePagination } from '../../../shared/hooks';
 import {
   formatCompactCurrency,
   formatCurrency,
   notifyUnavailable,
 } from '../../../shared/utils';
-import { BILLING_STRINGS, INVOICE_FILTER_OPTIONS } from '../constants';
+import { BILLING_STRINGS, INVOICE_STATUS_OPTIONS } from '../constants';
 import { useInvoiceStats, useInvoices } from '../hooks/useBilling';
-import type { Invoice, InvoiceStatus } from '../types';
-import { invoiceSearchText, invoiceTotal } from '../utils';
+import type { Invoice, InvoiceFilters } from '../types';
+import {
+  INITIAL_INVOICE_FILTERS,
+  invoiceSearchText,
+  invoiceTotal,
+  matchesInvoiceFilters,
+} from '../utils';
 import { InvoiceStatusBadge } from './BillingBadges';
 import { InvoiceCard } from './BillingCards';
 
 const S = BILLING_STRINGS.invoices;
-type Filters = { status: InvoiceStatus | 'all' };
-const INITIAL: Filters = { status: 'all' };
-const matches = (i: Invoice, f: Filters) => matchesOption(f.status, i.status);
 
 const makeStyles = createN1Styles(t => ({
   actions: { flexDirection: 'row', gap: t.spacing.sm },
+  // Matches the filled search and filter next to it in the toolbar.
+  toolbarButton: { borderRadius: t.radius.sm },
 }));
 
-export function InvoicesTab() {
+type Props = {
+  /** Wide screens: shown at the left of the table toolbar (the tab switcher). */
+  toolbarStart?: ReactNode;
+};
+
+export function InvoicesTab({ toolbarStart }: Props) {
   const styles = useN1Styles(makeStyles);
   const navigation = useNavigation<BillingNavigation>();
   const { isCompact } = useN1Breakpoint();
@@ -56,11 +62,27 @@ export function InvoicesTab() {
     items,
     {
       getSearchText: invoiceSearchText,
-      initialFilters: INITIAL,
-      matchesFilters: matches,
+      initialFilters: INITIAL_INVOICE_FILTERS,
+      matchesFilters: matchesInvoiceFilters,
     },
   );
   const pager = usePagination(filtered);
+
+  const filterGroups = useMemo(
+    () => [
+      {
+        key: 'status',
+        label: BILLING_STRINGS.statusFilter,
+        options: INVOICE_STATUS_OPTIONS,
+      },
+    ],
+    [],
+  );
+  const applyFilters = useCallback(
+    (next: FilterValues) =>
+      setFilter('status', [...(next.status ?? [])] as InvoiceFilters['status']),
+    [setFilter],
+  );
 
   const view = useCallback(
     (i: Invoice) => navigation.navigate('InvoiceDetails', { invoiceId: i.id }),
@@ -169,60 +191,84 @@ export function InvoicesTab() {
     [view],
   );
 
+  const firstLoad =
+    (status === 'idle' || status === 'loading') && items.length === 0;
+
+  const toolbar = (
+    <ListToolbar
+      align="end"
+      filled
+      query={query}
+      onQueryChange={setQuery}
+      searchPlaceholder={S.search}
+    >
+      <FilterMenu
+        groups={filterGroups}
+        value={filters}
+        onApply={applyFilters}
+        testID="invoices-filter"
+      />
+      {!isCompact && (
+        <N1Button
+          title={BILLING_STRINGS.export}
+          leftIcon="download"
+          variant="secondary"
+          size="sm"
+          onPress={exportList}
+          style={styles.toolbarButton}
+        />
+      )}
+    </ListToolbar>
+  );
+
+  const showing = COMMON_STRINGS.showing(pager.shownCount, pager.total, S.noun);
+
   return (
+    // The table shows its own loading state; AsyncContent only takes over
+    // when the first load fails.
     <AsyncContent
-      status={status}
+      status={firstLoad ? 'succeeded' : status}
       error={error}
       onRetry={reload}
       hasData={items.length > 0}
     >
-      <StatGrid
-        items={statItems}
-        variant={isCompact ? 'muted' : 'surface'}
-        testID="invoice-stats"
-      />
-      <ListToolbar
-        query={query}
-        onQueryChange={setQuery}
-        searchPlaceholder={S.search}
-      >
-        <ToolbarFilter
-          label={BILLING_STRINGS.statusFilter}
-          options={INVOICE_FILTER_OPTIONS}
-          value={filters.status}
-          onChange={v => setFilter('status', v)}
-          testID="filter-invoice-status"
-        />
-        {!isCompact && (
-          <N1Button
-            title={BILLING_STRINGS.export}
-            leftIcon="download"
-            variant="secondary"
-            onPress={exportList}
-          />
-        )}
-      </ListToolbar>
+      {/* Phones keep the stat tiles; wide screens show the totals in the
+          pagination bar instead. */}
+      {isCompact && (
+        <StatGrid items={statItems} variant="muted" testID="invoice-stats" />
+      )}
       <N1Table
+        loading={firstLoad}
         columns={columns}
         data={pager.pageItems}
         keyExtractor={i => i.id}
         onRowPress={view}
         renderCompactItem={renderCompactItem}
+        toolbarStart={isCompact ? undefined : toolbarStart}
+        toolbar={toolbar}
+        scrollable={!isCompact}
         emptyText={
           items.length ? COMMON_STRINGS.noResults : COMMON_STRINGS.empty
         }
         footer={
           (!isCompact || pager.pageCount > 1) && (
             <N1Pagination
-              summary={COMMON_STRINGS.showing(
-                pager.shownCount,
-                pager.total,
-                S.noun,
-              )}
+              summary={
+                isCompact
+                  ? showing
+                  : S.summary(
+                      showing,
+                      stats,
+                      formatCompactCurrency(stats.thisMonth),
+                    )
+              }
               hasPrevious={pager.hasPrevious}
               hasNext={pager.hasNext}
               onPrevious={pager.previous}
               onNext={pager.next}
+              page={pager.page}
+              pageCount={pager.pageCount}
+              onPageChange={pager.goTo}
             />
           )
         }

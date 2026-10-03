@@ -1,13 +1,25 @@
 import React, { useState } from 'react';
 import type { ReactNode } from 'react';
-import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { useN1Breakpoint } from '../../hooks/useN1Breakpoint';
-import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
+import {
+  createN1Styles,
+  useN1Styles,
+  useN1Theme,
+} from '../../../theme/N1ThemeProvider';
+import { COMMON_STRINGS } from '../../constants';
 import { N1Text } from '../N1Text/N1Text';
 
 export type N1TableColumn<T> = {
   key: string;
-  /** Header text; shown uppercase. */
+  /** Header text. */
   title: string;
   /** Relative width. Defaults to 1. */
   flex?: number;
@@ -32,6 +44,22 @@ export type N1TableProps<T> = {
   emptyText?: string;
   /** Below the rows, e.g. <N1Pagination />. */
   footer?: ReactNode;
+  /** Title on the left of the table's top bar, e.g. "All users". */
+  toolbarTitle?: string;
+  /** Left of the top bar in place of the title, e.g. <N1Tabs />. */
+  toolbarStart?: ReactNode;
+  /** Right of the top bar, inside the table: search and filters. */
+  toolbar?: ReactNode;
+  /**
+   * Wide screens: fill the parent's height. The top bar, header row and
+   * footer stay put; only the rows scroll.
+   */
+  scrollable?: boolean;
+  /**
+   * First load: keep the top bar and footer, with a spinner where the rows
+   * go (centred when `scrollable`).
+   */
+  loading?: boolean;
   /**
    * Phone layout for one row. Defaults to a card: the first column as the
    * title, the rest as label / value pairs.
@@ -44,22 +72,44 @@ export type N1TableProps<T> = {
 const makeStyles = createN1Styles(t => ({
   table: {
     backgroundColor: t.colors.surface,
-    borderRadius: t.radius.lg,
+    borderRadius: t.radius.compact,
     overflow: 'hidden',
   },
+  // Title and search / filters across the top, inside the card.
+  toolbar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: t.spacing.md,
+    // Same left edge as the header labels and rows.
+    paddingHorizontal: t.spacing.sm + t.spacing.md,
+    paddingTop: t.spacing.lg,
+    paddingBottom: t.spacing.md,
+  },
+  toolbarControls: { flexGrow: 1 },
+  // A light grey band, inset from the card edges, with small labels.
   headerRow: {
     flexDirection: 'row',
-    paddingHorizontal: t.spacing.xl,
-    paddingVertical: t.spacing.md,
+    marginHorizontal: t.spacing.sm,
+    marginTop: t.spacing.sm,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.sm,
     gap: t.spacing.md,
-    borderBottomWidth: t.borderWidth.hairline,
-    borderBottomColor: t.colors.border,
+    borderRadius: t.radius.tight,
+    backgroundColor: t.colors.background,
   },
+  headerRowBelowToolbar: { marginTop: 0 },
+  fill: { flex: 1 },
+  // Inset like the header band, so columns line up with their labels and
+  // the hover highlight is a rounded box starting at the content.
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: t.spacing.xl,
+    marginHorizontal: t.spacing.sm,
+    paddingHorizontal: t.spacing.md,
     paddingVertical: t.spacing.md,
+    borderRadius: t.radius.tight,
     minHeight: t.controlHeight.lg + t.spacing.md,
     gap: t.spacing.md,
     borderBottomWidth: t.borderWidth.hairline,
@@ -72,8 +122,13 @@ const makeStyles = createN1Styles(t => ({
   left: { alignItems: 'flex-start' },
   center: { alignItems: 'center' },
   right: { alignItems: 'flex-end' },
-  empty: { padding: t.spacing.xxl, alignItems: 'center' },
-  footer: { paddingHorizontal: t.spacing.xl, paddingVertical: t.spacing.lg },
+  empty: { padding: t.spacing.xxl, alignItems: 'center', gap: t.spacing.sm },
+  // Filling table with no rows: the message sits in the middle.
+  emptyFill: { flex: 1, justifyContent: 'center' },
+  footer: {
+    paddingHorizontal: t.spacing.sm + t.spacing.md,
+    paddingVertical: t.spacing.lg,
+  },
   compactList: { gap: t.spacing.md },
   compactCard: {
     gap: t.spacing.sm,
@@ -136,19 +191,75 @@ export const N1Table = React.memo(function N1TableComponent<T>({
   onRowPress,
   emptyText = 'Nothing to show yet.',
   footer,
+  toolbarTitle,
+  toolbarStart,
+  toolbar,
+  scrollable = false,
+  loading = false,
   renderCompactItem,
   style,
   testID,
 }: N1TableProps<T>) {
   const styles = useN1Styles(makeStyles);
+  const theme = useN1Theme();
   const { isCompact } = useN1Breakpoint();
-
-  if (data.length === 0) {
-    return (
-      <View testID={testID} style={[styles.table, style]}>
-        <View style={styles.empty}>
-          <N1Text color="secondary">{emptyText}</N1Text>
+  const hasToolbar = Boolean(toolbarTitle || toolbarStart || toolbar);
+  // Column labels; kept while loading or empty so the table keeps its shape.
+  const headerRow = (
+    <View
+      style={[styles.headerRow, hasToolbar && styles.headerRowBelowToolbar]}
+    >
+      {columns.map(column => (
+        <View
+          key={column.key}
+          style={[
+            styles.cell,
+            styles[column.align ?? 'left'],
+            { flex: column.flex ?? 1 },
+          ]}
+        >
+          <N1Text
+            variant="caption"
+            weight="semiBold"
+            color="secondary"
+            numberOfLines={1}
+          >
+            {column.title}
+          </N1Text>
         </View>
+      ))}
+    </View>
+  );
+  const topBar = hasToolbar ? (
+    <View style={styles.toolbar}>
+      {toolbarStart ??
+        (toolbarTitle ? (
+          <N1Text variant="h2" weight="bold" accessibilityRole="header">
+            {toolbarTitle}
+          </N1Text>
+        ) : null)}
+      {toolbar ? <View style={styles.toolbarControls}>{toolbar}</View> : null}
+    </View>
+  ) : null;
+
+  if (loading || data.length === 0) {
+    return (
+      <View
+        testID={testID}
+        style={[styles.table, scrollable && !isCompact && styles.fill, style]}
+      >
+        {topBar}
+        {!isCompact && headerRow}
+        <View
+          style={[styles.empty, scrollable && !isCompact && styles.emptyFill]}
+        >
+          {loading && <ActivityIndicator color={theme.colors.textSecondary} />}
+          <N1Text color="secondary" align="center">
+            {loading ? COMMON_STRINGS.loading : emptyText}
+          </N1Text>
+        </View>
+        {/* Pagination stays at the bottom even with nothing to page. */}
+        {footer && <View style={styles.footer}>{footer}</View>}
       </View>
     );
   }
@@ -159,6 +270,7 @@ export const N1Table = React.memo(function N1TableComponent<T>({
     const [first, ...rest] = columns;
     return (
       <View testID={testID} style={[styles.compactList, style]}>
+        {toolbar}
         {data.map(row => {
           const content = renderCompactItem ? (
             renderCompactItem(row)
@@ -192,46 +304,45 @@ export const N1Table = React.memo(function N1TableComponent<T>({
     );
   }
 
-  return (
-    <View testID={testID} style={[styles.table, style]}>
-      <View style={styles.headerRow}>
-        {columns.map(column => (
-          <View
-            key={column.key}
-            style={[
-              styles.cell,
-              styles[column.align ?? 'left'],
-              { flex: column.flex ?? 1 },
-            ]}
-          >
-            <N1Text variant="overline">{column.title}</N1Text>
-          </View>
-        ))}
+  const rows = data.map(row => {
+    const cells = columns.map(column => (
+      <View
+        key={column.key}
+        style={[
+          styles.cell,
+          styles[column.align ?? 'left'],
+          { flex: column.flex ?? 1 },
+        ]}
+      >
+        {cellValue(column, row)}
       </View>
-      {data.map(row => {
-        const cells = columns.map(column => (
-          <View
-            key={column.key}
-            style={[
-              styles.cell,
-              styles[column.align ?? 'left'],
-              { flex: column.flex ?? 1 },
-            ]}
-          >
-            {cellValue(column, row)}
-          </View>
-        ));
-        return (
-          <TableRow
-            key={keyExtractor(row)}
-            accessibilityRole={rowRole}
-            onPress={onRowPress && (() => onRowPress(row))}
-            styles={styles}
-          >
-            {cells}
-          </TableRow>
-        );
-      })}
+    ));
+    return (
+      <TableRow
+        key={keyExtractor(row)}
+        accessibilityRole={rowRole}
+        onPress={onRowPress && (() => onRowPress(row))}
+        styles={styles}
+      >
+        {cells}
+      </TableRow>
+    );
+  });
+
+  return (
+    <View
+      testID={testID}
+      style={[styles.table, scrollable && styles.fill, style]}
+    >
+      {topBar}
+      {headerRow}
+      {scrollable ? (
+        <ScrollView style={styles.fill} testID={testID && `${testID}-scroll`}>
+          {rows}
+        </ScrollView>
+      ) : (
+        rows
+      )}
       {footer && <View style={styles.footer}>{footer}</View>}
     </View>
   );

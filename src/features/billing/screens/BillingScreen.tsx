@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import {
-  N1Button,
   N1IconButton,
   N1PageHeader,
   N1Tabs,
@@ -28,39 +27,38 @@ export function BillingScreen({
     [navigation],
   );
 
-  const createButton =
-    tab === 'quotes' &&
-    (isCompact ? (
-      <N1IconButton
-        icon="plus"
-        variant="primary"
-        accessibilityLabel={S.quotes.createA11y}
-        onPress={createQuote}
-        testID="create-quote"
-      />
-    ) : (
-      <N1Button
-        title={S.quotes.create}
-        leftIcon="plus"
-        onPress={createQuote}
-        testID="create-quote"
-      />
-    ));
+  const tabs = <N1Tabs tabs={BILLING_TABS} value={tab} onChange={setTab} />;
 
   return (
-    <AdminScreen testID="billing-screen">
-      <N1PageHeader
-        title={S.title}
-        subtitle={isCompact ? undefined : S.subtitle}
-        right={createButton || undefined}
-      />
-      <N1Tabs
-        tabs={BILLING_TABS}
-        value={tab}
-        onChange={setTab}
-        fullWidth={isCompact}
-      />
-      {tab === 'invoices' ? <InvoicesTab /> : <QuotesTab />}
+    <AdminScreen testID="billing-screen" fixed>
+      {/* Wide screens: each tab's table carries its title, and the Quotes
+          toolbar has Create; phones keep this header. */}
+      {isCompact && (
+        <N1PageHeader
+          title={S.title}
+          right={
+            tab === 'quotes' ? (
+              <N1IconButton
+                icon="plus"
+                variant="primary"
+                accessibilityLabel={S.quotes.createA11y}
+                onPress={createQuote}
+                testID="create-quote"
+              />
+            ) : undefined
+          }
+        />
+      )}
+      {/* Phones: tabs above the cards. Wide screens: inside the table's
+          toolbar, where the title would be. */}
+      {isCompact && (
+        <N1Tabs tabs={BILLING_TABS} value={tab} onChange={setTab} fullWidth />
+      )}
+      {tab === 'invoices' ? (
+        <InvoicesTab toolbarStart={!isCompact && tabs} />
+      ) : (
+        <QuotesTab toolbarStart={!isCompact && tabs} />
+      )}
     </AdminScreen>
   );
 }

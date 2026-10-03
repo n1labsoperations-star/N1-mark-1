@@ -4,10 +4,17 @@ import type { MachineStatus, MachineType } from './types';
 
 export const MACHINE_STRINGS = {
   title: 'Machines',
-  subtitle: (org: string) => `Every machine on the shop floor at ${org}.`,
   add: 'Add Machine',
   addA11y: 'Add machine',
   noun: 'machines',
+  search: 'Search by WO #, machine or code',
+  statusFilter: 'Status',
+  /** Pagination bar: "Showing 10 of 10 machines · 5 running · …". */
+  summary: (
+    showing: string,
+    s: { running: number; idle: number; maintenance: number },
+  ) =>
+    `${showing} · ${s.running} running · ${s.idle} idle · ${s.maintenance} under maintenance`,
   stats: {
     total: 'Total machines',
     running: 'Running',

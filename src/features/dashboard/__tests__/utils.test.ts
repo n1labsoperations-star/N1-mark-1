@@ -7,6 +7,7 @@ import type { CustomerShare } from '../../customers';
 import {
   byDueDate,
   customerRows,
+  withRouteCards,
   filterUsers,
   isDueSoon,
   periodStart,
@@ -204,5 +205,17 @@ describe('customerRows', () => {
 
   test('a customer with no open orders has 0 pending', () => {
     expect(customerRows([share('a', 50)], [])[0].pendingDelivery).toBe(0);
+  });
+});
+
+describe('withRouteCards', () => {
+  test('takes the RC number from the matching order, else the WO number', () => {
+    const card = (id: string) => ({ id } as unknown as JobCard);
+    const orders = [{ id: '1042', routeCardNo: 'RC-2210' }] as WorkOrder[];
+    expect(
+      withRouteCards([card('1042'), card('1099')], orders).map(
+        c => c.routeCardNo,
+      ),
+    ).toEqual(['RC-2210', 'WO #1099']);
   });
 });

@@ -55,6 +55,12 @@ export {
   type N1IconButtonProps,
   type N1IconButtonVariant,
 } from './N1IconButton';
+export {
+  FilterMenu,
+  type FilterGroup,
+  type FilterMenuProps,
+  type FilterValues,
+} from './FilterMenu';
 export { N1Tabs, type N1TabsProps, type N1Tab } from './N1Tabs';
 export { N1Pagination, type N1PaginationProps } from './N1Pagination';
 

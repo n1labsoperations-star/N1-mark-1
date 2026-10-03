@@ -1,11 +1,6 @@
 import type { N1DropDownOption, N1RadioOption } from '../../shared/components';
 import type { StatusMeta } from '../../shared/types';
-import type {
-  MaterialSource,
-  OrderFilters,
-  OrderPriority,
-  OrderStatus,
-} from './types';
+import type { MaterialSource, OrderPriority, OrderStatus } from './types';
 
 export const ORDER_STRINGS = {
   title: 'Orders',
@@ -13,11 +8,10 @@ export const ORDER_STRINGS = {
     'Every work order on the shop floor, sorted by priority and due date.',
   create: 'Create',
   createA11y: 'Create order',
-  search: 'Search orders',
+  search: 'Search by WO #, part or customer',
   noun: 'orders',
   priorityFilter: 'Priority',
   statusFilter: 'Status',
-  allPriorities: 'All priorities',
   columns: {
     order: 'Work order / Part',
     customer: 'Customer',
@@ -147,22 +141,10 @@ export const PRIORITY_OPTIONS: N1DropDownOption<OrderPriority>[] = (
   Object.keys(PRIORITY_META) as OrderPriority[]
 ).map(value => ({ value, label: PRIORITY_META[value].label }));
 
-export const PRIORITY_FILTER_OPTIONS: N1DropDownOption<
-  OrderFilters['priority']
->[] = [
-  { value: 'all', label: ORDER_STRINGS.allPriorities },
-  ...PRIORITY_OPTIONS,
-];
-
-export const ORDER_STATUS_FILTER_OPTIONS: N1DropDownOption<
-  OrderFilters['status']
->[] = [
-  { value: 'all', label: 'All statuses' },
-  ...(Object.keys(ORDER_STATUS_META) as OrderStatus[]).map(value => ({
-    value,
-    label: ORDER_STATUS_META[value].label,
-  })),
-];
+/** Status choices for the list filter. */
+export const ORDER_STATUS_OPTIONS: N1DropDownOption<OrderStatus>[] = (
+  Object.keys(ORDER_STATUS_META) as OrderStatus[]
+).map(value => ({ value, label: ORDER_STATUS_META[value].label }));
 
 /** Where the raw material comes from (Raw Material Details). */
 export const MATERIAL_SOURCE_OPTIONS: N1RadioOption<MaterialSource>[] = [

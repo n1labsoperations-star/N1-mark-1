@@ -1,3 +1,4 @@
+import type { JobCard } from '../jobCards';
 import type { CustomerShare } from '../customers';
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { N1IconName } from '../../shared/components';
@@ -69,3 +70,6 @@ export type CustomerRow = CustomerShare & {
   /** The customer's work orders not yet completed. */
   pendingDelivery: number;
 };
+
+/** A priority job: the job card plus its work order's route card number. */
+export type PriorityJob = JobCard & { routeCardNo: string };

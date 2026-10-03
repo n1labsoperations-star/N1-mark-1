@@ -54,15 +54,47 @@ test('list is sorted by priority then due date', async () => {
 
 test('filters by priority and status, and searches', async () => {
   const { root } = await renderAdmin('Orders');
-  await choose(root, 'filter-priority', 'Low');
+  const panel = () => byTestId(root, 'orders-filter-panel');
+  const tab = (label: string) =>
+    panel().find(
+      n =>
+        n.props.accessibilityRole === 'tab' &&
+        n.props.onPress &&
+        allText(n).startsWith(label),
+    );
+  const applyFilters = async (group: string, options: string[]) => {
+    await press(byTestId(root, 'orders-filter'));
+    await press(byText(panel(), 'Clear all'));
+    await press(tab(group));
+    for (const option of options) {
+      await press(byLabel(panel(), option));
+    }
+    await press(byTestId(root, 'orders-filter-apply'));
+  };
+
+  await applyFilters('Priority', ['Low']);
   expect(allText(byTestId(root, 'orders-table'))).toContain('WO #1038');
   expect(allText(byTestId(root, 'orders-table'))).not.toContain('WO #1042');
-  await choose(root, 'filter-priority', 'All priorities');
-  await choose(root, 'filter-order-status', 'QC pending');
+  await applyFilters('Status', ['QC pending']);
   expect(allText(root)).toContain('Showing 3 of 3 orders');
-  await choose(root, 'filter-order-status', 'All statuses');
-  await typeInto(byLabel(root, 'Search orders'), 'coupling');
+  // Multi-select: QC pending or Completed.
+  await applyFilters('Status', ['QC pending', 'Completed']);
+  expect(allText(root)).toContain('Showing 5 of 5 orders');
+  await applyFilters('Status', []);
+  await typeInto(byLabel(root, 'Search by WO #, part or customer'), 'coupling');
   expect(allText(root)).toContain('Showing 1 of 1 orders');
+});
+
+test('wide screens: the page stays put and only the order rows scroll', async () => {
+  const { root } = await renderAdmin('Orders');
+  const table = byTestId(root, 'orders-table');
+  const scroll = byTestId(table, 'orders-table-scroll');
+  expect(allText(scroll)).toContain('WO #1042');
+  expect(allText(scroll)).not.toContain('Showing 10 of 10 orders');
+  expect(allText(table)).toContain('Showing 10 of 10 orders');
+  // Title and Create live in the toolbar.
+  expect(allText(table)).toContain('Orders');
+  expect(byTestId(table, 'create-order')).toBeTruthy();
 });
 
 test('details show the full work order', async () => {
@@ -271,4 +303,15 @@ describe('Orders list actions', () => {
       true,
     );
   });
+});
+
+test('search finds an order by its work ID in any common form', async () => {
+  const { root } = await renderAdmin('Orders');
+  const search = byLabel(root, 'Search by WO #, part or customer');
+  for (const query of ['1042', 'WO #1042', 'wo1042', 'WO-1042']) {
+    await typeInto(search, query);
+    const text = allText(byTestId(root, 'orders-table'));
+    expect(text).toContain('Showing 1 of 1');
+    expect(text).toContain('WO #1042');
+  }
 });

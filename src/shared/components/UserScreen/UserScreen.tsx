@@ -25,16 +25,10 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 /** Scrolling page body for the shop-floor (non-admin) screens. */
-export function UserScreen({
-  header,
-  footer,
-  children,
-  testID,
-}: UserScreenProps) {
+export function UserScreen({ footer, children, testID }: UserScreenProps) {
   const styles = useN1Styles(makeStyles);
   return (
     <View style={styles.root} testID={testID}>
-      {header}
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}

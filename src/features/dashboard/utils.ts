@@ -4,8 +4,10 @@ import type { WorkOrder } from '../orders';
 import type { JobCard } from '../jobCards';
 import { ALL, DUE_SOON_DAYS } from './constants';
 import type { CustomerShare } from '../customers';
+import { JOB_CARD_STRINGS } from '../jobCards';
 import type {
   CustomerRow,
+  PriorityJob,
   DashboardPeriod,
   MenuItem,
   OrgUser,
@@ -112,4 +114,19 @@ export function customerRows(
   return [...shares]
     .sort((a, b) => b.percent - a.percent)
     .map(s => ({ ...s, pendingDelivery: pending.get(s.id) ?? 0 }));
+}
+
+/**
+ * Adds each job card's route card number from its work order (they share an
+ * id), falling back to the WO number when the order has none.
+ */
+export function withRouteCards(
+  cards: readonly JobCard[],
+  orders: readonly WorkOrder[],
+): PriorityJob[] {
+  const routeCards = new Map(orders.map(o => [o.id, o.routeCardNo]));
+  return cards.map(c => ({
+    ...c,
+    routeCardNo: routeCards.get(c.id) || JOB_CARD_STRINGS.workOrder(c.id),
+  }));
 }

@@ -1,7 +1,8 @@
 import { useNavigation } from '@react-navigation/native';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 import { View } from 'react-native';
 import {
+  FilterMenu,
   N1Button,
   N1IconButton,
   N1Pagination,
@@ -10,6 +11,7 @@ import {
   createN1Styles,
   useN1Breakpoint,
   useN1Styles,
+  type FilterValues,
   type N1TableColumn,
 } from '../../../shared/components';
 import type { BillingNavigation } from '../types';
@@ -17,34 +19,37 @@ import {
   AsyncContent,
   ListToolbar,
   StatGrid,
-  ToolbarFilter,
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
-import {
-  matchesOption,
-  useListFilter,
-  usePagination,
-} from '../../../shared/hooks';
+import { useListFilter, usePagination } from '../../../shared/hooks';
 import { notifyUnavailable } from '../../../shared/utils';
-import { BILLING_STRINGS, QUOTE_FILTER_OPTIONS } from '../constants';
+import { BILLING_STRINGS, QUOTE_STATUS_OPTIONS } from '../constants';
 import { useInvoices, useQuoteStats, useQuotes } from '../hooks/useBilling';
 import { isQuoteMapped } from '../workflow';
 import { useConvertToOrder } from '../hooks/useBillingWorkflow';
-import type { Quote, QuoteStatus } from '../types';
-import { quoteSearchText } from '../utils';
+import type { Quote, QuoteFilters } from '../types';
+import {
+  INITIAL_QUOTE_FILTERS,
+  matchesQuoteFilters,
+  quoteSearchText,
+} from '../utils';
 import { QuoteStatusBadge } from './BillingBadges';
 import { QuoteCard } from './BillingCards';
 
 const S = BILLING_STRINGS.quotes;
-type Filters = { status: QuoteStatus | 'all' };
-const INITIAL: Filters = { status: 'all' };
-const matches = (q: Quote, f: Filters) => matchesOption(f.status, q.status);
 
 const makeStyles = createN1Styles(t => ({
   actions: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm },
+  // Matches the filled search and filter next to them in the toolbar.
+  toolbarButton: { borderRadius: t.radius.sm },
 }));
 
-export function QuotesTab() {
+type Props = {
+  /** Wide screens: shown at the left of the table toolbar (the tab switcher). */
+  toolbarStart?: ReactNode;
+};
+
+export function QuotesTab({ toolbarStart }: Props) {
   const styles = useN1Styles(makeStyles);
   const navigation = useNavigation<BillingNavigation>();
   const toOrder = useConvertToOrder();
@@ -56,11 +61,31 @@ export function QuotesTab() {
     items,
     {
       getSearchText: quoteSearchText,
-      initialFilters: INITIAL,
-      matchesFilters: matches,
+      initialFilters: INITIAL_QUOTE_FILTERS,
+      matchesFilters: matchesQuoteFilters,
     },
   );
   const pager = usePagination(filtered);
+
+  const filterGroups = useMemo(
+    () => [
+      {
+        key: 'status',
+        label: BILLING_STRINGS.statusFilter,
+        options: QUOTE_STATUS_OPTIONS,
+      },
+    ],
+    [],
+  );
+  const applyFilters = useCallback(
+    (next: FilterValues) =>
+      setFilter('status', [...(next.status ?? [])] as QuoteFilters['status']),
+    [setFilter],
+  );
+  const createQuote = useCallback(
+    () => navigation.navigate('QuoteForm'),
+    [navigation],
+  );
 
   const view = useCallback(
     (q: Quote) => navigation.navigate('QuoteDetails', { quoteId: q.id }),
@@ -144,60 +169,87 @@ export function QuotesTab() {
     [view],
   );
 
-  return (
-    <AsyncContent
-      status={status}
-      error={error}
-      onRetry={reload}
-      hasData={items.length > 0}
+  const firstLoad =
+    (status === 'idle' || status === 'loading') && items.length === 0;
+
+  const toolbar = (
+    <ListToolbar
+      align="end"
+      filled
+      query={query}
+      onQueryChange={setQuery}
+      searchPlaceholder={S.search}
     >
-      <StatGrid
-        items={statItems}
-        variant={isCompact ? 'muted' : 'surface'}
-        testID="quote-stats"
+      <FilterMenu
+        groups={filterGroups}
+        value={filters}
+        onApply={applyFilters}
+        testID="quotes-filter"
       />
-      <ListToolbar
-        query={query}
-        onQueryChange={setQuery}
-        searchPlaceholder={S.search}
-      >
-        <ToolbarFilter
-          label={BILLING_STRINGS.statusFilter}
-          options={QUOTE_FILTER_OPTIONS}
-          value={filters.status}
-          onChange={v => setFilter('status', v)}
-          testID="filter-quote-status"
-        />
-        {!isCompact && (
+      {!isCompact && (
+        <>
           <N1Button
             title={BILLING_STRINGS.export}
             leftIcon="download"
             variant="secondary"
+            size="sm"
             onPress={exportList}
+            style={styles.toolbarButton}
           />
-        )}
-      </ListToolbar>
+          {/* Phones keep Create in the page header. */}
+          <N1Button
+            title={S.create}
+            leftIcon="plus"
+            size="sm"
+            onPress={createQuote}
+            style={styles.toolbarButton}
+            testID="create-quote"
+          />
+        </>
+      )}
+    </ListToolbar>
+  );
+
+  const showing = COMMON_STRINGS.showing(pager.shownCount, pager.total, S.noun);
+
+  return (
+    // The table shows its own loading state; AsyncContent only takes over
+    // when the first load fails.
+    <AsyncContent
+      status={firstLoad ? 'succeeded' : status}
+      error={error}
+      onRetry={reload}
+      hasData={items.length > 0}
+    >
+      {/* Phones keep the stat tiles; wide screens show the totals in the
+          pagination bar instead. */}
+      {isCompact && (
+        <StatGrid items={statItems} variant="muted" testID="quote-stats" />
+      )}
       <N1Table
+        loading={firstLoad}
         columns={columns}
         data={pager.pageItems}
         keyExtractor={q => q.id}
         onRowPress={view}
         renderCompactItem={renderCompactItem}
+        toolbarStart={isCompact ? undefined : toolbarStart}
+        toolbar={toolbar}
+        scrollable={!isCompact}
         emptyText={
           items.length ? COMMON_STRINGS.noResults : COMMON_STRINGS.empty
         }
         footer={
           (!isCompact || pager.pageCount > 1) && (
             <N1Pagination
-              summary={COMMON_STRINGS.showing(
-                pager.shownCount,
-                pager.total,
-                S.noun,
-              )}
+              summary={isCompact ? showing : S.summary(showing, stats)}
               hasPrevious={pager.hasPrevious}
               hasNext={pager.hasNext}
               onPrevious={pager.previous}
               onNext={pager.next}
+              page={pager.page}
+              pageCount={pager.pageCount}
+              onPageChange={pager.goTo}
             />
           )
         }

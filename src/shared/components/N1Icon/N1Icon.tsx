@@ -14,6 +14,7 @@ const icons = {
   'arrow-left': [{ d: 'm12 19-7-7 7-7' }, { d: 'M19 12H5' }],
   'arrow-right': [{ d: 'M5 12h14' }, { d: 'm12 5 7 7-7 7' }],
   'arrow-up-right': [{ d: 'M7 17 17 7' }, { d: 'M7 7h10v10' }],
+  filter: [{ d: 'M22 3H2l8 9.46V19l4 2v-8.54L22 3z' }],
   'chevron-down': [{ d: 'm6 9 6 6 6-6' }],
   'chevron-up': [{ d: 'm18 15-6-6-6 6' }],
   'chevron-left': [{ d: 'm15 18-6-6 6-6' }],

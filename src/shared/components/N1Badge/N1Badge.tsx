@@ -34,7 +34,7 @@ const makeStyles = createN1Styles(t => ({
     gap: t.spacing.xs,
     paddingHorizontal: t.spacing.sm,
     paddingVertical: t.spacing.xxs,
-    borderRadius: t.radius.pill,
+    borderRadius: t.radius.sm,
   },
   dot: { width: DOT_SIZE, height: DOT_SIZE, borderRadius: t.radius.pill },
 }));

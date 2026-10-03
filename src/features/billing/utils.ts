@@ -2,10 +2,20 @@ import {
   formatCurrency,
   gstAmounts,
   toNumber,
+  workOrderSearchTerms,
   type GstSupply,
 } from '../../shared/utils';
 import { BILLING_STRINGS } from './constants';
-import type { Invoice, LineItem, LineItemDraft, Quote, Totals } from './types';
+import { matchesAny } from '../../shared/hooks';
+import type {
+  Invoice,
+  InvoiceFilters,
+  LineItem,
+  LineItemDraft,
+  Quote,
+  QuoteFilters,
+  Totals,
+} from './types';
 
 /** Pieces × minutes per piece × rate per minute, to the rupee. */
 export const lineAmount = (
@@ -109,7 +119,28 @@ export const isThisMonth = (iso: string, now = new Date()) => {
   );
 };
 
+/**
+ * "WO-00125" plus the bare number ("125") in every form people type it, so
+ * "WO-00125", "125", "WO #125" and "wo125" all find the invoice.
+ */
+export const jobIdSearchTerms = (jobId: string) => {
+  const number = jobId.match(/\d+/)?.[0]?.replace(/^0+(?=\d)/, '') ?? '';
+  return `${jobId} ${workOrderSearchTerms(number)}`;
+};
+
 export const invoiceSearchText = (i: Invoice) =>
-  `${i.id} ${i.customerName} ${i.jobId} ${i.routeCard} ${i.partName}`;
+  `${i.id} ${i.customerName} ${jobIdSearchTerms(i.jobId)} ${i.routeCard} ${
+    i.partName
+  }`;
 export const quoteSearchText = (q: Quote) =>
-  `${q.id} ${q.customerName} ${q.partName} ${q.material}`;
+  `${q.id} ${q.customerName} ${q.partName} ${q.material} ${workOrderSearchTerms(
+    q.orderId ?? '',
+  )}`;
+
+/** Status filters: an empty list shows everything. */
+export const matchesInvoiceFilters = (i: Invoice, f: InvoiceFilters) =>
+  matchesAny(f.status, i.status);
+export const matchesQuoteFilters = (q: Quote, f: QuoteFilters) =>
+  matchesAny(f.status, q.status);
+export const INITIAL_INVOICE_FILTERS: InvoiceFilters = { status: [] };
+export const INITIAL_QUOTE_FILTERS: QuoteFilters = { status: [] };

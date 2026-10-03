@@ -46,9 +46,10 @@ export type UserInput = {
   permissions?: UserPermissions;
 };
 
+/** Multi-select filters; an empty list shows everyone. */
 export type UserFilters = {
-  role: UserRole | 'all';
-  status: UserStatus | 'all';
+  role: UserRole[];
+  status: UserStatus[];
 };
 
 // Stack nested inside the admin drawer's "Users" item.

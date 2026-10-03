@@ -19,7 +19,8 @@ import {
   AsyncContent,
   ListToolbar,
   RowActions,
-  ToolbarFilter,
+  FilterMenu,
+  type FilterValues,
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
 import {
@@ -33,13 +34,9 @@ import { DeleteUserDialog } from '../components/DeleteUserDialog';
 import { UserCard } from '../components/UserCard';
 import { RoleBadge, UserStatusBadge } from '../components/UserBadges';
 import { UserFormModal } from '../components/UserFormModal';
-import {
-  ROLE_FILTER_OPTIONS,
-  STATUS_FILTER_OPTIONS,
-  USER_STRINGS,
-} from '../constants';
+import { ROLE_OPTIONS, STATUS_OPTIONS, USER_STRINGS } from '../constants';
 import { useUsers } from '../hooks/useUsers';
-import type { AdminUser } from '../types';
+import type { AdminUser, UserFilters } from '../types';
 import {
   INITIAL_USER_FILTERS,
   matchesUserFilters,
@@ -48,6 +45,8 @@ import {
 
 const makeStyles = createN1Styles(t => ({
   nameCell: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.md },
+  // Matches the filled filters next to it in the toolbar.
+  toolbarButton: { borderRadius: t.radius.sm },
 }));
 
 type FormTarget = { user: AdminUser | null } | null;
@@ -69,6 +68,25 @@ export function UsersListScreen() {
     },
   );
   const pager = usePagination(filtered);
+
+  const filterGroups = useMemo(
+    () => [
+      { key: 'role', label: USER_STRINGS.roleFilter, options: ROLE_OPTIONS },
+      {
+        key: 'status',
+        label: USER_STRINGS.statusFilter,
+        options: STATUS_OPTIONS,
+      },
+    ],
+    [],
+  );
+  const applyFilters = useCallback(
+    (next: FilterValues) => {
+      setFilter('role', (next.role ?? []) as UserFilters['role']);
+      setFilter('status', (next.status ?? []) as UserFilters['status']);
+    },
+    [setFilter],
+  );
 
   const [formTarget, setFormTarget] = useState<FormTarget>(null);
   const openCreate = useCallback(() => setFormTarget({ user: null }), []);
@@ -151,54 +169,60 @@ export function UsersListScreen() {
       title={USER_STRINGS.create}
       leftIcon="plus"
       onPress={openCreate}
+      size={isCompact ? 'md' : 'sm'}
       fullWidth={isCompact}
+      style={!isCompact && styles.toolbarButton}
       testID="create-user"
     />
   );
 
+  const firstLoad =
+    (status === 'idle' || status === 'loading') && items.length === 0;
+
+  const toolbar = (
+    <ListToolbar
+      align="end"
+      filled
+      query={query}
+      onQueryChange={setQuery}
+      searchPlaceholder={USER_STRINGS.search}
+    >
+      {!isCompact && (
+        <>
+          <FilterMenu
+            groups={filterGroups}
+            value={filters}
+            onApply={applyFilters}
+            testID="users-filter"
+          />
+          {createButton}
+        </>
+      )}
+    </ListToolbar>
+  );
+
   return (
-    <AdminScreen compactFooter={createButton} testID="users-screen">
-      <N1PageHeader
-        title={USER_STRINGS.title}
-        subtitle={USER_STRINGS.subtitle(organizationName)}
-        right={isCompact ? undefined : createButton}
-      />
-      <ListToolbar
-        query={query}
-        onQueryChange={setQuery}
-        searchPlaceholder={USER_STRINGS.search}
-      >
-        {!isCompact && (
-          <>
-            <ToolbarFilter
-              label={USER_STRINGS.roleFilter}
-              options={ROLE_FILTER_OPTIONS}
-              value={filters.role}
-              onChange={v => setFilter('role', v)}
-              testID="filter-role"
-            />
-            <ToolbarFilter
-              label={USER_STRINGS.statusFilter}
-              options={STATUS_FILTER_OPTIONS}
-              value={filters.status}
-              onChange={v => setFilter('status', v)}
-              testID="filter-status"
-            />
-          </>
-        )}
-      </ListToolbar>
+    <AdminScreen compactFooter={createButton} testID="users-screen" fixed>
+      {/* Wide screens: the title and Create live in the table's toolbar. */}
+      {isCompact && <N1PageHeader title={USER_STRINGS.title} />}
+      {/* The table shows its own loading state; AsyncContent only takes over
+          when the first load fails. */}
       <AsyncContent
-        status={status}
+        status={firstLoad ? 'succeeded' : status}
         error={error}
         onRetry={reload}
         hasData={items.length > 0}
       >
         <N1Table
+          loading={firstLoad}
           columns={columns}
           data={pager.pageItems}
           keyExtractor={u => u.id}
           onRowPress={openDetails}
           renderCompactItem={renderCompactItem}
+          toolbarTitle={isCompact ? undefined : USER_STRINGS.title}
+          toolbar={toolbar}
+          scrollable={!isCompact}
           emptyText={
             items.length ? COMMON_STRINGS.noResults : COMMON_STRINGS.empty
           }
@@ -214,6 +238,9 @@ export function UsersListScreen() {
                 hasNext={pager.hasNext}
                 onPrevious={pager.previous}
                 onNext={pager.next}
+                page={pager.page}
+                pageCount={pager.pageCount}
+                onPageChange={pager.goTo}
               />
             )
           }

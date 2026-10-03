@@ -167,6 +167,8 @@ export function UserFormModal({
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
+        // Another person's email: don't offer the admin's saved login.
+        autoComplete="off"
         testID="user-form-email"
       />
       <N1TextInput
@@ -181,6 +183,8 @@ export function UserFormModal({
         onChangeText={bind('password')}
         errorText={errors.password}
         autoCapitalize="none"
+        // A password for someone else, not the admin's own saved one.
+        autoComplete="new-password"
         testID="user-form-password"
       />
       <FormRow>
