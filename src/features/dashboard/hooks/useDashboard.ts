@@ -5,7 +5,12 @@ import { useJobCards } from '../../jobCards';
 import { usePriorityJobs } from '../../orders';
 import { PRIORITY_JOBS_LIMIT } from '../constants';
 import type { DashboardPeriod } from '../types';
-import { byDueDate, customerRows, summarizePeriod } from '../utils';
+import {
+  byDueDate,
+  customerRows,
+  summarizePeriod,
+  withRouteCards,
+} from '../utils';
 import type { RequestStatus } from '../../../shared/types';
 
 const worst = (...statuses: RequestStatus[]): RequestStatus =>
@@ -38,8 +43,9 @@ export function useDashboard(period: DashboardPeriod) {
   // earliest due first.
   const sortedJobs = useMemo(() => byDueDate(jobCards.items), [jobCards.items]);
   const jobs = useMemo(
-    () => sortedJobs.slice(0, PRIORITY_JOBS_LIMIT),
-    [sortedJobs],
+    () =>
+      withRouteCards(sortedJobs.slice(0, PRIORITY_JOBS_LIMIT), orders.orders),
+    [sortedJobs, orders.orders],
   );
 
   return {

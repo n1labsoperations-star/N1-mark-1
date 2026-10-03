@@ -25,6 +25,8 @@ export type N1Spacing = keyof typeof spacing;
 export const radius = {
   none: 0,
   xs: 4,
+  /** Table header band. */
+  tight: 6,
   sm: 8,
   /** Sidebar items and the dashboard's cards. */
   compact: 10,

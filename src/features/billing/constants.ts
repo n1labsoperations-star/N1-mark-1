@@ -4,7 +4,6 @@ import type { BillingTab, InvoiceStatus, QuoteStatus } from './types';
 
 export const BILLING_STRINGS = {
   title: 'Billing',
-  subtitle: 'Generate, track and collect payments.',
   tabs: { invoices: 'Invoices', quotes: 'Quotes' },
   statusFilter: 'Status',
   export: 'Export',
@@ -17,8 +16,16 @@ export const BILLING_STRINGS = {
     viewQuote: (quoteId: string) => `View quote ${quoteId}`,
   },
   invoices: {
-    search: 'Search invoice',
+    title: 'Invoices',
+    search: 'Search by invoice, customer or WO #',
     noun: 'invoices',
+    /** Pagination bar: "Showing 10 of 12 invoices · 7 paid · …". */
+    summary: (
+      showing: string,
+      s: { paid: number; pending: number },
+      thisMonth: string,
+    ) =>
+      `${showing} · ${s.paid} paid · ${s.pending} pending · ${thisMonth} this month`,
     stats: {
       total: 'Total Invoices',
       paid: 'Paid',
@@ -39,8 +46,15 @@ export const BILLING_STRINGS = {
   quotes: {
     create: 'Create Quote',
     createA11y: 'Create quote',
-    search: 'Search quote',
+    title: 'Quotes',
+    search: 'Search by quote, customer or WO #',
     noun: 'quotes',
+    /** Pagination bar: "Showing 10 of 10 quotes · 3 accepted · …". */
+    summary: (
+      showing: string,
+      s: { accepted: number; pending: number; rejected: number },
+    ) =>
+      `${showing} · ${s.accepted} accepted · ${s.pending} pending · ${s.rejected} rejected`,
     stats: {
       total: 'Total Quotes',
       accepted: 'Accepted',
@@ -183,11 +197,3 @@ export const INVOICE_STATUS_OPTIONS: N1DropDownOption<InvoiceStatus>[] = (
 export const QUOTE_STATUS_OPTIONS: N1DropDownOption<QuoteStatus>[] = (
   Object.keys(QUOTE_STATUS_META) as QuoteStatus[]
 ).map(value => ({ value, label: QUOTE_STATUS_META[value].label }));
-
-export const INVOICE_FILTER_OPTIONS: N1DropDownOption<InvoiceStatus | 'all'>[] =
-  [{ value: 'all', label: 'All statuses' }, ...INVOICE_STATUS_OPTIONS];
-
-export const QUOTE_FILTER_OPTIONS: N1DropDownOption<QuoteStatus | 'all'>[] = [
-  { value: 'all', label: 'All statuses' },
-  ...QUOTE_STATUS_OPTIONS,
-];

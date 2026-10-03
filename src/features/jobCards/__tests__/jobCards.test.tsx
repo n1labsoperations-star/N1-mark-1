@@ -179,17 +179,55 @@ describe('Job Cards list', () => {
     expect(text.indexOf('WO #1035')).toBeGreaterThan(text.indexOf('WO #1034'));
   });
 
-  test('filters by operation and operator, and searches', async () => {
+  test('multi-select filter by operation, operator and machine, and search', async () => {
     const { root } = await renderAdmin('JobCards');
-    await choose(root, 'filter-operation', 'QC Inspection');
+    const panel = () => byTestId(root, 'job-cards-filter-panel');
+    const tab = (label: string) =>
+      panel().find(
+        n =>
+          n.props.accessibilityRole === 'tab' &&
+          n.props.onPress &&
+          allText(n).startsWith(label),
+      );
+    const filter = async (group: string, options: string[]) => {
+      await press(byTestId(root, 'job-cards-filter'));
+      await press(byText(panel(), 'Clear all'));
+      await press(tab(group));
+      for (const option of options) {
+        await press(byLabel(panel(), option));
+      }
+      await press(byTestId(root, 'job-cards-filter-apply'));
+    };
+
+    await filter('Operation', ['QC Inspection']);
     expect(allText(root)).toContain('Showing 2 of 2 job cards');
-    await choose(root, 'filter-operation', 'All operations');
-    await choose(root, 'filter-operator', 'Karthik Iyer');
+    // Two operations at once.
+    await filter('Operation', ['QC Inspection', 'Welding']);
+    expect(allText(root)).toContain('Showing 4 of 4 job cards');
+    await filter('Operator', ['Karthik Iyer']);
     expect(allText(root)).toContain('Showing 1 of 1 job cards');
-    await choose(root, 'filter-operator', 'All operators');
-    await typeInto(byLabel(root, 'Search job cards'), 'coupling');
+    await filter('Assigned machine', ['CNC-02']);
+    let text = allText(byTestId(root, 'job-cards-table'));
+    expect(text).toContain('Showing 2 of 2 job cards');
+    expect(text).toContain('WO #1042');
+    expect(text).toContain('WO #1039');
+    await filter('Operator', []);
+    await typeInto(
+      byLabel(root, 'Search by WO #, part or operator'),
+      'coupling',
+    );
     expect(allText(byTestId(root, 'job-cards-table'))).toContain('WO #1036');
     expect(allText(root)).toContain('Showing 1 of 1 job cards');
+  });
+
+  test('wide screens: only the rows scroll; title and pagination stay', async () => {
+    const { root } = await renderAdmin('JobCards');
+    const table = byTestId(root, 'job-cards-table');
+    const scroll = byTestId(table, 'job-cards-table-scroll');
+    expect(allText(scroll)).toContain('WO #1042');
+    expect(allText(scroll)).not.toContain('Showing 10 of 10 job cards');
+    expect(allText(table)).toContain('Showing 10 of 10 job cards');
+    expect(allText(table)).toContain('Job Cards');
   });
 
   test('the diagram button explains drawings are not available yet', async () => {
@@ -566,4 +604,12 @@ describe('Create / Edit flow', () => {
     await h.navigate('JobCardFlow', { jobCardId: 'nope' });
     expect(allText(h.root)).toContain('This job card no longer exists.');
   });
+});
+
+test('search finds a job card by its work ID', async () => {
+  const { root } = await renderAdmin('JobCards');
+  await typeInto(byLabel(root, 'Search by WO #, part or operator'), 'WO #1039');
+  const text = allText(byTestId(root, 'job-cards-table'));
+  expect(text).toContain('Showing 1 of 1');
+  expect(text).toContain('WO #1039');
 });

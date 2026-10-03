@@ -17,9 +17,10 @@ import type { OrdersScreenProps } from '../types';
 import {
   AdminScreen,
   AsyncContent,
+  FilterMenu,
   ListToolbar,
   StatGrid,
-  ToolbarFilter,
+  type FilterValues,
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
 import {
@@ -32,12 +33,12 @@ import { formatDayMonth } from '../../../shared/utils';
 import { OrderCard } from '../components/OrderCard';
 import { OrderStatusBadge, PriorityBadge } from '../components/OrderBadges';
 import {
-  ORDER_STATUS_FILTER_OPTIONS,
+  ORDER_STATUS_OPTIONS,
   ORDER_STRINGS as S,
-  PRIORITY_FILTER_OPTIONS,
+  PRIORITY_OPTIONS,
 } from '../constants';
 import { useOrderStats, useOrders } from '../hooks/useOrders';
-import type { WorkOrder } from '../types';
+import type { OrderFilters, WorkOrder } from '../types';
 import {
   INITIAL_ORDER_FILTERS,
   materialLine,
@@ -48,6 +49,8 @@ import {
 
 const makeStyles = createN1Styles(t => ({
   actions: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm },
+  // Matches the filled filter next to it in the toolbar.
+  toolbarButton: { borderRadius: t.radius.sm },
 }));
 
 const COLUMNS: N1TableColumn<WorkOrder>[] = [
@@ -112,6 +115,25 @@ export function OrdersListScreen() {
     },
   );
   const pager = usePagination(filtered);
+
+  const filterGroups = useMemo(
+    () => [
+      {
+        key: 'priority',
+        label: S.priorityFilter,
+        options: PRIORITY_OPTIONS,
+      },
+      { key: 'status', label: S.statusFilter, options: ORDER_STATUS_OPTIONS },
+    ],
+    [],
+  );
+  const applyFilters = useCallback(
+    (next: FilterValues) => {
+      setFilter('priority', (next.priority ?? []) as OrderFilters['priority']);
+      setFilter('status', (next.status ?? []) as OrderFilters['status']);
+    },
+    [setFilter],
+  );
 
   const openCreate = useCallback(
     () => navigation.navigate('OrderForm'),
@@ -234,50 +256,56 @@ export function OrdersListScreen() {
       title={S.create}
       leftIcon="plus"
       onPress={openCreate}
+      size="sm"
+      style={styles.toolbarButton}
       testID="create-order"
     />
   );
 
-  return (
-    <AdminScreen testID="orders-screen">
-      <N1PageHeader
-        title={S.title}
-        subtitle={isCompact ? undefined : S.subtitle}
-        right={createButton}
+  const firstLoad =
+    (status === 'idle' || status === 'loading') && items.length === 0;
+
+  const toolbar = (
+    <ListToolbar
+      align="end"
+      filled
+      query={query}
+      onQueryChange={setQuery}
+      searchPlaceholder={S.search}
+    >
+      <FilterMenu
+        groups={filterGroups}
+        value={filters}
+        onApply={applyFilters}
+        testID="orders-filter"
       />
+      {!isCompact && createButton}
+    </ListToolbar>
+  );
+
+  return (
+    <AdminScreen testID="orders-screen" fixed>
+      {/* Wide screens: the title and Create live in the table's toolbar. */}
+      {isCompact && <N1PageHeader title={S.title} right={createButton} />}
       {isCompact && <StatGrid items={statItems} variant="muted" />}
-      <ListToolbar
-        query={query}
-        onQueryChange={setQuery}
-        searchPlaceholder={S.search}
-      >
-        <ToolbarFilter
-          label={S.priorityFilter}
-          options={PRIORITY_FILTER_OPTIONS}
-          value={filters.priority}
-          onChange={v => setFilter('priority', v)}
-          testID="filter-priority"
-        />
-        <ToolbarFilter
-          label={S.statusFilter}
-          options={ORDER_STATUS_FILTER_OPTIONS}
-          value={filters.status}
-          onChange={v => setFilter('status', v)}
-          testID="filter-order-status"
-        />
-      </ListToolbar>
+      {/* The table shows its own loading state; AsyncContent only takes over
+          when the first load fails. */}
       <AsyncContent
-        status={status}
+        status={firstLoad ? 'succeeded' : status}
         error={error}
         onRetry={reload}
         hasData={items.length > 0}
       >
         <N1Table
+          loading={firstLoad}
           columns={columns}
           data={pager.pageItems}
           keyExtractor={o => o.id}
           onRowPress={openDetails}
           renderCompactItem={renderCompactItem}
+          toolbarTitle={isCompact ? undefined : S.title}
+          toolbar={toolbar}
+          scrollable={!isCompact}
           emptyText={
             items.length ? COMMON_STRINGS.noResults : COMMON_STRINGS.empty
           }
@@ -293,6 +321,9 @@ export function OrdersListScreen() {
                 hasNext={pager.hasNext}
                 onPrevious={pager.previous}
                 onNext={pager.next}
+                page={pager.page}
+                pageCount={pager.pageCount}
+                onPageChange={pager.goTo}
               />
             )
           }

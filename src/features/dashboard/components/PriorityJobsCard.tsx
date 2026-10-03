@@ -11,14 +11,9 @@ import {
   useN1Theme,
 } from '../../../shared/components';
 import { formatDayMonth } from '../../../shared/utils';
-import {
-  JOB_CARD_STRINGS,
-  currentOperation,
-  jobProgress,
-  progressTone,
-  type JobCard,
-} from '../../jobCards';
+import { currentOperation, jobProgress, progressTone } from '../../jobCards';
 import { DASHBOARD_STRINGS } from '../constants';
+import type { PriorityJob } from '../types';
 import { isDueSoon } from '../utils';
 
 const S = DASHBOARD_STRINGS.jobs;
@@ -86,7 +81,7 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 type Props = {
-  jobs: readonly JobCard[];
+  jobs: readonly PriorityJob[];
   total: number;
   onOpenJob: (id: string) => void;
   onViewAll: () => void;
@@ -107,7 +102,7 @@ export const PriorityJobsCard = memo(function PriorityJobsCardComponent({
   const tiles = (
     <>
       {jobs.map(job => {
-        const workOrder = JOB_CARD_STRINGS.workOrder(job.id);
+        const heading = S.heading(job.routeCardNo, job.customerName);
         const op = currentOperation(job);
         const progress = jobProgress(job);
         // Red only while there's still work left to do.
@@ -117,14 +112,14 @@ export const PriorityJobsCard = memo(function PriorityJobsCardComponent({
           <Pressable
             key={job.id}
             accessibilityRole="button"
-            accessibilityLabel={S.open(workOrder)}
+            accessibilityLabel={S.open(heading)}
             onPress={() => onOpenJob(job.id)}
             style={({ pressed }) => [styles.job, pressed && styles.pressed]}
             testID={`priority-job-${job.id}`}
           >
             <View style={styles.titles}>
               <N1Text variant="label" weight="bold" numberOfLines={1}>
-                {workOrder}
+                {heading}
               </N1Text>
               <N1Text variant="caption" color="secondary" numberOfLines={1}>
                 {job.partName}

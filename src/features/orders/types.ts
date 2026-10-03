@@ -60,9 +60,10 @@ export type OrderInput = Omit<
   'id' | 'status' | 'statusHistory' | 'createdAt'
 >;
 
+/** Multi-select filters; an empty list shows every order. */
 export type OrderFilters = {
-  priority: OrderPriority | 'all';
-  status: OrderStatus | 'all';
+  priority: OrderPriority[];
+  status: OrderStatus[];
 };
 
 // Stack nested inside the admin drawer's "Orders" item.

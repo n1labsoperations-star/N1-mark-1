@@ -106,3 +106,7 @@ export type BillingScreenProps<R extends keyof BillingStackParamList> =
     NativeStackScreenProps<BillingStackParamList, R>,
     DrawerScreenProps<AdminDrawerParamList>
   >;
+
+/** Multi-select list filters; an empty list shows every row. */
+export type InvoiceFilters = { status: InvoiceStatus[] };
+export type QuoteFilters = { status: QuoteStatus[] };

@@ -31,6 +31,8 @@ export type N1DropDownProps<T extends string | number> = {
   disabled?: boolean;
   /** Title of the option list. Defaults to the label. */
   sheetTitle?: string;
+  /** 'filled': compact grey field with no border, e.g. a table's filters. */
+  variant?: 'outline' | 'filled';
   containerStyle?: StyleProp<ViewStyle>;
   testID?: string;
 };
@@ -48,6 +50,13 @@ const makeStyles = createN1Styles(t => ({
     borderWidth: t.borderWidth.hairline,
     borderColor: t.colors.border,
     backgroundColor: t.colors.surface,
+  },
+  fieldFilled: {
+    height: t.controlHeight.sm,
+    paddingHorizontal: t.spacing.md,
+    borderRadius: t.radius.sm,
+    borderColor: t.colors.background,
+    backgroundColor: t.colors.background,
   },
   fieldOpen: { borderColor: t.colors.borderStrong },
   fieldError: { borderColor: t.colors.danger },
@@ -105,6 +114,7 @@ export const N1DropDown = React.memo(function N1DropDownComponent<
   errorText,
   disabled = false,
   sheetTitle,
+  variant = 'outline',
   containerStyle,
   testID,
 }: N1DropDownProps<T>) {
@@ -137,11 +147,13 @@ export const N1DropDown = React.memo(function N1DropDownComponent<
         onPress={() => setOpen(true)}
         style={[
           styles.field,
+          variant === 'filled' && styles.fieldFilled,
           open && styles.fieldOpen,
           Boolean(errorText) && styles.fieldError,
         ]}
       >
         <N1Text
+          variant={variant === 'filled' ? 'small' : 'body'}
           style={styles.value}
           color={selected ? 'primary' : 'tertiary'}
           numberOfLines={1}

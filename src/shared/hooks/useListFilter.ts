@@ -2,13 +2,16 @@ import { useMemo, useState } from 'react';
 import { SEARCH_DEBOUNCE_MS } from '../../config/constants';
 import { useDebouncedValue } from './useDebouncedValue';
 
-type Options<T, F extends Record<string, string>> = {
+type Options<T, F extends object> = {
   /**
    * Text searched by the query. Define it outside the component (or memoise
    * it) so the filtered list is only recomputed when the data changes.
    */
   getSearchText: (item: T) => string;
-  /** Filter drop-down values; 'all' means "don't filter on this key". */
+  /**
+   * Filter values: 'all' (drop-downs) or an empty list (multi-select) means
+   * "don't filter on this key".
+   */
   initialFilters?: F;
   matchesFilters?: (item: T, filters: F) => boolean;
 };
@@ -19,7 +22,7 @@ export const ALL = 'all';
  * Search box + filter drop-downs over an in-memory list. The query is
  * debounced so typing stays smooth on long lists.
  */
-export function useListFilter<T, F extends Record<string, string>>(
+export function useListFilter<T, F extends object>(
   items: readonly T[],
   { getSearchText, initialFilters, matchesFilters }: Options<T, F>,
 ) {
@@ -49,3 +52,7 @@ export function useListFilter<T, F extends Record<string, string>>(
 /** true when `value` is 'all' or equals `actual`. */
 export const matchesOption = (value: string, actual: string) =>
   value === ALL || value === actual;
+
+/** true when nothing is picked (show all) or `actual` is one of the picks. */
+export const matchesAny = (picked: readonly string[], actual: string) =>
+  picked.length === 0 || picked.includes(actual);

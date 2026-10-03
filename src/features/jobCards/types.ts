@@ -83,9 +83,11 @@ export type JobCard = {
 /** What the screens change: the flow and the operation progress. */
 export type JobCardInput = Pick<JobCard, 'operations' | 'status'>;
 
+/** Multi-select filters; an empty list shows every card. */
 export type JobCardFilters = {
-  operation: string;
-  operator: string;
+  operation: string[];
+  operator: string[];
+  machine: string[];
 };
 
 // Stack nested inside the admin drawer's "Job Cards" item.

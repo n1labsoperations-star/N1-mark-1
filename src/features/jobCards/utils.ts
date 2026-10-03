@@ -1,6 +1,7 @@
+import { workOrderSearchTerms } from '../../shared/utils';
 import type { N1DropDownOption, N1StepStatus } from '../../shared/components';
 import type { WorkOrder } from '../orders/types';
-import { ALL, matchesOption } from '../../shared/hooks';
+import { ALL, matchesAny } from '../../shared/hooks';
 import { percentOf } from '../../shared/utils';
 import { JOB_CARD_STRINGS } from './constants';
 import type {
@@ -178,29 +179,32 @@ function flowToOperations(steps: FlowStep[]): JobOperation[] {
 
 export const jobCardSearchText = (c: JobCard) => {
   const op = currentOperation(c);
-  return `${c.id} ${jobTitle(c)} ${c.customerName} ${op?.name ?? ''} ${
-    op?.machine ?? ''
-  } ${op?.operator ?? ''}`;
+  return `${workOrderSearchTerms(c.id)} ${jobTitle(c)} ${c.customerName} ${
+    op?.name ?? ''
+  } ${op?.machine ?? ''} ${op?.operator ?? ''}`;
 };
 
 export const matchesJobCardFilters = (c: JobCard, f: JobCardFilters) => {
   const op = currentOperation(c);
   return (
-    matchesOption(f.operation, op?.name ?? '') &&
-    matchesOption(f.operator, op?.operator ?? '')
+    matchesAny(f.operation, op?.name ?? '') &&
+    matchesAny(f.operator, op?.operator ?? '') &&
+    matchesAny(f.machine, op?.machine ?? '')
   );
 };
 
 /** "All …" first, then each distinct value in the list, A–Z. */
+/** Each distinct non-blank value once, sorted, as a filter option. */
+export const distinctOptions = (values: string[]) =>
+  [...new Set(values.filter(Boolean))]
+    .sort()
+    .map(value => ({ value, label: value }));
+
 export function optionsFrom(
   values: string[],
   allLabel: string,
 ): N1DropDownOption<string>[] {
-  const distinct = [...new Set(values.filter(Boolean))].sort();
-  return [
-    { value: ALL, label: allLabel },
-    ...distinct.map(value => ({ value, label: value })),
-  ];
+  return [{ value: ALL, label: allLabel }, ...distinctOptions(values)];
 }
 
 /** A new job card for a work order: no route card yet, nothing approved. */

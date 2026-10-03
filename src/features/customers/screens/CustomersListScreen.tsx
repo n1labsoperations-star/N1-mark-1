@@ -40,6 +40,8 @@ import { customerSearchText, formatAddress, hasAddress } from '../utils';
 
 const makeStyles = createN1Styles(t => ({
   nameCell: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.md },
+  // Matches the filled search next to it in the toolbar.
+  toolbarButton: { borderRadius: t.radius.sm },
 }));
 
 type FormTarget = { customer: Customer | null } | null;
@@ -156,30 +158,45 @@ export function CustomersListScreen() {
       title={S.add}
       leftIcon="plus"
       onPress={openCreate}
+      size="sm"
+      style={styles.toolbarButton}
       testID="add-customer"
     />
   );
 
+  const firstLoad =
+    (status === 'idle' || status === 'loading') && items.length === 0;
+
+  const toolbar = (
+    <ListToolbar
+      align="end"
+      filled
+      query={query}
+      onQueryChange={setQuery}
+      searchPlaceholder={S.search}
+    >
+      {!isCompact && addButton}
+    </ListToolbar>
+  );
+
   return (
-    <AdminScreen testID="customers-screen">
-      <N1PageHeader
-        title={S.title}
-        subtitle={isCompact ? undefined : S.subtitle(organizationName)}
-        right={addButton}
-      />
+    <AdminScreen testID="customers-screen" fixed>
+      {/* Wide screens: the title and Add live in the table's toolbar. */}
+      {isCompact && <N1PageHeader title={S.title} right={addButton} />}
+      {/* The table shows its own loading state; AsyncContent only takes over
+          when the first load fails. */}
       <AsyncContent
-        status={status}
+        status={firstLoad ? 'succeeded' : status}
         error={error}
         onRetry={reload}
         hasData={items.length > 0}
       >
         {isCompact && <CustomerOverview customerCount={items.length} />}
-        <ListToolbar
-          query={query}
-          onQueryChange={setQuery}
-          searchPlaceholder={S.search}
-        />
         <N1Table
+          loading={firstLoad}
+          toolbarTitle={isCompact ? undefined : S.title}
+          toolbar={toolbar}
+          scrollable={!isCompact}
           columns={columns}
           data={pager.pageItems}
           keyExtractor={c => c.id}
@@ -200,6 +217,9 @@ export function CustomersListScreen() {
                 hasNext={pager.hasNext}
                 onPrevious={pager.previous}
                 onNext={pager.next}
+                page={pager.page}
+                pageCount={pager.pageCount}
+                onPageChange={pager.goTo}
               />
             )
           }

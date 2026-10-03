@@ -1,13 +1,18 @@
 import { useCallback, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import {
+  FilterMenu,
+  ListToolbar,
   N1Button,
   N1IconButton,
   N1PageHeader,
   N1Pagination,
   N1Table,
   N1Text,
+  createN1Styles,
   useN1Breakpoint,
+  useN1Styles,
+  type FilterValues,
   type N1TableColumn,
 } from '../../../shared/components';
 import {
@@ -16,24 +21,61 @@ import {
   StatGrid,
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
-import { usePagination } from '../../../shared/hooks';
-import { useOrganizationName } from '../../profile';
+import { useListFilter, usePagination } from '../../../shared/hooks';
 import { CurrentWork } from '../components/CurrentWork';
 import { MachineStatusBadge } from '../components/MachineBadge';
 import { MachineCard } from '../components/MachineCard';
 import { MachineFormModal } from '../components/MachineFormModal';
-import { MACHINE_STRINGS as S, MACHINE_TYPE_LABELS } from '../constants';
+import {
+  MACHINE_STATUS_OPTIONS,
+  MACHINE_STRINGS as S,
+  MACHINE_TYPE_LABELS,
+} from '../constants';
 import { useMachineStats, useMachines } from '../hooks/useMachines';
-import type { Machine } from '../types';
+import type { Machine, MachineFilters } from '../types';
+import {
+  INITIAL_MACHINE_FILTERS,
+  machineSearchText,
+  matchesMachineFilters,
+} from '../utils';
+
+const makeStyles = createN1Styles(t => ({
+  // Matches the filled search and filter next to it in the toolbar.
+  toolbarButton: { borderRadius: t.radius.sm },
+}));
 
 type FormTarget = { machine: Machine | null } | null;
 
 export function MachinesListScreen() {
+  const styles = useN1Styles(makeStyles);
   const { isCompact } = useN1Breakpoint();
-  const organizationName = useOrganizationName();
   const { items, status, error, reload } = useMachines();
   const stats = useMachineStats();
-  const pager = usePagination(items);
+  const { query, setQuery, filters, setFilter, filtered } = useListFilter(
+    items,
+    {
+      getSearchText: machineSearchText,
+      initialFilters: INITIAL_MACHINE_FILTERS,
+      matchesFilters: matchesMachineFilters,
+    },
+  );
+  const pager = usePagination(filtered);
+
+  const filterGroups = useMemo(
+    () => [
+      {
+        key: 'status',
+        label: S.statusFilter,
+        options: MACHINE_STATUS_OPTIONS,
+      },
+    ],
+    [],
+  );
+  const applyFilters = useCallback(
+    (next: FilterValues) =>
+      setFilter('status', [...(next.status ?? [])] as MachineFilters['status']),
+    [setFilter],
+  );
 
   const [formTarget, setFormTarget] = useState<FormTarget>(null);
   const openCreate = useCallback(() => setFormTarget({ machine: null }), []);
@@ -142,46 +184,77 @@ export function MachinesListScreen() {
     <N1Button
       title={S.add}
       leftIcon="plus"
+      size="sm"
       onPress={openCreate}
+      style={styles.toolbarButton}
       testID="add-machine"
     />
   );
 
-  return (
-    <AdminScreen testID="machines-screen">
-      <N1PageHeader
-        title={S.title}
-        subtitle={isCompact ? undefined : S.subtitle(organizationName)}
-        right={addButton}
+  const firstLoad =
+    (status === 'idle' || status === 'loading') && items.length === 0;
+
+  const toolbar = (
+    <ListToolbar
+      align="end"
+      filled
+      query={query}
+      onQueryChange={setQuery}
+      searchPlaceholder={S.search}
+    >
+      <FilterMenu
+        groups={filterGroups}
+        value={filters}
+        onApply={applyFilters}
+        testID="machines-filter"
       />
+      {!isCompact && addButton}
+    </ListToolbar>
+  );
+
+  return (
+    <AdminScreen testID="machines-screen" fixed>
+      {/* Wide screens: the title and Add live in the table's toolbar. */}
+      {isCompact && <N1PageHeader title={S.title} right={addButton} />}
+      {/* The table shows its own loading state; AsyncContent only takes over
+          when the first load fails. */}
       <AsyncContent
-        status={status}
+        status={firstLoad ? 'succeeded' : status}
         error={error}
         onRetry={reload}
         hasData={items.length > 0}
       >
-        <StatGrid
-          items={statItems}
-          variant={isCompact ? 'muted' : 'surface'}
-          testID="machine-stats"
-        />
+        {/* Phones keep the stat tiles; wide screens show the totals in the
+            pagination bar instead. */}
+        {isCompact && (
+          <StatGrid items={statItems} variant="muted" testID="machine-stats" />
+        )}
         <N1Table
+          loading={firstLoad}
           columns={columns}
           data={pager.pageItems}
           keyExtractor={m => m.id}
           renderCompactItem={renderCompactItem}
+          toolbarTitle={isCompact ? undefined : S.title}
+          toolbar={toolbar}
+          scrollable={!isCompact}
+          emptyText={
+            items.length ? COMMON_STRINGS.noResults : COMMON_STRINGS.empty
+          }
           footer={
-            pager.pageCount > 1 && (
+            !isCompact && (
               <N1Pagination
-                summary={COMMON_STRINGS.showing(
-                  pager.shownCount,
-                  pager.total,
-                  S.noun,
+                summary={S.summary(
+                  COMMON_STRINGS.showing(pager.shownCount, pager.total, S.noun),
+                  stats,
                 )}
                 hasPrevious={pager.hasPrevious}
                 hasNext={pager.hasNext}
                 onPrevious={pager.previous}
                 onNext={pager.next}
+                page={pager.page}
+                pageCount={pager.pageCount}
+                onPageChange={pager.goTo}
               />
             )
           }

@@ -21,6 +21,10 @@ export function usePagination<T>(items: readonly T[], pageSize = PAGE_SIZE) {
     [pageCount],
   );
   const previous = useCallback(() => setPage(p => Math.max(p - 1, 0)), []);
+  const goTo = useCallback(
+    (target: number) => setPage(Math.max(0, Math.min(target, pageCount - 1))),
+    [pageCount],
+  );
 
   return {
     pageItems,
@@ -30,6 +34,7 @@ export function usePagination<T>(items: readonly T[], pageSize = PAGE_SIZE) {
     hasPrevious: current > 0,
     next,
     previous,
+    goTo,
     /** Rows shown up to and including this page, for "Showing X of Y". */
     shownCount: Math.min((current + 1) * pageSize, items.length),
     total: items.length,

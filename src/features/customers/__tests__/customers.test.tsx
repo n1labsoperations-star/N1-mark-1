@@ -26,9 +26,8 @@ afterEach(() => jest.restoreAllMocks());
 test('desktop list shows projects, money and address', async () => {
   const { root } = await renderAdmin('Customers');
   const text = allText(root);
-  expect(text).toContain(
-    'Every customer account working with ABC Engineering Pvt Ltd.',
-  );
+  // The title now lives in the table's toolbar, next to search and Add.
+  expect(allText(byTestId(root, 'customers-table'))).toContain('Customers');
   expect(text).toContain('12 active');
   expect(text).toContain('27 completed');
   expect(text).toContain('₹18,42,000');
@@ -174,4 +173,15 @@ test('details screen lists the customer’s orders and shared quotes', async () 
 
   await press(byText(byTestId(h.root, 'customer-quotes'), 'QT-2026-0040'));
   expect(h.currentRoute()).toBe('QuoteDetails');
+});
+
+test('wide screens: the page stays put; only the customer rows scroll', async () => {
+  const { root } = await renderAdmin('Customers');
+  const table = byTestId(root, 'customers-table');
+  const scroll = byTestId(table, 'customers-table-scroll');
+  expect(allText(scroll)).toContain('Acme Metalworks');
+  expect(allText(scroll)).not.toContain('Showing 10 of 12 customers');
+  expect(allText(table)).toContain('Showing 10 of 12 customers');
+  // Add sits inside the table's toolbar.
+  expect(byTestId(table, 'add-customer')).toBeTruthy();
 });

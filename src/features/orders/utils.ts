@@ -1,4 +1,5 @@
-import { matchesOption } from '../../shared/hooks';
+import { workOrderSearchTerms } from '../../shared/utils';
+import { matchesAny } from '../../shared/hooks';
 import { ORDER_STRINGS, PRIORITY_META } from './constants';
 import type { OrderFilters, WorkOrder } from './types';
 
@@ -37,14 +38,16 @@ export function compareOrders(a: WorkOrder, b: WorkOrder): number {
 }
 
 export const orderSearchText = (o: WorkOrder) =>
-  `${o.id} ${o.partName} ${o.jobName} ${o.customerName} ${o.material} ${o.poNumber} ${o.description}`;
+  `${workOrderSearchTerms(o.id)} ${o.partName} ${o.jobName} ${o.customerName} ${
+    o.material
+  } ${o.poNumber} ${o.description}`;
 
 export const matchesOrderFilters = (o: WorkOrder, f: OrderFilters) =>
-  matchesOption(f.priority, o.priority) && matchesOption(f.status, o.status);
+  matchesAny(f.priority, o.priority) && matchesAny(f.status, o.status);
 
 export const INITIAL_ORDER_FILTERS: OrderFilters = {
-  priority: 'all',
-  status: 'all',
+  priority: [],
+  status: [],
 };
 
 export const isOpen = (o: WorkOrder) => o.status !== 'completed';

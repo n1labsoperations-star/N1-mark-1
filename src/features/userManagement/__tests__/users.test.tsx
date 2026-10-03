@@ -3,7 +3,6 @@ import {
   byLabel,
   byTestId,
   byText,
-  choose,
   hasTestId,
   press,
   renderAdmin,
@@ -35,21 +34,54 @@ describe('Users list (desktop)', () => {
     ].forEach(name => expect(text).toContain(name));
     expect(text).toContain('Suspended');
     expect(text).toContain('Sep 18, 2026');
-    expect(text).toContain('Showing 5 of 5 users');
+    expect(text).toContain('Showing 10 of 22 users');
   });
 
-  test('search and filters narrow the list', async () => {
+  test('search and the multi-select filter narrow the list', async () => {
     const { root } = await renderAdmin('Users');
     await typeInto(byLabel(root, 'Search users'), 'priya');
     expect(allText(root)).toContain('Priya Sharma');
     expect(allText(root)).not.toContain('Arjun Mehta');
     await typeInto(byLabel(root, 'Search users'), '');
-    await choose(root, 'filter-status', 'Invited');
+
+    const panel = () => byTestId(root, 'users-filter-panel');
+    const tab = (label: string) =>
+      panel().find(
+        n =>
+          n.props.accessibilityRole === 'tab' &&
+          n.props.onPress &&
+          allText(n).startsWith(label),
+      );
+
+    // Invited + Suspended, picked together.
+    await press(byTestId(root, 'users-filter'));
+    await press(tab('Status'));
+    await press(byLabel(panel(), 'Invited'));
+    await press(byLabel(panel(), 'Suspended'));
+    await press(byTestId(root, 'users-filter-apply'));
+    let text = allText(root);
+    expect(text).toContain('Arjun Mehta');
+    expect(text).toContain('Karthik Iyer');
+    expect(text).not.toContain('Divya Rao');
+    expect(byLabel(root, 'Filter (2)')).toBeTruthy();
+
+    // Picks without Apply change nothing.
+    await press(byTestId(root, 'users-filter'));
+    await press(tab('Role'));
+    await press(byLabel(panel(), 'Admin'));
+    await press(byLabel(panel(), 'Close'));
     expect(allText(root)).toContain('Arjun Mehta');
-    expect(allText(root)).not.toContain('Divya Rao');
-    await choose(root, 'filter-status', 'All statuses');
-    await choose(root, 'filter-role', 'Admin');
-    expect(allText(root)).toContain('Showing 1 of 1 users');
+
+    // Clear all, then just Admin.
+    await press(byTestId(root, 'users-filter'));
+    await press(byText(panel(), 'Clear all'));
+    await press(tab('Role'));
+    await press(byLabel(panel(), 'Admin'));
+    await press(byTestId(root, 'users-filter-apply'));
+    text = allText(root);
+    expect(text).toContain('Showing 1 of 1 users');
+    expect(text).toContain('Koushik Dasarathan');
+
     await typeInto(byLabel(root, 'Search users'), 'nobody');
     expect(allText(root)).toContain('No results match your search.');
   });
@@ -76,9 +108,11 @@ describe('Users list (desktop)', () => {
     await typeInto(byTestId(root, 'user-form-password'), 'welcome123');
     await press(byTestId(root, 'user-form-submit'));
 
-    expect(store.getState().userManagement.ids).toHaveLength(6);
-    expect(allText(root)).toContain('Meena Lakshmi');
+    expect(store.getState().userManagement.ids).toHaveLength(23);
     expect(allText(root)).not.toContain('Add a new person to');
+    // New users join the end of the list, now the third page.
+    await press(byLabel(root, 'Page 3'));
+    expect(allText(root)).toContain('Meena Lakshmi');
   });
 
   test('edits a user without changing the password', async () => {
@@ -178,7 +212,7 @@ test('phone list uses cards and a pinned Create User button', async () => {
   mockWidth = 390;
   const { root } = await renderAdmin('Users');
   expect(hasTestId(root, 'user-card-USR-2')).toBe(true);
-  expect(hasTestId(root, 'filter-role')).toBe(false);
+  expect(hasTestId(root, 'users-filter')).toBe(false);
   await press(byTestId(root, 'create-user'));
   expect(allText(root)).toContain('Create user');
 });
@@ -207,4 +241,60 @@ describe('roles', () => {
     }
     expect(text).not.toContain('|User|');
   });
+});
+
+test('wide screens: the page stays put; only the user rows scroll', async () => {
+  const { root } = await renderAdmin('Users');
+  const table = byTestId(root, 'users-table');
+  const scroll = byTestId(table, 'users-table-scroll');
+  expect(allText(scroll)).toContain('Koushik Dasarathan');
+  // Pagination sits below the scrolling rows, always visible.
+  expect(allText(scroll)).not.toContain('Showing 10 of 22 users');
+  expect(allText(table)).toContain('Showing 10 of 22 users');
+});
+
+test('a search with no matches keeps the pagination under the message', async () => {
+  const { root } = await renderAdmin('Users');
+  await typeInto(byLabel(root, 'Search users'), 'zzz-nobody');
+  const table = byTestId(root, 'users-table');
+  const text = allText(table);
+  expect(text).toContain('No results match your search.');
+  expect(text).toContain('Showing 0 of 0 users');
+  expect(byLabel(table, 'Next').props.accessibilityState.disabled).toBe(true);
+});
+
+test('the toolbar has a filled search and one Filter button', async () => {
+  const { root } = await renderAdmin('Users');
+  const table = byTestId(root, 'users-table');
+  const search = table.find(
+    n =>
+      n.props.variant === 'filled' &&
+      n.props.placeholder === 'Search users' &&
+      typeof n.type !== 'string',
+  );
+  expect(search).toBeTruthy();
+  expect(byLabel(table, 'Filter')).toBeTruthy();
+});
+
+test('with no matches the column headings stay above the message', async () => {
+  const { root } = await renderAdmin('Users');
+  await typeInto(byLabel(root, 'Search users'), 'zzz-nobody');
+  const text = allText(byTestId(root, 'users-table'));
+  for (const column of ['Name', 'Email', 'Role', 'Status', 'Joined']) {
+    expect(text).toContain(column);
+  }
+  expect(text).toContain('No results match your search.');
+});
+
+test('browser autofill stays out of the search and the new-user form', async () => {
+  const { root } = await renderAdmin('Users');
+  const search = byLabel(root, 'Search users');
+  expect(search.props.autoComplete).toBe('off');
+  expect(search.props.keyboardType).toBe('web-search');
+
+  await press(byTestId(root, 'create-user'));
+  const host = (id: string) =>
+    byTestId(root, id).find(n => n.props.autoComplete !== undefined);
+  expect(host('user-form-email').props.autoComplete).toBe('off');
+  expect(host('user-form-password').props.autoComplete).toBe('new-password');
 });

@@ -3,7 +3,6 @@ import type { CustomerType } from './types';
 
 export const CUSTOMER_STRINGS = {
   title: 'Customers',
-  subtitle: (org: string) => `Every customer account working with ${org}.`,
   add: 'Add Customer',
   addA11y: 'Add customer',
   search: 'Search customers',

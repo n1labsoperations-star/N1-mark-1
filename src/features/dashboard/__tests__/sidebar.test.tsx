@@ -141,7 +141,8 @@ test('priority jobs are job card tiles, earliest due first, that open the job ca
   );
   expect(dueDates.every(d => d.startsWith('Due '))).toBe(true);
   const first = allText(tiles[0]);
-  expect(first).toMatch(/^WO #\d+/);
+  // Route card number with the client in brackets.
+  expect(first).toMatch(/^RC-\d+ \(.+\)/);
   expect(first).toContain('%');
 
   await press(tiles[0]);

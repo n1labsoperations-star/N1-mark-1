@@ -1,5 +1,4 @@
 import type { N1DropDownOption } from '../../shared/components';
-import { ALL } from '../../shared/hooks';
 import type { StatusMeta } from '../../shared/types';
 import type {
   BillingState,
@@ -18,12 +17,11 @@ export const JOB_CARD_STRINGS = {
   title: 'Job Cards',
   subtitle:
     'Shop-floor operations in progress, with the machine and operator assigned to each.',
-  search: 'Search job cards',
+  search: 'Search by WO #, part or operator',
   noun: 'job cards',
   operationFilter: 'Operation',
   operatorFilter: 'Operator',
-  allOperations: 'All operations',
-  allOperators: 'All operators',
+  machineFilter: 'Assigned machine',
   columns: {
     order: 'Order ID',
     part: 'Part name',
@@ -190,6 +188,7 @@ export const BILLING_META: Record<BillingState, StatusMeta> = {
 };
 
 export const INITIAL_JOB_CARD_FILTERS: JobCardFilters = {
-  operation: ALL,
-  operator: ALL,
+  operation: [],
+  operator: [],
+  machine: [],
 };

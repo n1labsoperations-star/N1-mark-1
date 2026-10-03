@@ -1,12 +1,7 @@
 import { ROLE_LABELS } from '../auth/constants';
 import type { N1DropDownOption } from '../../shared/components';
 import type { StatusMeta } from '../../shared/types';
-import type {
-  UserFilters,
-  UserPermissionKey,
-  UserRole,
-  UserStatus,
-} from './types';
+import type { UserPermissionKey, UserRole, UserStatus } from './types';
 
 export const USER_STRINGS = {
   title: 'Users',
@@ -20,7 +15,6 @@ export const USER_STRINGS = {
   search: 'Search users',
   roleFilter: 'Role',
   statusFilter: 'Status',
-  allRoles: 'All roles',
   noun: 'users',
   columns: {
     name: 'Name',
@@ -105,14 +99,6 @@ export const ROLE_OPTIONS: N1DropDownOption<UserRole>[] = (
 export const STATUS_OPTIONS: N1DropDownOption<UserStatus>[] = (
   Object.keys(STATUS_META) as UserStatus[]
 ).map(value => ({ value, label: STATUS_META[value].label }));
-
-export const ROLE_FILTER_OPTIONS: N1DropDownOption<UserFilters['role']>[] = [
-  { value: 'all', label: USER_STRINGS.allRoles },
-  ...ROLE_OPTIONS,
-];
-
-export const STATUS_FILTER_OPTIONS: N1DropDownOption<UserFilters['status']>[] =
-  [{ value: 'all', label: 'All statuses' }, ...STATUS_OPTIONS];
 
 export const DEFAULT_PERMISSIONS: Record<
   UserRole,

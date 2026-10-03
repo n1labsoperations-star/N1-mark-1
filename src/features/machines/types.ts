@@ -30,3 +30,8 @@ export type MachineInput = Pick<
   Machine,
   'name' | 'code' | 'model' | 'type' | 'location' | 'status' | 'notes'
 >;
+
+/** Multi-select list filters; an empty list shows every machine. */
+export type MachineFilters = {
+  status: MachineStatus[];
+};

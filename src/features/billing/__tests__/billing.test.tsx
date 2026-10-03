@@ -87,20 +87,66 @@ describe('totals', () => {
   });
 });
 
-test('invoices tab: stats, table, filter and search', async () => {
+const filterStatuses = async (
+  root: Parameters<typeof byTestId>[0],
+  id: 'invoices-filter' | 'quotes-filter',
+  statuses: string[],
+) => {
+  await press(byTestId(root, id));
+  const panel = byTestId(root, `${id}-panel`);
+  await press(byText(panel, 'Clear all'));
+  for (const status of statuses) {
+    await press(byLabel(byTestId(root, `${id}-panel`), status));
+  }
+  await press(byTestId(root, `${id}-apply`));
+};
+
+test('invoices tab: totals, table, filter and search', async () => {
   const { root } = await renderAdmin('Billing');
-  expect(allText(byTestId(root, 'stat-total'))).toContain('12');
-  expect(allText(byTestId(root, 'stat-paid'))).toContain('7');
+  // Wide screens: no stat tiles; the totals are in the pagination bar.
+  expect(hasTestId(root, 'invoice-stats')).toBe(false);
   const text = allText(byTestId(root, 'invoices-table'));
   expect(text).toContain('INV-2026-0125');
   expect(text).toContain('₹42,000');
   expect(text).toContain('RC-2225');
-  expect(allText(root)).toContain('Showing 10 of 12 invoices');
-  await choose(root, 'filter-invoice-status', 'Overdue');
+  expect(text).toContain('Showing 10 of 12 invoices · 7 paid · 3 pending');
+  await filterStatuses(root, 'invoices-filter', ['Overdue']);
   expect(allText(root)).toContain('Showing 2 of 2 invoices');
-  await choose(root, 'filter-invoice-status', 'All statuses');
-  await typeInto(byLabel(root, 'Search invoice'), 'meridian');
+  await filterStatuses(root, 'invoices-filter', []);
+  await typeInto(
+    byLabel(root, 'Search by invoice, customer or WO #'),
+    'meridian',
+  );
   expect(allText(root)).toContain('Showing 2 of 2 invoices');
+});
+
+test('invoices: two statuses at once, and search by work ID', async () => {
+  const { root } = await renderAdmin('Billing');
+  await filterStatuses(root, 'invoices-filter', ['Overdue', 'Draft']);
+  const text = allText(byTestId(root, 'invoices-table'));
+  const overdue = MOCK_INVOICES.filter(i => i.status === 'overdue').length;
+  const draft = MOCK_INVOICES.filter(i => i.status === 'draft').length;
+  expect(text).toContain(`Showing ${overdue + draft} of ${overdue + draft}`);
+  expect(byLabel(root, 'Filter (2)')).toBeTruthy();
+  await filterStatuses(root, 'invoices-filter', []);
+
+  const search = byLabel(root, 'Search by invoice, customer or WO #');
+  for (const query of ['WO-00125', '125', 'wo125', 'WO #125']) {
+    await typeInto(search, query);
+    const rows = allText(byTestId(root, 'invoices-table'));
+    expect(rows).toContain('INV-2026-0125');
+    expect(rows).toContain('Showing 1 of 1');
+  }
+});
+
+test('wide screens: only the invoice rows scroll; totals stay in view', async () => {
+  const { root } = await renderAdmin('Billing');
+  const table = byTestId(root, 'invoices-table');
+  const scroll = byTestId(table, 'invoices-table-scroll');
+  expect(allText(scroll)).toContain('INV-2026-0125');
+  expect(allText(scroll)).not.toContain('Showing 10 of 12 invoices');
+  expect(allText(table)).toContain('Invoices');
+  expect(allText(table)).toContain('Showing 10 of 12 invoices');
 });
 
 test('export explains it is not available yet', async () => {
@@ -191,12 +237,13 @@ test('edit invoice needs at least one operation', async () => {
 test('quotes tab, quote details, convert and revise', async () => {
   const h = await renderAdmin('Billing');
   await press(byText(h.root, 'Quotes'));
-  expect(allText(byTestId(h.root, 'stat-accepted'))).toContain('3');
-  expect(allText(byTestId(h.root, 'stat-pending'))).toContain('3');
-  expect(allText(byTestId(h.root, 'stat-rejected'))).toContain('2');
-  await choose(h.root, 'filter-quote-status', 'Draft');
+  const quotes = byTestId(h.root, 'quotes-table');
+  expect(allText(quotes)).toContain('3 accepted · 3 pending · 2 rejected');
+  // Wide screens: Create quote sits in the Quotes toolbar.
+  expect(hasTestId(quotes, 'create-quote')).toBe(true);
+  await filterStatuses(h.root, 'quotes-filter', ['Draft']);
   expect(allText(byTestId(h.root, 'quotes-table'))).toContain('QT-2026-0038');
-  await choose(h.root, 'filter-quote-status', 'All statuses');
+  await filterStatuses(h.root, 'quotes-filter', []);
 
   await press(byText(h.root, 'QT-2026-0042'));
   const screen = byTestId(h.root, 'quote-details-screen');
@@ -386,4 +433,22 @@ test('table rows use icon buttons for view and edit', async () => {
   await press(byText(h.root, 'Quotes'));
   await press(byLabel(h.root, 'View QT-2026-0042'));
   expect(h.currentRoute()).toBe('QuoteDetails');
+});
+
+test('wide screens: the Invoices / Quotes tabs sit in the table toolbar', async () => {
+  const { root } = await renderAdmin('Billing');
+  const tabsIn = (tableId: string) =>
+    byTestId(root, tableId)
+      .findAll(n => n.props.accessibilityRole === 'tab' && n.props.onPress)
+      .map(t => allText(t));
+
+  expect(tabsIn('invoices-table')).toEqual(['Invoices', 'Quotes']);
+  const quotesTab = byTestId(root, 'invoices-table').find(
+    n =>
+      n.props.accessibilityRole === 'tab' &&
+      n.props.onPress &&
+      allText(n) === 'Quotes',
+  );
+  await press(quotesTab);
+  expect(tabsIn('quotes-table')).toEqual(['Invoices', 'Quotes']);
 });

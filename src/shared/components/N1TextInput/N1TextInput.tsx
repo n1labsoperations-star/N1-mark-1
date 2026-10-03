@@ -29,6 +29,8 @@ export type N1TextInputProps = Omit<TextInputProps, 'style' | 'editable'> & {
   /** Read-only grey field (e.g. an auto-generated code). */
   readOnly?: boolean;
   disabled?: boolean;
+  /** 'filled': compact grey field with no border, e.g. a table's search. */
+  variant?: 'outline' | 'filled';
   containerStyle?: StyleProp<ViewStyle>;
 };
 
@@ -51,6 +53,14 @@ const makeStyles = createN1Styles(t => ({
     paddingVertical: t.spacing.md,
     minHeight: t.controlHeight.lg * 2,
   },
+  filled: {
+    minHeight: t.controlHeight.sm,
+    paddingHorizontal: t.spacing.md,
+    borderRadius: t.radius.sm,
+    borderColor: t.colors.background,
+    backgroundColor: t.colors.background,
+  },
+  inputFilled: { fontSize: t.typography.small.fontSize },
   focused: { borderColor: t.colors.borderStrong },
   error: { borderColor: t.colors.danger },
   readOnly: {
@@ -81,6 +91,7 @@ export const N1TextInput = React.memo(function N1TextInputComponent({
   rightElement,
   readOnly = false,
   disabled = false,
+  variant = 'outline',
   multiline,
   containerStyle,
   onFocus,
@@ -105,15 +116,21 @@ export const N1TextInput = React.memo(function N1TextInputComponent({
       <View
         style={[
           styles.field,
+          variant === 'filled' && styles.filled,
           multiline && styles.multiline,
-          focused && styles.focused,
+          // Filled fields stay borderless while typing.
+          focused && variant !== 'filled' && styles.focused,
           readOnly && styles.readOnly,
           Boolean(errorText) && styles.error,
         ]}
       >
         {leftIcon && <N1Icon name={leftIcon} size="sm" color="textSecondary" />}
         <TextInput
-          style={[styles.input, multiline && styles.inputMultiline]}
+          style={[
+            styles.input,
+            variant === 'filled' && styles.inputFilled,
+            multiline && styles.inputMultiline,
+          ]}
           placeholderTextColor={theme.colors.textTertiary}
           editable={editable}
           multiline={multiline}
