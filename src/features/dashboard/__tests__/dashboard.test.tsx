@@ -87,7 +87,7 @@ describe('DashboardNavigation', () => {
       'Billing',
     ]);
     expect(allText(root)).toContain('ABC Engineering Pvt Ltd');
-    expect(allText(root)).toContain('MAIN MENU');
+    expect(allText(root)).not.toContain('MAIN MENU');
   });
 
   test('phones show the short menu, the user card and a menu button', async () => {
@@ -124,8 +124,8 @@ describe('DashboardNavigation', () => {
     const root = await renderDashboard(WIDE);
 
     await press(byLabel(root, 'Collapse sidebar'));
-    expect(byLabel(root, 'Search menu')).toBeUndefined();
-    expect(allText(root)).not.toContain('MAIN MENU');
+    // Rail: the search shrinks to an icon button.
+    expect(byLabel(root, 'Search menu')).toBeTruthy();
 
     await press(byLabel(root, 'Expand sidebar'));
     expect(byLabel(root, 'Search menu')).toBeDefined();

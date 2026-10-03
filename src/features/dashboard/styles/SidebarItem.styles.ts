@@ -7,15 +7,10 @@ export const makeSidebarItemStyles = createN1Styles(t => ({
     gap: t.spacing.md,
     height: t.controlHeight.lg,
     paddingHorizontal: t.spacing.md,
-    borderRadius: t.radius.pill,
-  },
-  collapsed: {
-    width: t.controlHeight.lg,
-    justifyContent: 'center',
-    paddingHorizontal: 0,
+    borderRadius: t.radius.compact,
   },
   active: {
-    backgroundColor: t.colors.surfaceInverseActive,
+    backgroundColor: t.colors.sidebarActive,
   },
   pressed: {
     opacity: t.opacity.pressed,

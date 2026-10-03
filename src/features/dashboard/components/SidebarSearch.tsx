@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import {
   Platform,
+  Pressable,
   TextInput,
   View,
   type TextInputInstance,
@@ -37,9 +38,21 @@ type Props = {
   onChangeText: (text: string) => void;
   /** Show the ⌘K hint and listen for it (web, wide screens). */
   shortcut: boolean;
+  /** Focus the field on mount, e.g. opened from the collapsed rail. */
+  autoFocus?: boolean;
+  /** Collapsed rail: the same box with just the icon, which expands. */
+  collapsed?: boolean;
+  onExpand?: () => void;
 };
 
-function SidebarSearch({ value, onChangeText, shortcut }: Props) {
+function SidebarSearch({
+  value,
+  onChangeText,
+  shortcut,
+  autoFocus = false,
+  collapsed = false,
+  onExpand,
+}: Props) {
   const styles = useN1Styles(makeSidebarSearchStyles);
   const theme = useN1Theme();
   const input = useRef<TextInputInstance | null>(null);
@@ -61,9 +74,23 @@ function SidebarSearch({ value, onChangeText, shortcut }: Props) {
     return () => doc.removeEventListener('keydown', onKeyDown);
   }, [shortcutActive]);
 
+  if (collapsed) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Search menu"
+        onPress={onExpand}
+        style={styles.box}
+        testID="sidebar-open-search"
+      >
+        <N1Icon name="search" size="sm" tintColor={theme.colors.textTertiary} />
+      </Pressable>
+    );
+  }
+
   return (
     <View style={styles.box}>
-      <N1Icon name="search" tintColor={theme.colors.textTertiary} />
+      <N1Icon name="search" size="sm" tintColor={theme.colors.textTertiary} />
       <TextInput
         ref={input}
         value={value}
@@ -73,6 +100,7 @@ function SidebarSearch({ value, onChangeText, shortcut }: Props) {
         accessibilityLabel="Search menu"
         autoCapitalize="none"
         autoCorrect={false}
+        autoFocus={autoFocus}
         style={styles.input}
       />
       {shortcutActive ? (

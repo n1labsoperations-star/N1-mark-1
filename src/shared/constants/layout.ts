@@ -10,9 +10,6 @@ export const SIDEBAR_COLLAPSED_WIDTH = 76;
 /** Right-hand column on detail screens (Account, Recent activity…). */
 export const ASIDE_WIDTH = 312;
 
-/** Widest the main content grows on very large screens. */
-export const CONTENT_MAX_WIDTH = 1440;
-
 /** Search box in list toolbars on wide screens. */
 export const TOOLBAR_SEARCH_WIDTH = 360;
 

@@ -42,6 +42,10 @@ export type N1Colors = {
   surfaceInverse: string;
   /** Highlighted item on an inverse surface (active sidebar item). */
   surfaceInverseActive: string;
+  /** Admin sidebar: a soft black, lighter than surfaceInverse. */
+  sidebar: string;
+  /** Active item and user card on the sidebar. */
+  sidebarActive: string;
   textPrimary: string;
   textSecondary: string;
   /** Theme background colour. */
@@ -74,6 +78,8 @@ const lightColors: N1Colors = {
   surfaceMuted: palette.grey150,
   surfaceInverse: palette.ink900,
   surfaceInverseActive: palette.ink700,
+  sidebar: palette.ink800,
+  sidebarActive: palette.ink600,
   textPrimary: palette.ink900,
   textSecondary: palette.grey500,
   textTertiary: palette.grey400,
@@ -128,9 +134,12 @@ const lightColors: N1Colors = {
 const darkColors: N1Colors = {
   background: palette.black,
   surface: palette.ink800,
+  themeBg: palette.ink800,
   surfaceMuted: palette.ink700,
   surfaceInverse: palette.grey100,
   surfaceInverseActive: palette.grey200,
+  sidebar: palette.grey100,
+  sidebarActive: palette.grey200,
   textPrimary: palette.grey50,
   textSecondary: palette.grey300,
   textTertiary: palette.grey400,

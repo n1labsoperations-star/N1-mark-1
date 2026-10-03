@@ -34,7 +34,7 @@ test('desktop list shows projects, money and address', async () => {
   expect(text).toContain('₹18,42,000');
   expect(text).toContain('12 Industrial Estate Road, Chennai, Tamil Nadu');
   expect(text).toContain('Not added yet');
-  expect(text).toContain('Showing 5 of 5 customers');
+  expect(text).toContain('Showing 10 of 12 customers');
 });
 
 test('search filters by name or city', async () => {

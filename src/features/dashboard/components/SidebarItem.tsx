@@ -23,7 +23,6 @@ function SidebarItem({ item, active, collapsed, onPress }: Props) {
       onPress={() => onPress(item)}
       style={({ pressed }) => [
         styles.item,
-        collapsed && styles.collapsed,
         active && styles.active,
         pressed && styles.pressed,
       ]}
@@ -31,7 +30,7 @@ function SidebarItem({ item, active, collapsed, onPress }: Props) {
       <N1Icon name={item.icon} size="lg" color="textInverse" />
       {collapsed ? null : (
         <N1Text
-          variant="title"
+          variant="body"
           weight={active ? 'bold' : 'regular'}
           color="inverse"
         >

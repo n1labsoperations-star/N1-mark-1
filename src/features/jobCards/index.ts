@@ -19,6 +19,7 @@ export {
   jobHeading,
   jobProgress,
   jobTitle,
+  progressTone,
   materialRejection,
   rejectedMaterialItems,
   pauseOperation,

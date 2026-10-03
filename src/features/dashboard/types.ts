@@ -1,3 +1,4 @@
+import type { CustomerShare } from '../customers';
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { N1IconName } from '../../shared/components';
 import type { BillingStackParamList } from '../billing/types';
@@ -51,4 +52,20 @@ export type OrgUser = {
   status: UserStatus;
   /** ISO date, e.g. "2026-09-12". */
   joined: string;
+};
+
+/** Time range picked in the dashboard header. */
+export type DashboardPeriod = 'week' | 'month' | 'year';
+
+/** The dashboard summary cards for one period. */
+export type PeriodSummary = {
+  billed: number;
+  outstanding: number;
+  orders: number;
+};
+
+/** One row of the dashboard's customers table. */
+export type CustomerRow = CustomerShare & {
+  /** The customer's work orders not yet completed. */
+  pendingDelivery: number;
 };

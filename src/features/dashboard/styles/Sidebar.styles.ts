@@ -4,42 +4,56 @@ export const makeSidebarStyles = createN1Styles(t => ({
   root: {
     flex: 1,
     gap: t.spacing.lg,
-    paddingHorizontal: t.spacing.lg,
-    paddingVertical: t.spacing.xl,
-    backgroundColor: t.colors.surfaceInverse,
+    padding: t.spacing.sm,
+    backgroundColor: t.colors.sidebar,
   },
-  rootCollapsed: {
-    alignItems: 'center',
-    paddingHorizontal: t.spacing.sm,
+  // The N1 brand mark (169×120 artwork), tinted to the sidebar's text colour.
+  // Sized to fit the collapsed rail without moving.
+  brand: {
+    height: t.iconSize.lg,
+    aspectRatio: 169 / 120,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingLeft: t.spacing.sm,
-  },
-  headerCollapsed: {
-    justifyContent: 'center',
-    paddingLeft: 0,
-  },
-  sectionLabel: {
-    marginTop: t.spacing.sm,
-    paddingHorizontal: t.spacing.md,
+    // Lines the logo up with the menu icons below it.
+    paddingLeft: t.spacing.md,
+    minHeight: t.controlHeight.sm,
   },
   menu: {
     gap: t.spacing.xs,
   },
-  // Pushes the user card to the bottom of the phone drawer.
-  spacer: {
+  // The menu takes the free height, which pins the account rows to the bottom.
+  menuScroll: {
     flex: 1,
+  },
+  // Bottom: the organization's name, above the user card.
+  organization: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.sm,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.sm,
+  },
+  logout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.sm,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.sm,
+    borderRadius: t.radius.compact,
   },
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: t.spacing.md,
-    padding: t.spacing.md,
-    borderRadius: t.radius.lg,
-    backgroundColor: t.colors.surfaceInverseActive,
+    // Centres the small avatar on the same line as the menu icons.
+    padding: (t.spacing.md * 2 + t.iconSize.lg - t.avatarSize.sm) / 2,
+    borderRadius: t.radius.compact,
+  },
+  userCardActive: {
+    backgroundColor: t.colors.sidebarActive,
   },
   userCardText: {
     flex: 1,
