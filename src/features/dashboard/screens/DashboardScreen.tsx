@@ -1,30 +1,31 @@
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useNavigation } from '@react-navigation/native';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import {
   N1PageHeader,
+  N1Tabs,
   createN1Styles,
   useN1Breakpoint,
   useN1Styles,
 } from '../../../shared/components';
 
-import {
-  AdminScreen,
-  AsyncContent,
-  StatGrid,
-} from '../../../shared/components';
+import { AdminScreen, AsyncContent } from '../../../shared/components';
 import { formatCurrency } from '../../../shared/utils';
-import { useOrganizationName } from '../../profile';
-import { DistributionCard } from '../components/DistributionCard';
+import { useOrganizationName, useSession } from '../../profile';
+import { CustomersCard } from '../components/CustomersCard';
 import { PriorityJobsCard } from '../components/PriorityJobsCard';
+import SummaryCard from '../components/SummaryCard';
 import { DASHBOARD_STRINGS as S } from '../constants';
 import { useDashboard } from '../hooks/useDashboard';
-import type { AdminDrawerParamList } from '../types';
+import type { AdminDrawerParamList, DashboardPeriod } from '../types';
 
 const makeStyles = createN1Styles(t => ({
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: t.spacing.lg },
+  // Wide screens: the columns fill the window height below the header.
+  fill: { flex: 1, alignItems: 'stretch' },
   column: { gap: t.spacing.lg },
+  summary: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.lg },
   main: { flex: 3 },
   side: { flex: 2 },
 }));
@@ -35,7 +36,9 @@ export function DashboardScreen() {
     useNavigation<DrawerNavigationProp<AdminDrawerParamList>>();
   const { isDesktop } = useN1Breakpoint();
   const organizationName = useOrganizationName();
-  const dashboard = useDashboard();
+  const { shellUser } = useSession();
+  const [period, setPeriod] = useState<DashboardPeriod>('month');
+  const dashboard = useDashboard(period);
 
   const openCustomer = useCallback(
     (customerId: string) =>
@@ -51,77 +54,106 @@ export function DashboardScreen() {
     () => navigation.navigate('Customers'),
     [navigation],
   );
-  const openOrder = useCallback(
-    (orderId: string) =>
-      navigation.navigate('Orders', {
-        screen: 'OrderDetails',
-        params: { orderId },
+  const openOrders = useCallback(
+    () => navigation.navigate('Orders'),
+    [navigation],
+  );
+  const openJobCard = useCallback(
+    (jobCardId: string) =>
+      navigation.navigate('JobCards', {
+        screen: 'JobCardDetails',
+        params: { jobCardId },
         // Keep the list underneath so Back returns to it.
         initial: false,
       }),
     [navigation],
   );
-  const openOrders = useCallback(
-    () => navigation.navigate('Orders'),
+  const openJobCards = useCallback(
+    () => navigation.navigate('JobCards'),
+    [navigation],
+  );
+
+  const openBilling = useCallback(
+    () => navigation.navigate('Billing'),
     [navigation],
   );
 
   const { stats } = dashboard;
-  const statItems = useMemo(
+  const summary = useMemo(
     () => [
       {
-        key: 'monthly',
-        label: S.stats.monthly,
-        value: formatCurrency(stats.monthlyBilled),
+        key: 'billed',
+        label: S.stats.billed,
+        value: formatCurrency(stats.billed),
         icon: 'receipt' as const,
-      },
-      {
-        key: 'year',
-        label: S.stats.year,
-        value: formatCurrency(stats.yearBilled),
-        icon: 'check-circle' as const,
+        tone: 'success' as const,
+        onOpen: openBilling,
       },
       {
         key: 'outstanding',
         label: S.stats.outstanding,
         value: formatCurrency(stats.outstanding),
-        icon: 'info' as const,
+        icon: 'clock' as const,
+        tone: 'warning' as const,
+        onOpen: openBilling,
       },
       {
-        key: 'newOrders',
-        label: S.stats.newOrders,
-        value: stats.newOrders,
+        key: 'orders',
+        label: S.stats.orders,
+        value: stats.orders,
         icon: 'package' as const,
+        tone: 'info' as const,
+        onOpen: openOrders,
       },
     ],
-    [stats],
+    [stats, openBilling, openOrders],
   );
 
   return (
-    <AdminScreen testID="dashboard-screen">
-      <N1PageHeader title={S.title} subtitle={S.subtitle(organizationName)} />
+    <AdminScreen testID="dashboard-screen" fixed>
+      <N1PageHeader
+        title={S.title(shellUser?.name)}
+        subtitle={S.subtitle(organizationName)}
+        right={<N1Tabs tabs={S.periods} value={period} onChange={setPeriod} />}
+      />
       <AsyncContent
         status={dashboard.status}
         error={dashboard.error}
         onRetry={dashboard.reload}
       >
-        <StatGrid items={statItems} testID="dashboard-stats" />
-        <View style={isDesktop ? styles.row : styles.column}>
-          <View style={isDesktop && styles.main}>
-            <DistributionCard
-              shares={dashboard.shares}
-              topCustomers={dashboard.topCustomers}
-              activeOrders={dashboard.activeOrders}
+        {/* Wide screens: summary cards with the customers table filling the
+            rest of the left column, priority jobs down the right. The page
+            doesn't scroll; the table rows and the priority list do. */}
+        <View style={isDesktop ? [styles.row, styles.fill] : styles.column}>
+          <View style={[styles.column, isDesktop && styles.main]}>
+            <View style={styles.summary} testID="dashboard-stats">
+              {summary.map((item, index) => (
+                <SummaryCard
+                  key={item.key}
+                  label={item.label}
+                  value={item.value}
+                  icon={item.icon}
+                  tone={item.tone}
+                  featured={index === 0}
+                  onOpen={item.onOpen}
+                  testID={`stat-${item.key}`}
+                />
+              ))}
+            </View>
+            <CustomersCard
+              customers={dashboard.customers}
               onOpenCustomer={openCustomer}
-              onViewMore={openCustomers}
+              onViewAll={openCustomers}
+              scrollable={isDesktop}
             />
           </View>
           <View style={isDesktop && styles.side}>
             <PriorityJobsCard
               jobs={dashboard.jobs}
               total={dashboard.totalJobs}
-              onOpenJob={openOrder}
-              onViewAll={openOrders}
+              onOpenJob={openJobCard}
+              onViewAll={openJobCards}
+              scrollable={isDesktop}
             />
           </View>
         </View>

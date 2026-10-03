@@ -126,7 +126,7 @@ function AdminDashboardNavigation({ initialRouteName = 'Overview' }: Props) {
         swipeEnabled: isCompact,
         overlayColor: theme.colors.overlay,
         drawerStyle: {
-          backgroundColor: theme.colors.surfaceInverse,
+          backgroundColor: theme.colors.sidebar,
           borderRightWidth: 0,
           ...(isCompact
             ? null
@@ -136,6 +136,8 @@ function AdminDashboardNavigation({ initialRouteName = 'Overview' }: Props) {
                   : theme.sidebarWidth.expanded,
               }),
         },
+        // Phones only: wide screens have no top bar (the sidebar has it all).
+        headerShown: isCompact,
         header: renderHeader,
         sceneStyle: { backgroundColor: theme.colors.background },
         // Leaving a module resets its stack, so the menu always opens its list.

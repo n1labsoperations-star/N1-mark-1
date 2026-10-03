@@ -116,10 +116,8 @@ test('log out asks first, then returns to the login screen', async () => {
   await press(byLabel(root, 'Open my profile'));
   await press(byTestId(root, 'logout'));
   expect(allText(root)).toContain('Log out?');
-  const [, confirm] = root.findAll(
-    n => typeof n.type === 'string' && n.props.accessibilityLabel === 'Log out',
-  );
-  await press(confirm);
+  // The dialog's Log out (the sidebar has one too).
+  await press(byLabel(byTestId(root, 'logout-dialog'), 'Log out'));
   expect(store.getState().profile.signedOut).toBe(true);
   expect(allText(root)).toContain('Get Started');
   expect(allText(root)).not.toContain('Koushik Dasarathan');

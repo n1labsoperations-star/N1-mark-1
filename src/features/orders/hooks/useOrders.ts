@@ -25,10 +25,13 @@ export function useOrder(id: string | undefined) {
 
 export const useOrderStats = () => useAppSelector(selectOrderStats);
 
-/** Orders by due date plus the "new orders" count, for the dashboard. */
+/**
+ * Orders by due date plus the "new orders" count, for the dashboard. Also
+ * returns every order so the dashboard can count any period.
+ */
 export function usePriorityJobs() {
-  const { status, error, reload } = useOrders();
+  const { items: orders, status, error, reload } = useOrders();
   const jobs = useAppSelector(selectOrdersByDueDate);
   const newOrders = useAppSelector(selectNewOrderCount);
-  return { jobs, newOrders, status, error, reload };
+  return { jobs, orders, newOrders, status, error, reload };
 }

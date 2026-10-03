@@ -7,7 +7,7 @@ export const makeSidebarSearchStyles = createN1Styles(t => ({
     gap: t.spacing.sm,
     height: t.controlHeight.md,
     paddingHorizontal: t.spacing.md,
-    borderRadius: t.radius.pill,
+    borderRadius: t.radius.compact,
     borderWidth: t.borderWidth.hairline,
     borderColor: t.colors.surfaceInverseActive,
   },

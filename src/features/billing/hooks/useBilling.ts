@@ -42,9 +42,12 @@ export function useQuote(id: string | undefined) {
 export const useInvoiceStats = () => useAppSelector(selectInvoiceStats);
 export const useQuoteStats = () => useAppSelector(selectQuoteStats);
 
-/** Monthly / yearly billed and outstanding, for the dashboard. Loads invoices. */
+/**
+ * Monthly / yearly billed and outstanding, plus the invoices themselves so
+ * the dashboard can total any period. Loads invoices.
+ */
 export function useBillingSummary() {
-  const { status, error, reload } = useInvoices();
+  const { items: invoices, status, error, reload } = useInvoices();
   const summary = useAppSelector(selectBillingSummary);
-  return { ...summary, status, error, reload };
+  return { ...summary, invoices, status, error, reload };
 }

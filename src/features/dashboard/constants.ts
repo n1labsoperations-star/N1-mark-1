@@ -1,5 +1,11 @@
-import type { N1DropDownOption, N1Tone } from '../../shared/components';
-import type { MenuItem, OrgUser, UserRole, UserStatus } from './types';
+import type { N1DropDownOption, N1Tab, N1Tone } from '../../shared/components';
+import type {
+  DashboardPeriod,
+  MenuItem,
+  OrgUser,
+  UserRole,
+  UserStatus,
+} from './types';
 
 export const MENU_ITEMS: MenuItem[] = [
   { route: 'Overview', label: 'Dashboard', icon: 'dashboard', onCompact: true },
@@ -112,40 +118,52 @@ export const STATUS_FILTER_OPTIONS: N1DropDownOption<string>[] = [
 ];
 
 export const DASHBOARD_STRINGS = {
-  title: 'Dashboard',
+  /** Greets the signed-in user; plain "Welcome back" until the name loads. */
+  title: (name?: string) => (name ? `Welcome back, ${name}` : 'Welcome back'),
   subtitle: (org: string) => `Overview for ${org}.`,
+  /** This calendar week (from Monday), month or year. */
+  periods: [
+    { key: 'week', label: 'Week' },
+    { key: 'month', label: 'Month' },
+    { key: 'year', label: 'Year' },
+  ] as N1Tab<DashboardPeriod>[],
   stats: {
-    monthly: 'Monthly billed',
-    year: 'Total billed (this year)',
-    outstanding: 'Outstanding amount',
-    newOrders: 'New orders',
+    billed: 'Total billed',
+    outstanding: 'Outstanding',
+    orders: 'Total orders',
+    open: (label: string) => `Open ${label}`,
   },
-  distribution: {
-    title: 'Customer order distribution',
-    subtitle: 'Share of active orders by customer, by volume.',
-    activeBadge: (n: number) => `${n} active orders`,
-    activeBadgeShort: (n: number) => `${n} active`,
-    pipeline: 'Active pipeline',
-    orders: (n: number) => `${n} orders`,
-    total: 'Total',
-    ordersCaption: 'orders',
+  customers: {
+    title: 'Customers',
+    subtitle: 'Orders, billing and deliveries by customer.',
+    viewAll: 'View all',
     columns: {
       customer: 'Customer',
-      orders: 'Orders',
-      billed: 'Total billed',
+      orders: 'Total orders',
+      billed: 'Billed',
       outstanding: 'Outstanding',
+      pending: 'Pending delivery',
+      share: 'Contribution',
     },
-    billed: (amount: string) => `Billed: ${amount}`,
-    outstanding: (amount: string) => `Outstanding: ${amount}`,
-    viewMore: 'View more',
+    orders: (n: number) => `${n} orders`,
+    pending: (n: number) => `${n} pending`,
+    billed: (amount: string) => `Billed ${amount}`,
+    outstanding: (amount: string) => `Outstanding ${amount}`,
     open: (name: string) => `Open ${name}`,
   },
   jobs: {
     title: 'Priority jobs (by due date)',
     viewAll: (n: number) => `View all (${n})`,
     open: (title: string) => `Open ${title}`,
+    progress: 'Progress',
+    noProcess: 'No process yet',
+    unassigned: 'Unassigned',
+    due: (date: string) => `Due ${date}`,
   },
 } as const;
 
 /** Rows in the priority jobs panel before "View all". */
 export const PRIORITY_JOBS_LIMIT = 10;
+
+/** A job due within this many days (or overdue) shows its date in red. */
+export const DUE_SOON_DAYS = 3;

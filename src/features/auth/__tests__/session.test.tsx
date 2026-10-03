@@ -44,7 +44,6 @@ test('a shop-floor role only gets its own area, never the admin dashboard', asyn
 
   expect(text).toContain('My Jobs');
   // The admin sidebar (and its modules) isn't registered for this role.
-  expect(text).not.toContain('MAIN MENU');
   expect(text).not.toContain('Job Cards');
 });
 

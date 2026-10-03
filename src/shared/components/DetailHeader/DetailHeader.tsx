@@ -8,7 +8,7 @@ import {
   useN1Breakpoint,
   useN1Styles,
 } from '..';
-import { COMMON_STRINGS, CONTENT_MAX_WIDTH } from '../../constants';
+import { COMMON_STRINGS } from '../../constants';
 
 export type DetailHeaderProps = {
   title: string;
@@ -26,12 +26,11 @@ export type DetailHeaderProps = {
 const makeStyles = createN1Styles(t => ({
   bar: {
     width: '100%',
-    maxWidth: CONTENT_MAX_WIDTH,
-    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     gap: t.spacing.md,
-    paddingHorizontal: t.spacing.xxl,
+    // Lines up with AdminScreen's content padding.
+    paddingHorizontal: t.spacing.page,
     paddingTop: t.spacing.xl,
   },
   titles: { flex: 1, gap: t.spacing.xxs },

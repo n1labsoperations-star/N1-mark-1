@@ -1,22 +1,30 @@
-import React, { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Image, Pressable, ScrollView, View } from 'react-native';
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   N1Avatar,
+  N1ConfirmDialog,
+  N1Icon,
   N1IconButton,
-  N1Logo,
   N1Text,
   useN1Styles,
   useN1Theme,
 } from '../../../shared/components';
 import { NAV_STRINGS } from '../../../shared/constants';
+import { useAuthSession } from '../../auth';
+import { PROFILE_STRINGS } from '../../profile/constants';
+import { useOrganizationName, useSession } from '../../profile';
+import { useToggle } from '../../../shared/hooks';
+import { ORGANIZATION_STRINGS } from '../../profile/organization';
 import { CURRENT_USER, MENU_ITEMS, ORGANIZATION } from '../constants';
 import { makeSidebarStyles } from '../styles';
 import type { MenuItem } from '../types';
 import { visibleMenuItems } from '../utils';
 import SidebarItem from './SidebarItem';
 import SidebarSearch from './SidebarSearch';
+
+const BRAND_LOGO = require('../../../../assets/images/n1-logo-light.png');
 
 type Props = DrawerContentComponentProps & {
   /** Phone drawer: close button, shorter menu and the user card. */
@@ -37,6 +45,16 @@ function Sidebar({
   const theme = useN1Theme();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
+  // Set when the rail's search icon expands the sidebar.
+  const [focusSearch, setFocusSearch] = useState(false);
+  const openSearch = () => {
+    setFocusSearch(true);
+    onToggleCollapse();
+  };
+  const expand = () => {
+    setFocusSearch(false);
+    onToggleCollapse();
+  };
   const activeRoute = state.routes[state.index]?.name;
   const items = visibleMenuItems(MENU_ITEMS, { compact, query });
 
@@ -47,26 +65,67 @@ function Sidebar({
     }
   };
 
+  const organizationName = useOrganizationName();
+  const { logout } = useSession();
+  const { signOut } = useAuthSession();
+  const [logoutOpen, openLogout, closeLogout] = useToggle(false);
+  // Same as My profile's Log out: the root navigator then shows Login.
+  const confirmLogout = useCallback(() => {
+    closeLogout();
+    logout();
+    signOut();
+  }, [closeLogout, logout, signOut]);
+  const openOrganization = () => {
+    navigation.navigate('Organization');
+    if (compact) {
+      navigation.closeDrawer();
+    }
+  };
+
   const openProfile = () => {
     navigation.navigate('Profile');
-    navigation.closeDrawer();
+    if (compact) {
+      navigation.closeDrawer();
+    }
   };
 
   return (
     <View
       style={[
         styles.root,
-        collapsed && styles.rootCollapsed,
         // Safe-area insets add to the normal padding (they are 0 on web).
         {
-          paddingTop: insets.top + theme.spacing.xl,
-          paddingBottom: insets.bottom + theme.spacing.xl,
+          paddingTop: insets.top + theme.spacing.sm,
+          paddingBottom: insets.bottom + theme.spacing.sm,
         },
       ]}
     >
-      <View style={[styles.header, collapsed && styles.headerCollapsed]}>
-        {collapsed ? null : <N1Logo size="sm" color="inverse" />}
-        {compact ? (
+      <View style={styles.header}>
+        {collapsed ? (
+          // Rail: the brand mark doubles as the expand button.
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Expand sidebar"
+            onPress={expand}
+            style={({ pressed }) => pressed && styles.userCardPressed}
+          >
+            <Image
+              source={BRAND_LOGO}
+              style={styles.brand}
+              tintColor={theme.colors.textInverse}
+              resizeMode="contain"
+            />
+          </Pressable>
+        ) : (
+          <Image
+            source={BRAND_LOGO}
+            style={styles.brand}
+            tintColor={theme.colors.textInverse}
+            resizeMode="contain"
+            accessibilityLabel="N1"
+          />
+        )}
+        {collapsed ? null : compact ? (
           <N1IconButton
             icon="close"
             variant="inverse"
@@ -79,32 +138,22 @@ function Sidebar({
             icon="sidebar"
             variant="inverse"
             size="sm"
-            accessibilityLabel={
-              collapsed ? 'Expand sidebar' : 'Collapse sidebar'
-            }
+            accessibilityLabel="Collapse sidebar"
             onPress={onToggleCollapse}
           />
         )}
       </View>
 
-      {collapsed ? null : (
-        <SidebarSearch
-          value={query}
-          onChangeText={setQuery}
-          shortcut={!compact}
-        />
-      )}
+      <SidebarSearch
+        value={query}
+        onChangeText={setQuery}
+        shortcut={!compact}
+        autoFocus={focusSearch}
+        collapsed={collapsed}
+        onExpand={openSearch}
+      />
 
-      <ScrollView contentContainerStyle={styles.menu}>
-        {collapsed ? null : (
-          <N1Text
-            variant="overline"
-            color="tertiary"
-            style={styles.sectionLabel}
-          >
-            MAIN MENU
-          </N1Text>
-        )}
+      <ScrollView style={styles.menuScroll} contentContainerStyle={styles.menu}>
         {items.map(item => (
           <SidebarItem
             key={item.route}
@@ -116,31 +165,80 @@ function Sidebar({
         ))}
       </ScrollView>
 
-      {compact ? (
-        <>
-          <View style={styles.spacer} />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={NAV_STRINGS.openProfile}
-            onPress={openProfile}
-            style={({ pressed }) => [
-              styles.userCard,
-              pressed && styles.userCardPressed,
-            ]}
-            testID="sidebar-open-profile"
+      {/* Organization, My profile and Log out (no top bar on wide screens).
+          Collapsed: the same rows with the text hidden, so nothing moves. */}
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel={ORGANIZATION_STRINGS.open(organizationName)}
+        onPress={openOrganization}
+        style={({ pressed }) => [
+          styles.organization,
+          pressed && styles.userCardPressed,
+        ]}
+        testID="open-organization"
+      >
+        <N1Icon name="building" size="lg" color="textTertiary" />
+        {collapsed ? null : (
+          <N1Text
+            variant="small"
+            color="inverse"
+            numberOfLines={1}
+            style={styles.userCardText}
           >
-            <N1Avatar name={CURRENT_USER.name} tone="info" />
-            <View style={styles.userCardText}>
-              <N1Text variant="title" color="inverse" numberOfLines={1}>
-                {CURRENT_USER.name}
-              </N1Text>
-              <N1Text variant="small" color="tertiary" numberOfLines={1}>
-                {`${CURRENT_USER.roleLabel} · ${ORGANIZATION.shortName}`}
-              </N1Text>
-            </View>
-          </Pressable>
-        </>
-      ) : null}
+            {organizationName}
+          </N1Text>
+        )}
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={NAV_STRINGS.openProfile}
+        onPress={openProfile}
+        accessibilityState={{ selected: activeRoute === 'Profile' }}
+        style={({ pressed }) => [
+          styles.userCard,
+          // Highlighted like a menu item, only while My profile is open.
+          activeRoute === 'Profile' && styles.userCardActive,
+          pressed && styles.userCardPressed,
+        ]}
+        testID="sidebar-open-profile"
+      >
+        <N1Avatar name={CURRENT_USER.name} tone="info" size="sm" />
+        {collapsed ? null : (
+          <View style={styles.userCardText}>
+            <N1Text variant="label" color="inverse" numberOfLines={1}>
+              {CURRENT_USER.name}
+            </N1Text>
+            <N1Text variant="caption" color="tertiary" numberOfLines={1}>
+              {`${CURRENT_USER.roleLabel} · ${ORGANIZATION.shortName}`}
+            </N1Text>
+          </View>
+        )}
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={PROFILE_STRINGS.logout}
+        onPress={openLogout}
+        style={({ pressed }) => [
+          styles.logout,
+          pressed && styles.userCardPressed,
+        ]}
+        testID="sidebar-logout"
+      >
+        <N1Icon name="logout" size="lg" color="textTertiary" />
+        {collapsed ? null : (
+          <N1Text color="inverse">{PROFILE_STRINGS.logout}</N1Text>
+        )}
+      </Pressable>
+      <N1ConfirmDialog
+        visible={logoutOpen}
+        title={PROFILE_STRINGS.logoutTitle}
+        message={PROFILE_STRINGS.logoutMessage}
+        confirmLabel={PROFILE_STRINGS.logout}
+        icon="logout"
+        onConfirm={confirmLogout}
+        onCancel={closeLogout}
+        testID="sidebar-logout-dialog"
+      />
     </View>
   );
 }

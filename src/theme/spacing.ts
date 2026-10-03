@@ -12,6 +12,8 @@ export const spacing = {
   xs: 5,
   sm: 10,
   md: 12,
+  /** Admin page content padding (wide screens). */
+  page: 15,
   lg: 16,
   xl: 20,
   xxl: 24,
@@ -24,6 +26,8 @@ export const radius = {
   none: 0,
   xs: 4,
   sm: 8,
+  /** Sidebar items and the dashboard's cards. */
+  compact: 10,
   md: 12,
   lg: 16,
   xl: 20,
@@ -59,10 +63,13 @@ export const borderWidth = {
   thick: 2,
 } as const;
 
-/** Admin sidebar: full width with labels, or an icon-only rail. */
+/**
+ * Admin sidebar: full width with labels, or an icon-only rail. The rail is a
+ * menu item (12 + 20px icon + 12) plus the sidebar's 10px padding each side.
+ */
 export const sidebarWidth = {
   expanded: 280,
-  collapsed: 76,
+  collapsed: 64,
 } as const;
 
 export const modalWidth = {
