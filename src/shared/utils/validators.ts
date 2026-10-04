@@ -22,6 +22,11 @@ export const normalizeGstin = (value: string) =>
 export const isGstin = (value: string) =>
   GSTIN_PATTERN.test(normalizeGstin(value));
 
+/** Indian PIN code: 6 digits, not starting with 0, e.g. "600098". */
+const PIN_PATTERN = /^[1-9]\d{5}$/;
+
+export const isPinCode = (value: string) => PIN_PATTERN.test(value.trim());
+
 /** Allows +, spaces and dashes; counts the digits only. */
 export function isPhone(value: string): boolean {
   if (/[^\d\s+()-]/.test(value)) {

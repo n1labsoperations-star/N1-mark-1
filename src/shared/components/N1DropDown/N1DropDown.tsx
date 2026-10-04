@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Modal,
   Pressable,
   ScrollView,
   View,
+  useWindowDimensions,
+  type HostInstance,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { useN1Breakpoint } from '../../hooks/useN1Breakpoint';
 import { N1Icon } from '../N1Icon/N1Icon';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
 import { N1FieldHelper, N1FieldLabel } from '../N1FieldLabel/N1FieldLabel';
@@ -29,78 +30,77 @@ export type N1DropDownProps<T extends string | number> = {
   helperText?: string;
   errorText?: string;
   disabled?: boolean;
-  /** Title of the option list. Defaults to the label. */
-  sheetTitle?: string;
   /** 'filled': compact grey field with no border, e.g. a table's filters. */
   variant?: 'outline' | 'filled';
+  /** For screen readers when there's no visible label (toolbar filters). */
+  accessibilityLabel?: string;
   containerStyle?: StyleProp<ViewStyle>;
   testID?: string;
 };
 
+/** The list shows about six options before it scrolls. */
+const MENU_MAX_HEIGHT = 240;
+/** Space between the field and its list. */
+const MENU_GAP = 6;
+
+/** Where the list sits: under the field, or above when there's no room. */
+type MenuAnchor = { left: number; minWidth: number; maxWidth: number } & (
+  | { top: number }
+  | { bottom: number }
+);
+
 const makeStyles = createN1Styles(t => ({
   container: { gap: t.spacing.xs + t.spacing.xxs },
+  // Matches N1TextInput: the standard form field.
   field: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: t.spacing.sm,
-    height: t.controlHeight.md,
-    paddingHorizontal: t.spacing.lg,
-    borderRadius: t.radius.pill,
+    height: t.controlHeight.sm + t.spacing.xs,
+    paddingHorizontal: t.spacing.md,
+    borderRadius: t.radius.sm,
     borderWidth: t.borderWidth.hairline,
     borderColor: t.colors.border,
     backgroundColor: t.colors.surface,
   },
   fieldFilled: {
     height: t.controlHeight.sm,
-    paddingHorizontal: t.spacing.md,
-    borderRadius: t.radius.sm,
     borderColor: t.colors.background,
     backgroundColor: t.colors.background,
   },
-  fieldOpen: { borderColor: t.colors.borderStrong },
+  fieldOpen: {
+    borderColor: t.colors.tone.neutral.solid,
+    boxShadow: `0 0 0 ${t.borderWidth.thick + 1}px ${
+      t.colors.tone.neutral.background
+    }`,
+  },
   fieldError: { borderColor: t.colors.danger },
   disabled: { opacity: t.opacity.disabled },
   value: { flex: 1 },
-  backdrop: {
-    flex: 1,
-    backgroundColor: t.colors.overlay,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: t.spacing.xxl,
-  },
-  backdropCompact: { justifyContent: 'flex-end', padding: 0 },
-  sheet: {
-    width: '100%',
-    maxWidth: t.modalWidth.sm,
-    maxHeight: '70%',
+  backdrop: { flex: 1 },
+  menu: {
+    position: 'absolute',
+    maxHeight: MENU_MAX_HEIGHT,
+    padding: t.spacing.xs,
+    borderRadius: t.radius.sm,
+    borderWidth: t.borderWidth.hairline,
+    borderColor: t.colors.border,
     backgroundColor: t.colors.surface,
-    borderRadius: t.radius.xl,
-    paddingVertical: t.spacing.md,
-    boxShadow: t.shadow.modal,
+    boxShadow: t.shadow.raised,
   },
-  sheetCompact: {
-    maxWidth: undefined,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-    paddingBottom: t.spacing.xxl,
-  },
-  sheetTitle: {
-    paddingHorizontal: t.spacing.xl,
-    paddingVertical: t.spacing.sm,
-  },
+  // Hidden for the moment before the field has been measured.
+  menuMeasuring: { opacity: 0 },
   option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: t.controlHeight.md,
-    paddingHorizontal: t.spacing.xl,
+    justifyContent: 'center',
+    minHeight: t.controlHeight.sm,
+    paddingHorizontal: t.spacing.md,
+    borderRadius: t.radius.xs,
   },
-  optionSelected: { backgroundColor: t.colors.surfaceMuted },
-  optionPressed: { backgroundColor: t.colors.surfaceMuted },
+  optionActive: { backgroundColor: t.colors.surfaceMuted },
 }));
 
-/** Select field. Opens a list of options (bottom sheet on phones). */
+/** Select field. Its options open in a list right under the field. */
 export const N1DropDown = React.memo(function N1DropDownComponent<
   T extends string | number,
 >({
@@ -113,16 +113,18 @@ export const N1DropDown = React.memo(function N1DropDownComponent<
   helperText,
   errorText,
   disabled = false,
-  sheetTitle,
   variant = 'outline',
+  accessibilityLabel,
   containerStyle,
   testID,
 }: N1DropDownProps<T>) {
   const styles = useN1Styles(makeStyles);
-  const { isCompact } = useN1Breakpoint();
+  const window = useWindowDimensions();
+  const field = useRef<HostInstance | null>(null);
   const [open, setOpen] = useState(false);
+  const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
+  const [hovered, setHovered] = useState<T | null>(null);
   const selected = options.find(o => o.value === value);
-  const title = sheetTitle ?? label;
 
   const choose = (option: N1DropDownOption<T>) => {
     setOpen(false);
@@ -131,20 +133,39 @@ export const N1DropDown = React.memo(function N1DropDownComponent<
     }
   };
 
+  const show = () => {
+    setAnchor(null);
+    setOpen(true);
+    field.current?.measureInWindow((x, y, w, h) => {
+      const below = window.height - (y + h + MENU_GAP);
+      const across = {
+        left: x,
+        minWidth: w,
+        maxWidth: Math.max(w, window.width - x - MENU_GAP),
+      };
+      setAnchor(
+        below < MENU_MAX_HEIGHT && y > below
+          ? { ...across, bottom: window.height - y + MENU_GAP }
+          : { ...across, top: y + h + MENU_GAP },
+      );
+    });
+  };
+
   return (
     <View
       style={[styles.container, disabled && styles.disabled, containerStyle]}
     >
       {label && <N1FieldLabel label={label} required={required} />}
       <Pressable
+        ref={field}
         testID={testID}
         accessibilityRole="button"
-        accessibilityLabel={label}
+        accessibilityLabel={accessibilityLabel ?? label}
         aria-valuetext={selected?.label ?? placeholder}
         aria-disabled={disabled}
         aria-expanded={open}
         disabled={disabled}
-        onPress={() => setOpen(true)}
+        onPress={show}
         style={[
           styles.field,
           variant === 'filled' && styles.fieldFilled,
@@ -153,66 +174,58 @@ export const N1DropDown = React.memo(function N1DropDownComponent<
         ]}
       >
         <N1Text
-          variant={variant === 'filled' ? 'small' : 'body'}
+          variant="small"
           style={styles.value}
           color={selected ? 'primary' : 'tertiary'}
           numberOfLines={1}
         >
           {selected?.label ?? placeholder}
         </N1Text>
-        <N1Icon name="chevron-down" size="sm" />
+        <N1Icon name={open ? 'chevron-up' : 'chevron-down'} size="sm" />
       </Pressable>
       <N1FieldHelper helperText={helperText} errorText={errorText} />
 
-      <Modal
-        visible={open}
-        transparent
-        animationType={isCompact ? 'slide' : 'fade'}
-        onRequestClose={() => setOpen(false)}
-      >
+      <Modal visible={open} transparent onRequestClose={() => setOpen(false)}>
         <Pressable
           accessibilityLabel="Close options"
-          style={[styles.backdrop, isCompact && styles.backdropCompact]}
+          style={styles.backdrop}
           onPress={() => setOpen(false)}
+        />
+        <View
+          style={[styles.menu, anchor ?? styles.menuMeasuring]}
+          testID={testID && `${testID}-menu`}
         >
-          <Pressable
-            accessible={false}
-            style={[styles.sheet, isCompact && styles.sheetCompact]}
-            onPress={() => undefined}
-          >
-            {title && (
-              <N1Text variant="h3" style={styles.sheetTitle}>
-                {title}
-              </N1Text>
-            )}
-            <ScrollView accessibilityRole="list">
-              {options.map(option => {
-                const isSelected = option.value === value;
-                return (
-                  <Pressable
-                    key={String(option.value)}
-                    accessibilityRole="menuitem"
-                    aria-selected={isSelected}
-                    aria-disabled={option.disabled}
-                    disabled={option.disabled}
-                    onPress={() => choose(option)}
-                    style={({ pressed }) => [
-                      styles.option,
-                      isSelected && styles.optionSelected,
-                      pressed && styles.optionPressed,
-                      option.disabled && styles.disabled,
-                    ]}
+          <ScrollView accessibilityRole="list">
+            {options.map(option => {
+              const isSelected = option.value === value;
+              return (
+                <Pressable
+                  key={String(option.value)}
+                  accessibilityRole="menuitem"
+                  aria-selected={isSelected}
+                  aria-disabled={option.disabled}
+                  disabled={option.disabled}
+                  onPress={() => choose(option)}
+                  onHoverIn={() => setHovered(option.value)}
+                  onHoverOut={() => setHovered(null)}
+                  style={({ pressed }) => [
+                    styles.option,
+                    (isSelected || pressed || hovered === option.value) &&
+                      styles.optionActive,
+                    option.disabled && styles.disabled,
+                  ]}
+                >
+                  <N1Text
+                    variant="small"
+                    weight={isSelected ? 'semiBold' : 'regular'}
                   >
-                    <N1Text weight={isSelected ? 'semiBold' : 'regular'}>
-                      {option.label}
-                    </N1Text>
-                    {isSelected && <N1Icon name="check" size="sm" />}
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
+                    {option.label}
+                  </N1Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
       </Modal>
     </View>
   );

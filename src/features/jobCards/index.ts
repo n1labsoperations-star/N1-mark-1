@@ -8,6 +8,7 @@ export { JobCardCard } from './components/JobCardCard';
 export { JobCardStatusBadge, MetaBadge } from './components/JobCardBadges';
 export { RouteCard } from './components/RouteCard';
 export { DashedTile } from './components/DashedTile';
+export { JobProgress } from './components/JobProgress';
 export { JOB_CARD_STRINGS, MATERIAL_QC_META } from './constants';
 export {
   canPauseOrComplete,
@@ -16,6 +17,7 @@ export {
   currentOperation,
   jobCardFromOrder,
   jobCardSearchText,
+  jobCardsWorkedBy,
   jobHeading,
   jobProgress,
   jobTitle,
@@ -25,6 +27,7 @@ export {
   pauseOperation,
   startOperation,
 } from './utils';
+export type { JobCardWork } from './utils';
 export type {
   JobCard,
   JobCardStatus,

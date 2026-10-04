@@ -40,8 +40,6 @@ const S = BILLING_STRINGS.quotes;
 
 const makeStyles = createN1Styles(t => ({
   actions: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm },
-  // Matches the filled search and filter next to them in the toolbar.
-  toolbarButton: { borderRadius: t.radius.sm },
 }));
 
 type Props = {
@@ -194,7 +192,6 @@ export function QuotesTab({ toolbarStart }: Props) {
             variant="secondary"
             size="sm"
             onPress={exportList}
-            style={styles.toolbarButton}
           />
           {/* Phones keep Create in the page header. */}
           <N1Button
@@ -202,7 +199,6 @@ export function QuotesTab({ toolbarStart }: Props) {
             leftIcon="plus"
             size="sm"
             onPress={createQuote}
-            style={styles.toolbarButton}
             testID="create-quote"
           />
         </>

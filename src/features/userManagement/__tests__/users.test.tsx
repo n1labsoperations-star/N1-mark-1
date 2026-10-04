@@ -3,11 +3,13 @@ import {
   byLabel,
   byTestId,
   byText,
+  choose,
   hasTestId,
   press,
   renderAdmin,
   typeInto,
 } from '../../../shared/testing/testUtils';
+import { userManagementApi } from '../api/userManagementApi';
 import { ROLE_OPTIONS } from '../constants';
 
 let mockWidth = 1280;
@@ -35,6 +37,16 @@ describe('Users list (desktop)', () => {
     expect(text).toContain('Suspended');
     expect(text).toContain('Sep 18, 2026');
     expect(text).toContain('Showing 10 of 22 users');
+  });
+
+  test('leaving Users and coming back clears the search', async () => {
+    const h = await renderAdmin('Users');
+    await typeInto(byLabel(h.root, 'Search users'), 'nobody');
+    expect(allText(h.root)).toContain('No results match your search.');
+    await h.navigate('Customers');
+    await h.navigate('Users');
+    expect(byLabel(h.root, 'Search users').props.value).toBe('');
+    expect(allText(h.root)).not.toContain('No results match your search.');
   });
 
   test('search and the multi-select filter narrow the list', async () => {
@@ -144,49 +156,215 @@ describe('Users list (desktop)', () => {
 });
 
 describe('User details', () => {
-  test('desktop shows contact, attachments and account, no permissions', async () => {
+  test('like Organization: identity on top, a section menu, locked fields', async () => {
     const h = await renderAdmin('Users');
     await h.navigate('UserDetails', { userId: 'USR-2' });
-    const text = allText(h.root);
-    expect(text).toContain('Production Supervisor · ABC Engineering Pvt Ltd');
-    expect(text).toContain('+91 98765 43210');
-    expect(text).toContain('Manufacturing Operations');
-    expect(text).toContain('ID proof.pdf');
-    expect(text).toContain('1.2 MB');
-    expect(text).toContain('Joined Sep 18, 2026');
-    expect(text).toContain('2h ago');
+    const screen = byTestId(h.root, 'user-details-screen');
+    const field = (key: string) => byTestId(screen, `user-details-${key}`);
+    const identity = allText(byTestId(screen, 'user-identity'));
+    expect(identity).toContain(
+      'Production Supervisor · ABC Engineering Pvt Ltd',
+    );
+    expect(identity).toContain('Joined Sep 18, 2026');
+    expect(field('phone').props.value).toBe('+91 98765 43210');
+    expect(field('department').props.value).toBe('Manufacturing Operations');
+    expect(field('organization').props.value).toBe('ABC Engineering Pvt Ltd');
+    expect(field('name').props.editable).toBe(false);
+    const text = allText(screen);
     expect(text).not.toContain('Permissions');
     expect(text).not.toContain('Manage users');
+
+    // Address details and Documents are their own sections.
+    expect(hasTestId(screen, 'user-documents')).toBe(false);
+    await press(byTestId(screen, 'user-section-documents'));
+    expect(allText(byTestId(screen, 'user-documents'))).toContain(
+      'ID proof.pdf',
+    );
+    expect(allText(byTestId(screen, 'user-documents'))).toContain('1.2 MB');
+    expect(hasTestId(screen, 'user-section-activity')).toBe(false);
   });
 
-  test('active status saves to the store', async () => {
+  test('Address details: locked until Edit, validates the PIN code and saves', async () => {
+    const spy = jest.spyOn(userManagementApi, 'update');
     const h = await renderAdmin('Users');
     await h.navigate('UserDetails', { userId: 'USR-2' });
-    await press(byTestId(h.root, 'toggle-active'));
-    expect(h.store.getState().userManagement.entities['USR-2'].status).toBe(
-      'inactive',
+    const screen = byTestId(h.root, 'user-details-screen');
+    const field = (key: string) => byTestId(screen, `user-address-${key}`);
+    await press(byTestId(screen, 'user-section-address'));
+    expect(field('city').props.value).toBe('Chennai');
+    expect(field('pinCode').props.value).toBe('600040');
+    expect(field('city').props.editable).toBe(false);
+
+    await press(byTestId(screen, 'edit-user-address'));
+    await typeInto(field('pinCode'), '123');
+    await press(byTestId(screen, 'user-address-submit'));
+    expect(allText(screen)).toContain('Enter a 6-digit PIN code');
+    expect(spy).not.toHaveBeenCalled();
+
+    await typeInto(field('pinCode'), '641012');
+    await typeInto(field('city'), ' Coimbatore ');
+    await press(byTestId(screen, 'user-address-submit'));
+    expect(spy).toHaveBeenCalledWith(
+      'USR-2',
+      expect.objectContaining({ city: 'Coimbatore', pinCode: '641012' }),
     );
-    expect(allText(h.root)).toContain('Mark as active');
-    await press(byTestId(h.root, 'toggle-active'));
-    expect(h.store.getState().userManagement.entities['USR-2'].status).toBe(
-      'active',
+    expect(h.store.getState().userManagement.entities['USR-2'].city).toBe(
+      'Coimbatore',
+    );
+    expect(field('city').props.editable).toBe(false);
+  });
+
+  test('Edit unlocks the fields in place (no dialog), validates and saves', async () => {
+    const h = await renderAdmin('Users');
+    await h.navigate('UserDetails', { userId: 'USR-2' });
+    const screen = byTestId(h.root, 'user-details-screen');
+    const field = (key: string) => byTestId(screen, `user-details-${key}`);
+    await press(byTestId(screen, 'edit-user'));
+    expect(hasTestId(screen, 'user-form')).toBe(false);
+    expect(field('name').props.editable).toBe(true);
+    // Organization and Joined never change here.
+    expect(field('organization').props.editable).toBe(false);
+
+    await typeInto(field('email'), 'not-an-email');
+    await typeInto(field('phone'), '12');
+    await press(byTestId(screen, 'user-details-submit'));
+    expect(allText(screen)).toContain('Enter a valid email');
+    expect(allText(screen)).toContain('Enter a valid phone number');
+
+    await typeInto(field('email'), 'priya@abc.in');
+    await typeInto(field('phone'), '+91 90000 22222');
+    await typeInto(field('department'), ' Production ');
+    await choose(screen, 'user-details-role', 'Operator');
+    await press(byTestId(screen, 'user-details-submit'));
+    expect(h.store.getState().userManagement.entities['USR-2']).toMatchObject({
+      email: 'priya@abc.in',
+      phone: '+91 90000 22222',
+      department: 'Production',
+      role: 'operator',
+    });
+    expect(field('name').props.editable).toBe(false);
+  });
+
+  test('Cancel or another section drops unsaved edits', async () => {
+    const h = await renderAdmin('Users');
+    await h.navigate('UserDetails', { userId: 'USR-2' });
+    const screen = byTestId(h.root, 'user-details-screen');
+    const name = () => byTestId(screen, 'user-details-name');
+    await press(byTestId(screen, 'edit-user'));
+    await typeInto(name(), 'Draft');
+    await press(byText(byTestId(screen, 'user-details-form'), 'Cancel'));
+    expect(name().props.value).toBe('Priya Sharma');
+
+    await press(byTestId(screen, 'edit-user'));
+    await typeInto(name(), 'Draft');
+    await press(byTestId(screen, 'user-section-documents'));
+    await press(byTestId(screen, 'user-section-profile'));
+    expect(name().props.value).toBe('Priya Sharma');
+    expect(name().props.editable).toBe(false);
+  });
+
+  test('Security: Reset password reveals the new password and saves it', async () => {
+    const spy = jest.spyOn(userManagementApi, 'update');
+    const h = await renderAdmin('Users');
+    await h.navigate('UserDetails', { userId: 'USR-2' });
+    const screen = byTestId(h.root, 'user-details-screen');
+    await press(byTestId(screen, 'user-section-security'));
+    expect(byTestId(screen, 'user-password-current').props.value).toBe(
+      '••••••••',
+    );
+    await press(byTestId(screen, 'user-password-start'));
+    await typeInto(byLabel(screen, 'New password'), 'welcome123');
+    await typeInto(byLabel(screen, 'Confirm password'), 'welcome123');
+    await press(byTestId(screen, 'user-password-submit'));
+    expect(spy).toHaveBeenCalledWith('USR-2', { password: 'welcome123' });
+    expect(allText(byTestId(screen, 'user-password-changed'))).toBe(
+      'Password updated',
     );
   });
 
-  test('edit opens the form; delete returns to the list', async () => {
+  test('Delete user asks, then returns to the list', async () => {
     const h = await renderAdmin('Users');
     await h.navigate('UserDetails', { userId: 'USR-4' });
     // The list stays mounted under the details screen, so query inside the details only.
     const screen = byTestId(h.root, 'user-details-screen');
-    await press(byTestId(screen, 'edit-user'));
-    expect(byTestId(screen, 'user-form-password').props.placeholder).toBe(
-      'Leave blank to keep current password',
-    );
-    await press(byText(screen, 'Cancel'));
+    // The red Delete user at the foot of the menu, then the dialog's button.
     await press(byLabel(screen, 'Delete Divya Rao'));
-    await press(byText(screen, 'Delete user'));
+    await press(byText(byTestId(screen, 'delete-user-dialog'), 'Delete user'));
     expect(h.currentRoute()).toBe('Users');
     expect(h.store.getState().userManagement.entities['USR-4']).toBeUndefined();
+  });
+
+  test('Documents: each upload adds a thumbnail beside the last, then remove', async () => {
+    const spy = jest.spyOn(userManagementApi, 'update');
+    const h = await renderAdmin('Users');
+    await h.navigate('UserDetails', { userId: 'USR-1' });
+    const screen = byTestId(h.root, 'user-details-screen');
+    await press(byTestId(screen, 'user-section-documents'));
+    const docs = () => allText(byTestId(screen, 'user-documents'));
+    expect(docs()).toContain('No documents uploaded yet.');
+
+    await press(byTestId(screen, 'user-documents-upload'));
+    expect(spy).toHaveBeenCalledWith('USR-1', {
+      attachments: [expect.objectContaining({ name: 'ID proof.pdf' })],
+    });
+    expect(docs()).toContain('1 document');
+    expect(docs()).toContain('ID proof.pdf');
+    await press(byTestId(screen, 'user-documents-upload'));
+    expect(docs()).toContain('2 documents');
+    expect(
+      h.store.getState().userManagement.entities['USR-1'].attachments,
+    ).toHaveLength(2);
+    await press(byLabel(screen, 'Remove ID proof.pdf'));
+    expect(docs()).toContain('1 document');
+
+    await press(byLabel(screen, 'Remove ID proof.pdf'));
+    expect(
+      h.store.getState().userManagement.entities['USR-1'].attachments,
+    ).toEqual([]);
+    expect(docs()).toContain('No documents uploaded yet.');
+  });
+
+  test('Work history: the job cards they ran a step on; a row opens it', async () => {
+    const h = await renderAdmin('Users');
+    await h.navigate('UserDetails', { userId: 'USR-6' });
+    const screen = byTestId(h.root, 'user-details-screen');
+    await press(byTestId(screen, 'user-section-work'));
+    const history = byTestId(screen, 'user-work-history');
+    // Ravi Kumar has run steps on these. Not 1039: his step there hasn't
+    // started. Not 1037: he has no step on it.
+    ['1042', '1040', '1034', '1038'].forEach(id =>
+      expect(hasTestId(history, `user-work-${id}`)).toBe(true),
+    );
+    expect(hasTestId(history, 'user-work-1039')).toBe(false);
+    expect(hasTestId(history, 'user-work-1037')).toBe(false);
+    const row = allText(byTestId(history, 'user-work-1042'));
+    expect(row).toContain('WO #1042');
+    expect(row).toContain('RC #1042');
+    expect(row).toContain('Facing (Lathe)');
+    expect(row).toContain('Started Sep 25, 2026');
+    expect(row).toContain('In progress');
+
+    await press(byTestId(history, 'user-work-1042'));
+    expect(h.currentRoute()).toBe('JobCardDetails');
+  });
+
+  test('Work history is empty for someone who has run no steps', async () => {
+    const h = await renderAdmin('Users');
+    await h.navigate('UserDetails', { userId: 'USR-1' });
+    const screen = byTestId(h.root, 'user-details-screen');
+    await press(byTestId(screen, 'user-section-work'));
+    expect(allText(byTestId(screen, 'user-work-history'))).toContain(
+      'No job cards yet.',
+    );
+  });
+
+  test('the back button returns to the list', async () => {
+    const h = await renderAdmin('Users');
+    await h.navigate('UserDetails', { userId: 'USR-2' });
+    await press(byTestId(h.root, 'user-details-back'));
+    expect(h.currentRoute()).toBe('Users');
+    expect(hasTestId(h.root, 'user-details-screen')).toBe(false);
+    expect(allText(h.root)).toContain('Showing 10 of');
   });
 
   test('unknown user shows a not-found message', async () => {
@@ -195,16 +373,15 @@ describe('User details', () => {
     expect(allText(h.root)).toContain('This user no longer exists.');
   });
 
-  test('phone layout stacks contact details with a back header', async () => {
+  test('phone layout: section tabs on top, Delete user under the profile', async () => {
     mockWidth = 390;
     const h = await renderAdmin('Users');
     await h.navigate('UserDetails', { userId: 'USR-2' });
-    const text = allText(h.root);
-    expect(text).toContain('Contact details');
-    expect(text).toContain('ABC Engineering Pvt Ltd');
-    expect(text).toContain('Reset');
-    await press(byLabel(h.root, 'Back'));
-    expect(h.currentRoute()).toBe('Users');
+    expect(hasTestId(h.root, 'user-section-documents')).toBe(true);
+    expect(allText(byTestId(h.root, 'user-identity'))).toContain(
+      'ABC Engineering Pvt Ltd',
+    );
+    expect(allText(byTestId(h.root, 'delete-user'))).toBe('Delete user');
   });
 });
 

@@ -40,6 +40,10 @@ export const profileApi = {
   },
   changePassword: async (_input: PasswordChangeInput): Promise<void> => {
     await delay();
+    session = {
+      ...session,
+      profile: { ...session.profile, hasPassword: true },
+    };
   },
   reset: () => {
     session = MOCK_SESSION;

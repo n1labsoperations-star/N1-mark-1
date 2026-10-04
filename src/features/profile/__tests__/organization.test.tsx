@@ -9,6 +9,7 @@ import {
   byTestId,
   byText,
   choose,
+  hasTestId,
   press,
   render,
   renderAdmin,
@@ -16,6 +17,9 @@ import {
   typeInto,
 } from '../../../shared/testing/testUtils';
 import { INDUSTRY_OPTIONS } from '../../auth/constants';
+import { MOCK_SESSION } from '../api/mockData';
+import { profileApi } from '../api/profileApi';
+import { organizationCompletion } from '../organization';
 
 // The organization name sits in the wide top bar.
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
@@ -34,14 +38,47 @@ const input = (root: ReactTestInstance, placeholder: string) =>
     n => typeof n.type === 'string' && n.props.placeholder === placeholder,
   );
 
+const SECTION_KEYS = [
+  'general',
+  'business',
+  'address',
+  'gst',
+  'invoice',
+  'documents',
+];
+
+/** Opens a section's tab, then its edit form. */
+const editSection = async (root: ReactTestInstance, key: string) => {
+  await press(byTestId(root, `organization-tab-${key}`));
+  await press(byTestId(root, `edit-organization-${key}`));
+};
+
+/** The screen's text plus what its (locked) fields hold. */
+const screenText = (root: ReactTestInstance) => {
+  const screen = byTestId(root, 'organization-screen');
+  const values = screen
+    .findAll(n => typeof n.type === 'string' && n.props.value !== undefined)
+    .map(n => String(n.props.value));
+  return [allText(screen), ...values].join('|');
+};
+
+/** The screen's text across every tab, one tab at a time. */
+const allTabsText = async (root: ReactTestInstance) => {
+  let text = '';
+  for (const key of SECTION_KEYS) {
+    await press(byTestId(root, `organization-tab-${key}`));
+    text += screenText(root);
+  }
+  return text;
+};
+
 test('the organization name opens the organization details', async () => {
   const h = await renderAdmin('Overview');
   await press(byTestId(h.root, 'open-organization'));
 
   expect(h.currentRoute()).toBe('Organization');
-  const text = allText(byTestId(h.root, 'organization-screen'));
+  const text = await allTabsText(h.root);
   for (const value of [
-    'Organization details',
     'ABC Engineering Pvt Ltd',
     'ABC001',
     'Metal Manufacturing',
@@ -109,7 +146,7 @@ test('details come from Create organization', async () => {
   );
   await press(byTestId(root, 'open-organization'));
 
-  const text = allText(byTestId(root, 'organization-screen'));
+  const text = await allTabsText(root);
   for (const value of [
     'Nova Precision Pvt Ltd',
     'NOVAPR',
@@ -123,6 +160,28 @@ test('details come from Create organization', async () => {
   }
 });
 
+test('while the session loads (or fails) the card and menu stay; only the form area shows it', async () => {
+  const fetchSession = jest
+    .spyOn(profileApi, 'fetchSession')
+    .mockRejectedValue(new Error('Network down'));
+  let h: Awaited<ReturnType<typeof renderAdmin>>;
+  try {
+    h = await renderAdmin('Organization');
+    const screen = byTestId(h.root, 'organization-screen');
+    expect(hasTestId(screen, 'organization-tab-general')).toBe(true);
+    const form = byTestId(h.root, 'organization-general');
+    expect(hasTestId(form, 'async-error')).toBe(true);
+    expect(allText(form)).toContain('Network down');
+  } finally {
+    fetchSession.mockRestore();
+  }
+
+  await press(byText(byTestId(h.root, 'organization-general'), 'Try again'));
+  expect(byTestId(h.root, 'organization-form-name').props.value).toBe(
+    'ABC Engineering Pvt Ltd',
+  );
+});
+
 describe('organization sections', () => {
   const openOrganization = async () => {
     const h = await renderAdmin('Overview');
@@ -132,9 +191,22 @@ describe('organization sections', () => {
   const org = (h: Awaited<ReturnType<typeof renderAdmin>>) =>
     h.store.getState().profile.organization!;
 
+  test('one tab at a time, General first', async () => {
+    const h = await openOrganization();
+    const screen = () => screenText(h.root);
+    expect(screen()).toContain('www.abcengineering.com');
+    expect(screen()).not.toContain('600098');
+    expect(() => byTestId(h.root, 'organization-address')).toThrow();
+
+    await press(byTestId(h.root, 'organization-tab-address'));
+    expect(screen()).toContain('600098');
+    expect(screen()).not.toContain('www.abcengineering.com');
+    expect(() => byTestId(h.root, 'organization-general')).toThrow();
+  });
+
   test('shows all six sections', async () => {
     const h = await openOrganization();
-    const text = allText(byTestId(h.root, 'organization-screen'));
+    const text = await allTabsText(h.root);
     for (const value of [
       'General',
       'Business details',
@@ -147,8 +219,8 @@ describe('organization sections', () => {
       'CIN U28910TN2018PTC123456',
       'Chennai',
       '600098',
-      // Active rates only (28% is configured but inactive).
-      '5%, 12%, 18%',
+      '33ABCDE1234F1Z5',
+      '18%',
       'INV-2026-',
       'Net 30',
       'Thank you for your business.',
@@ -157,16 +229,24 @@ describe('organization sections', () => {
     }
   });
 
-  test('general: saves name, logo, phone, email and website', async () => {
+  test('general: saves name, phone, email and website', async () => {
     const h = await openOrganization();
-    await press(byTestId(h.root, 'edit-organization-general'));
-    expect(allText(h.root)).toContain('Edit general');
+    // Locked until Edit; Edit swaps in Cancel / Save.
+    expect(byTestId(h.root, 'organization-form-name').props.editable).toBe(
+      false,
+    );
+    expect(hasTestId(h.root, 'organization-form-submit')).toBe(false);
+    await editSection(h.root, 'general');
+    expect(byTestId(h.root, 'organization-form-name').props.editable).toBe(
+      true,
+    );
 
     await typeInto(
       byTestId(h.root, 'organization-form-name'),
       'ABC Precision Ltd',
     );
-    await press(byTestId(h.root, 'organization-form-logo'));
+    // The logo isn't part of the form any more.
+    expect(hasTestId(h.root, 'organization-form-logo')).toBe(false);
     await typeInto(byTestId(h.root, 'organization-form-website'), 'abc.in');
     await press(byTestId(h.root, 'organization-form-submit'));
 
@@ -174,7 +254,6 @@ describe('organization sections', () => {
       name: 'ABC Precision Ltd',
       shortName: 'ABC Precision',
       website: 'abc.in',
-      logo: expect.objectContaining({ name: 'logo.png' }),
       // Untouched sections keep their values.
       city: 'Chennai',
     });
@@ -183,9 +262,91 @@ describe('organization sections', () => {
     );
   });
 
+  test('pressing the avatar picks a logo and saves it straight away', async () => {
+    const h = await openOrganization();
+    expect(org(h).logo).toBeNull();
+    await press(byTestId(h.root, 'organization-hero-avatar'));
+    expect(org(h).logo).toEqual(expect.objectContaining({ name: 'logo.png' }));
+    // No Edit needed, and the fields stay locked.
+    expect(byTestId(h.root, 'organization-form-name').props.editable).toBe(
+      false,
+    );
+  });
+
+  test('profile completion: percentage, details left and per-section counts', async () => {
+    const h = await openOrganization();
+    const completion = () =>
+      allText(byTestId(h.root, 'organization-completion'));
+    const badge = (key: string) =>
+      allText(byTestId(h.root, `organization-tab-${key}`));
+    // Logo, invoice logo and signature are missing: 18 of 21.
+    expect(completion()).toContain('86%');
+    expect(completion()).toContain('3 details to add');
+    expect(badge('general')).toBe('General|1');
+    expect(badge('documents')).toBe('Document settings|2');
+    expect(badge('address')).toBe('Address');
+
+    // Adding the logo updates it straight away.
+    await press(byTestId(h.root, 'organization-hero-avatar'));
+    expect(completion()).toContain('90%');
+    expect(completion()).toContain('2 details to add');
+    expect(badge('general')).toBe('General');
+  });
+
+  test('profile completion rules', () => {
+    const base = MOCK_SESSION.organization;
+    const file = { id: 'f', name: 'f.png', sizeBytes: 1 };
+    const full = {
+      ...base,
+      logo: file,
+      invoiceLogo: file,
+      signature: file,
+    };
+    expect(organizationCompletion(full)).toMatchObject({
+      percent: 100,
+      missing: 0,
+    });
+    // Not GST registered: nothing to add for GST.
+    expect(
+      organizationCompletion({
+        ...full,
+        gstRegistered: false,
+        gstNumber: '',
+        defaultTaxRate: null,
+      }).missingBySection.gst,
+    ).toBe(0);
+    // Registered without a GSTIN; blank text counts as missing.
+    const gaps = organizationCompletion({
+      ...full,
+      gstNumber: '',
+      city: '  ',
+    });
+    expect(gaps.missingBySection).toMatchObject({ gst: 1, address: 1 });
+    expect(gaps.missing).toBe(2);
+    expect(gaps.percent).toBe(90);
+  });
+
+  test('Cancel or another tab drops unsaved edits and locks again', async () => {
+    const h = await openOrganization();
+    const name = () => byTestId(h.root, 'organization-form-name');
+    await editSection(h.root, 'general');
+    await typeInto(name(), 'Draft name');
+    await press(byText(h.root, 'Cancel'));
+    expect(name().props.value).toBe('ABC Engineering Pvt Ltd');
+    expect(name().props.editable).toBe(false);
+
+    await editSection(h.root, 'general');
+    await typeInto(name(), 'Draft name');
+    await press(byTestId(h.root, 'organization-tab-address'));
+    await press(byTestId(h.root, 'organization-tab-general'));
+    expect(name().props.value).toBe('ABC Engineering Pvt Ltd');
+    expect(name().props.editable).toBe(false);
+    expect(org(h).name).toBe('ABC Engineering Pvt Ltd');
+  });
+
   test('general: name and a valid email and website are required', async () => {
     const h = await openOrganization();
-    await press(byTestId(h.root, 'edit-organization-general'));
+    await editSection(h.root, 'general');
     await typeInto(byTestId(h.root, 'organization-form-name'), ' ');
     await typeInto(byTestId(h.root, 'organization-form-email'), 'nope');
     await typeInto(byTestId(h.root, 'organization-form-website'), 'not a site');
@@ -200,12 +361,12 @@ describe('organization sections', () => {
 
   test('business and address', async () => {
     const h = await openOrganization();
-    await press(byTestId(h.root, 'edit-organization-business'));
+    await editSection(h.root, 'business');
     await choose(h.root, 'organization-form-businessType', 'LLP');
     await press(byTestId(h.root, 'organization-form-submit'));
     expect(org(h).businessType).toBe('llp');
 
-    await press(byTestId(h.root, 'edit-organization-address'));
+    await editSection(h.root, 'address');
     await typeInto(byTestId(h.root, 'organization-form-pinCode'), '123');
     await press(byTestId(h.root, 'organization-form-submit'));
     expect(allText(h.root)).toContain('Enter a 6-digit PIN code');
@@ -223,7 +384,7 @@ describe('organization sections', () => {
 
   const openGst = async () => {
     const h = await openOrganization();
-    await press(byTestId(h.root, 'edit-organization-gst'));
+    await editSection(h.root, 'gst');
     return h;
   };
   const settings = (h: Awaited<ReturnType<typeof renderAdmin>>) =>
@@ -233,8 +394,7 @@ describe('organization sections', () => {
     const h = await openGst();
     const text = settings(h);
     for (const value of [
-      'GST & Tax Settings',
-      'Used to determine CGST/SGST or IGST on invoices.',
+      'GST & tax',
       'This rate will be selected automatically when creating invoices.',
       'Configured tax rates',
       'How GST is applied',
@@ -250,31 +410,33 @@ describe('organization sections', () => {
     expect(table).toContain('2.5%');
   });
 
-  test('GST settings: the GSTIN fills in its state and must match it', async () => {
+  test('GST settings: GSTIN and default rate side by side; the state comes from the GSTIN', async () => {
     const h = await openGst();
+    // No state picker here; it's in Address.
+    expect(hasTestId(h.root, 'gst-settings-state')).toBe(false);
+    expect(hasTestId(h.root, 'gst-settings-default')).toBe(true);
+
     await typeInto(byTestId(h.root, 'gst-settings-gstin'), '12345');
     await press(byTestId(h.root, 'gst-settings-submit'));
     expect(settings(h)).toContain('Enter a valid 15-character GST number');
 
+    // 99 isn't a state code.
+    await typeInto(byTestId(h.root, 'gst-settings-gstin'), '99aaaaa0000a1z5');
+    await press(byTestId(h.root, 'gst-settings-submit'));
+    expect(settings(h)).toContain(
+      'The first two digits aren’t a valid state code',
+    );
+
     // 29 = Karnataka.
     await typeInto(byTestId(h.root, 'gst-settings-gstin'), '29aaaaa0000a1z5');
-    expect(allText(byTestId(h.root, 'gst-settings-state'))).toContain(
-      'Karnataka',
-    );
-    await choose(h.root, 'gst-settings-state', 'Kerala');
-    await press(byTestId(h.root, 'gst-settings-submit'));
-    expect(settings(h)).toContain('This doesn’t match the GSTIN’s state code');
-
-    await choose(h.root, 'gst-settings-state', 'Karnataka');
     await press(byTestId(h.root, 'gst-settings-submit'));
     expect(org(h)).toMatchObject({
       gstNumber: '29AAAAA0000A1Z5',
       gstState: 'Karnataka',
     });
-    // The card still shows only the summary.
-    const card = allText(byTestId(h.root, 'organization-gst'));
-    expect(card).toContain('Karnataka');
-    expect(card).not.toContain('CGST');
+    // Saved: locked again.
+    expect(hasTestId(h.root, 'gst-settings-submit')).toBe(false);
+    expect(hasTestId(h.root, 'add-tax-rate')).toBe(false);
   });
 
   test('GST settings: No hides the GSTIN and rates and clears them on save', async () => {
@@ -315,9 +477,7 @@ describe('organization sections', () => {
     await press(byTestId(h.root, 'gst-settings-submit'));
     expect(org(h).defaultTaxRate).toBe(3);
     expect(org(h).taxRates.map(r => r.rate)).toEqual([3, 5, 12, 18, 28]);
-    expect(allText(byTestId(h.root, 'organization-gst'))).toContain(
-      '3%, 5%, 12%, 18%',
-    );
+    expect(allText(byTestId(h.root, 'tax-rates-table'))).toContain('1.5%');
   });
 
   test('edit a tax rate: switching off the default asks for a new one', async () => {
@@ -337,7 +497,7 @@ describe('organization sections', () => {
 
   test('invoice and document settings', async () => {
     const h = await openOrganization();
-    await press(byTestId(h.root, 'edit-organization-invoice'));
+    await editSection(h.root, 'invoice');
     await typeInto(
       byTestId(h.root, 'organization-form-invoiceStartNumber'),
       '0',
@@ -356,7 +516,7 @@ describe('organization sections', () => {
       paymentTerms: 'net-45',
     });
 
-    await press(byTestId(h.root, 'edit-organization-documents'));
+    await editSection(h.root, 'documents');
     await press(byTestId(h.root, 'organization-form-signature'));
     await press(byTestId(h.root, 'organization-form-submit'));
     expect(org(h).signature).toEqual(

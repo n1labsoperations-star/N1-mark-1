@@ -1,3 +1,4 @@
+import ReactTestRenderer from 'react-test-renderer';
 import { Provider } from 'react-redux';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { runSaga } from 'redux-saga';
@@ -6,6 +7,8 @@ import {
   allText,
   byLabel,
   byTestId,
+  choose,
+  hasTestId,
   press,
   render,
   renderAdmin,
@@ -39,19 +42,39 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
-test('shows the signed-in admin with organization code', async () => {
+test('summary card on the left, Account settings tab first', async () => {
   const h = await renderAdmin('MyProfile');
-  const text = allText(h.root);
-  expect(text).toContain('Koushik Dasarathan');
-  expect(text).toContain('Founder & Administrator · ABC Engineering Pvt Ltd');
-  expect(text).toContain('ABC Engineering Pvt Ltd · ABC001');
-  expect(text).toContain('Member since');
-  expect(text).toContain('Signed in as the account owner');
+  const summary = allText(byTestId(h.root, 'profile-summary'));
+  for (const value of [
+    'Koushik Dasarathan',
+    'Founder & Administrator',
+    'Admin',
+    'Active',
+    'ABC Engineering Pvt Ltd',
+    'ABC001',
+    'Member since',
+  ]) {
+    expect(summary).toContain(value);
+  }
+  // Log out lives in the sidebar, not on the page; no activity tab either.
+  expect(summary).not.toContain('Log out');
+  expect(hasTestId(h.root, 'profile-tab-activity')).toBe(false);
+  // Account settings: locked fields until Edit.
+  expect(byTestId(h.root, 'profile-form-name').props.value).toBe(
+    'Koushik Dasarathan',
+  );
+  expect(byTestId(h.root, 'profile-form-name').props.editable).toBe(false);
+  expect(byTestId(h.root, 'profile-form-email').props.value).toBe(
+    'kousigaratchagan.pd@foodhub.com',
+  );
 });
 
-test('edits the profile and validates the phone number', async () => {
+test('Edit unlocks the fields, validates the phone and saves', async () => {
   const h = await renderAdmin('MyProfile');
   await press(byTestId(h.root, 'edit-profile'));
+  expect(byTestId(h.root, 'profile-form-name').props.editable).toBe(true);
+  // The email is the sign-in and stays locked.
+  expect(byTestId(h.root, 'profile-form-email').props.editable).toBe(false);
   await typeInto(byTestId(h.root, 'profile-form-phone'), '123');
   await press(byTestId(h.root, 'profile-form-submit'));
   expect(allText(h.root)).toContain('Enter a valid phone number');
@@ -62,33 +85,142 @@ test('edits the profile and validates the phone number', async () => {
     name: 'Koushik D',
     phone: '+91 90000 11111',
   });
-  // The shell's top bar follows the new name.
-  expect(allText(h.root)).toContain('Koushik D');
+  // Saved: locked again, and the summary and shell follow the new name.
+  expect(byTestId(h.root, 'profile-form-name').props.editable).toBe(false);
+  expect(allText(byTestId(h.root, 'profile-summary'))).toContain('Koushik D');
 });
 
-test('change password checks the rules before saving', async () => {
+test('Account settings: address details, locked until Edit, PIN code checked', async () => {
+  const h = await renderAdmin('MyProfile');
+  const field = (key: string) => byTestId(h.root, `profile-form-${key}`);
+  expect(allText(byTestId(h.root, 'profile-form'))).toContain('Address');
+  expect(field('address').props.value).toBe('12, 3rd Cross Street, Anna Nagar');
+  expect(field('city').props.value).toBe('Chennai');
+  expect(allText(field('state'))).toBe('Tamil Nadu');
+  expect(field('pinCode').props.value).toBe('600040');
+  expect(field('country').props.value).toBe('India');
+  expect(field('address').props.editable).toBe(false);
+
+  await press(byTestId(h.root, 'edit-profile'));
+  await typeInto(field('pinCode'), '0123');
+  await press(byTestId(h.root, 'profile-form-submit'));
+  expect(allText(h.root)).toContain('Enter a 6-digit PIN code');
+
+  await typeInto(field('address'), '  45, MG Road ');
+  await typeInto(field('city'), 'Bengaluru');
+  await choose(h.root, 'profile-form-state', 'Karnataka');
+  await typeInto(field('pinCode'), '560001');
+  await press(byTestId(h.root, 'profile-form-submit'));
+  expect(h.store.getState().profile.profile).toMatchObject({
+    address: '45, MG Road',
+    city: 'Bengaluru',
+    state: 'Karnataka',
+    pinCode: '560001',
+  });
+  expect(field('city').props.editable).toBe(false);
+});
+
+test('Cancel or another tab drops unsaved edits', async () => {
+  const h = await renderAdmin('MyProfile');
+  const name = () => byTestId(h.root, 'profile-form-name');
+  await press(byTestId(h.root, 'edit-profile'));
+  await typeInto(name(), 'Draft');
+  await press(byLabel(byTestId(h.root, 'profile-form'), 'Cancel'));
+  expect(name().props.value).toBe('Koushik Dasarathan');
+
+  await press(byTestId(h.root, 'edit-profile'));
+  await typeInto(name(), 'Draft');
+  await press(byTestId(h.root, 'profile-tab-security'));
+  await press(byTestId(h.root, 'profile-tab-account'));
+  expect(name().props.value).toBe('Koushik Dasarathan');
+  expect(name().props.editable).toBe(false);
+});
+
+test('the photo is picked from the avatar and saved straight away', async () => {
+  const h = await renderAdmin('MyProfile');
+  await press(byTestId(h.root, 'profile-photo'));
+  expect(h.store.getState().profile.profile?.photo).toEqual(
+    expect.objectContaining({ name: 'photo.png' }),
+  );
+});
+
+test('Security: the current password shows as set; Update password reveals the new one', async () => {
   const spy = jest.spyOn(profileApi, 'changePassword');
   const h = await renderAdmin('MyProfile');
-  await press(byTestId(h.root, 'change-password'));
-  await press(byTestId(h.root, 'password-form-submit'));
-  expect(allText(h.root)).toContain('This field is required');
-  const inputs = ['Current password', 'New password', 'Confirm password'].map(
-    label => byLabel(h.root, label),
-  );
-  await typeInto(inputs[0], 'oldpass1');
-  await typeInto(inputs[1], 'newpass12');
-  await typeInto(inputs[2], 'different1');
+  await press(byTestId(h.root, 'profile-tab-security'));
+  // Shown as set (dots), locked; no new-password fields yet.
+  const current = byTestId(h.root, 'password-form-current');
+  expect(current.props.value).toBe('••••••••');
+  expect(current.props.editable).toBe(false);
+  expect(() => byLabel(h.root, 'New password')).toThrow();
+
+  // No need to type the current password.
+  await press(byTestId(h.root, 'password-form-start'));
+  const newPassword = byLabel(h.root, 'New password');
+  const confirm = byLabel(h.root, 'Confirm password');
+  await typeInto(newPassword, 'newpass12');
+  await typeInto(confirm, 'different1');
   await press(byTestId(h.root, 'password-form-submit'));
   expect(spy).not.toHaveBeenCalled();
-  await typeInto(inputs[2], 'newpass12');
+  await typeInto(confirm, 'newpass12');
   await press(byTestId(h.root, 'password-form-submit'));
-  expect(spy).toHaveBeenCalledWith({
-    currentPassword: 'oldpass1',
-    newPassword: 'newpass12',
-  });
-  expect(allText(h.root)).not.toContain(
-    'Choose a new password for your account.',
+  expect(spy).toHaveBeenCalledWith({ newPassword: 'newpass12' });
+  // Saved: locked again and confirmed.
+  expect(allText(byTestId(h.root, 'password-form-changed'))).toBe(
+    'Password updated',
   );
+  expect(() => byLabel(h.root, 'New password')).toThrow();
+});
+
+test('Security: Cancel clears and locks again', async () => {
+  const h = await renderAdmin('MyProfile');
+  await press(byTestId(h.root, 'profile-tab-security'));
+  await press(byTestId(h.root, 'password-form-start'));
+  await typeInto(byLabel(h.root, 'New password'), 'newpass12');
+  await press(byTestId(h.root, 'password-form-cancel'));
+  expect(() => byLabel(h.root, 'New password')).toThrow();
+  await press(byTestId(h.root, 'password-form-start'));
+  expect(byLabel(h.root, 'New password').props.value).toBe('');
+});
+
+test('Security: no password yet: empty field and Set password', async () => {
+  const h = await renderAdmin('MyProfile');
+  await ReactTestRenderer.act(() => {
+    h.store.dispatch(
+      profileActions.updateProfileSuccess({
+        ...h.store.getState().profile.profile!,
+        hasPassword: false,
+      }),
+    );
+  });
+  await press(byTestId(h.root, 'profile-tab-security'));
+  const current = byTestId(h.root, 'password-form-current');
+  expect(current.props.value).toBe('');
+  expect(current.props.placeholder).toBe('No password set');
+  expect(allText(byTestId(h.root, 'password-form-start'))).toBe('Set password');
+  await press(byTestId(h.root, 'password-form-start'));
+  await typeInto(byLabel(h.root, 'New password'), 'newpass12');
+  await typeInto(byLabel(h.root, 'Confirm password'), 'newpass12');
+  await press(byTestId(h.root, 'password-form-submit'));
+  // Now it has one.
+  expect(byTestId(h.root, 'password-form-current').props.value).toBe(
+    '••••••••',
+  );
+});
+
+test('autofill: the browser never fills the password fields or the menu search', async () => {
+  const h = await renderAdmin('MyProfile');
+  await press(byTestId(h.root, 'profile-tab-security'));
+  expect(byTestId(h.root, 'password-form-current').props.autoComplete).toBe(
+    'off',
+  );
+  await press(byTestId(h.root, 'password-form-start'));
+  for (const label of ['New password', 'Confirm password']) {
+    expect(byLabel(h.root, label).props.autoComplete).toBe('new-password');
+  }
+  const search = byLabel(h.root, 'Search menu');
+  expect(search.props.autoComplete).toBe('off');
+  expect(search.props.keyboardType).toBe('web-search');
 });
 
 test('log out asks first, then returns to the login screen', async () => {
@@ -114,10 +246,9 @@ test('log out asks first, then returns to the login screen', async () => {
   };
   await logInAsAdmin();
   await press(byLabel(root, 'Open my profile'));
-  await press(byTestId(root, 'logout'));
+  await press(byTestId(root, 'sidebar-logout'));
   expect(allText(root)).toContain('Log out?');
-  // The dialog's Log out (the sidebar has one too).
-  await press(byLabel(byTestId(root, 'logout-dialog'), 'Log out'));
+  await press(byLabel(byTestId(root, 'sidebar-logout-dialog'), 'Log out'));
   expect(store.getState().profile.signedOut).toBe(true);
   expect(allText(root)).toContain('Get Started');
   expect(allText(root)).not.toContain('Koushik Dasarathan');
@@ -126,15 +257,16 @@ test('log out asks first, then returns to the login screen', async () => {
   await logInAsAdmin();
   await press(byLabel(root, 'Open my profile'));
   expect(store.getState().profile.status).toBe('succeeded');
-  expect(allText(root)).toContain('Signed in as the account owner');
+  expect(allText(byTestId(root, 'profile-summary'))).toContain(
+    'Koushik Dasarathan',
+  );
 });
 
-test('phone layout: logout icon in the header, contact card', async () => {
+test('phone layout: summary above the tabs', async () => {
   mockWidth = 390;
   const h = await renderAdmin('MyProfile');
-  expect(allText(h.root)).toContain('Contact details');
-  await press(byLabel(h.root, 'Log out'));
-  expect(allText(h.root)).toContain('Log out?');
+  expect(hasTestId(h.root, 'profile-summary')).toBe(true);
+  expect(hasTestId(h.root, 'profile-tab-account')).toBe(true);
 });
 
 async function record(saga: (a: never) => Generator, action?: UnknownAction) {
@@ -183,7 +315,7 @@ test('the user in the top bar opens My profile; back returns', async () => {
   const h = await renderAdmin('Billing');
   await press(byLabel(h.root, 'Open my profile'));
   expect(h.currentRoute()).toBe('MyProfile');
-  expect(allText(h.root)).toContain('Signed in as the account owner');
+  expect(hasTestId(h.root, 'profile-summary')).toBe(true);
   await press(byLabel(h.root, 'Back'));
   expect(h.currentRoute()).toBe('Billing');
 });

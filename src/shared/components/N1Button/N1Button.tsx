@@ -27,11 +27,11 @@ export type N1ButtonVariant =
 export type N1ButtonProps = Omit<PressableProps, 'style' | 'children'> & {
   title: string;
   /**
-   * primary: black pill (Log in, Create user)
-   * secondary: white outlined pill (Cancel, View, Export)
-   * danger: red pill (Delete customer)
-   * dangerOutline: white pill with red text and border (Log out)
-   * success: green pill (Pass)
+   * primary: black (Log in, Create user)
+   * secondary: white, outlined (Cancel, View, Export)
+   * danger: red (Delete customer)
+   * dangerOutline: white with red text and border (Log out)
+   * success: green (Pass)
    * ghost: text only (Forgot password?)
    * link: underlined text (Enter code manually)
    */
@@ -71,7 +71,7 @@ const makeStyles = createN1Styles(t => ({
     alignItems: 'center',
     justifyContent: 'center',
     gap: t.spacing.sm,
-    borderRadius: t.radius.pill,
+    borderRadius: t.radius.sm,
     borderWidth: t.borderWidth.hairline,
     borderColor: 'transparent',
     alignSelf: 'flex-start',

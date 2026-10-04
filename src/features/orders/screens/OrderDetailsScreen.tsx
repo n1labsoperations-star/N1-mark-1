@@ -69,8 +69,8 @@ export function OrderDetailsScreen({
     if (order?.customerId) {
       navigation.navigate('Customers', {
         screen: 'CustomerDetails',
-        params: { customerId: order.customerId },
-        // Keep the list underneath so Back returns to it.
+        // Back on the customer returns to Orders.
+        params: { customerId: order.customerId, from: 'orders' },
         initial: false,
       });
     }

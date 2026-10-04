@@ -2,7 +2,6 @@ import { memo, useCallback, useMemo } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import {
-  N1Card,
   N1Table,
   N1Text,
   type N1TableColumn,
@@ -98,38 +97,11 @@ const QUOTE_COLUMNS: N1TableColumn<Quote>[] = [
   },
 ];
 
-/**
- * The customer's work orders and the quotes shared with them (drafts are
- * left out), newest first. A row opens it in Orders or Billing.
- */
-export const CustomerHistory = memo(function CustomerHistoryComponent({
-  customer,
-}: {
-  customer: Customer;
-}) {
+/** Opens an order or quote in its own module; Back returns here. */
+function useOpenInModule() {
   const navigation = useNavigation();
   const drawer =
     navigation.getParent<DrawerNavigationProp<AdminDrawerParamList>>();
-  const orders = useOrders();
-  const quotes = useQuotes();
-
-  const customerOrders = useMemo(
-    () =>
-      orders.items
-        .filter(o => o.customerId === customer.id)
-        .sort((a, b) => newestFirst(a.createdAt, b.createdAt)),
-    [orders.items, customer.id],
-  );
-  const sharedQuotes = useMemo(() => {
-    const name = customer.name.trim().toLowerCase();
-    return quotes.items
-      .filter(
-        q =>
-          q.status !== 'draft' && q.customerName.trim().toLowerCase() === name,
-      )
-      .sort((a, b) => newestFirst(a.createdAt, b.createdAt));
-  }, [quotes.items, customer.name]);
-
   const openOrder = useCallback(
     (o: WorkOrder) =>
       drawer?.navigate('Orders', {
@@ -148,29 +120,64 @@ export const CustomerHistory = memo(function CustomerHistoryComponent({
       }),
     [drawer],
   );
+  return { openOrder, openQuote };
+}
 
+/** The customer's work orders, newest first. A row opens it in Orders. */
+export const CustomerOrdersTable = memo(function CustomerOrdersTableComponent({
+  customer,
+}: {
+  customer: Customer;
+}) {
+  const orders = useOrders();
+  const { openOrder } = useOpenInModule();
+  const customerOrders = useMemo(
+    () =>
+      orders.items
+        .filter(o => o.customerId === customer.id)
+        .sort((a, b) => newestFirst(a.createdAt, b.createdAt)),
+    [orders.items, customer.id],
+  );
   return (
-    <>
-      <N1Card title={D.orderHistory} icon="package">
-        <N1Table
-          columns={ORDER_COLUMNS}
-          data={customerOrders}
-          keyExtractor={o => o.id}
-          onRowPress={openOrder}
-          emptyText={emptyText(orders.status, D.noOrders)}
-          testID="customer-orders"
-        />
-      </N1Card>
-      <N1Card title={D.quoteHistory} icon="receipt">
-        <N1Table
-          columns={QUOTE_COLUMNS}
-          data={sharedQuotes}
-          keyExtractor={q => q.id}
-          onRowPress={openQuote}
-          emptyText={emptyText(quotes.status, D.noQuotes)}
-          testID="customer-quotes"
-        />
-      </N1Card>
-    </>
+    <N1Table
+      columns={ORDER_COLUMNS}
+      data={customerOrders}
+      keyExtractor={o => o.id}
+      onRowPress={openOrder}
+      emptyText={emptyText(orders.status, D.noOrders)}
+      testID="customer-orders"
+    />
+  );
+});
+
+/**
+ * Quotes shared with the customer (drafts are left out), newest first. A row
+ * opens it in Billing.
+ */
+export const CustomerQuotesTable = memo(function CustomerQuotesTableComponent({
+  customer,
+}: {
+  customer: Customer;
+}) {
+  const quotes = useQuotes();
+  const { openQuote } = useOpenInModule();
+  const sharedQuotes = useMemo(() => {
+    const name = customer.name.trim().toLowerCase();
+    return quotes.items
+      .filter(
+        q =>
+          q.status !== 'draft' && q.customerName.trim().toLowerCase() === name,
+      )
+      .sort((a, b) => newestFirst(a.createdAt, b.createdAt));
+  }, [quotes.items, customer.name]);
+  return (
+    <N1Table
+      columns={QUOTE_COLUMNS}
+      data={sharedQuotes}
+      keyExtractor={q => q.id}
+      onRowPress={openQuote}
+      emptyText={emptyText(quotes.status, D.noQuotes)}
+      testID="customer-quotes"
+    />
   );
 });

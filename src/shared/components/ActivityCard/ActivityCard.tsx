@@ -21,6 +21,8 @@ export type ActivityCardProps = {
    * stacked: bold label, then time · detail underneath ("Status history").
    */
   layout?: 'inline' | 'stacked';
+  /** Just the list, no card or title (inside a panel that has its own). */
+  bare?: boolean;
   testID?: string;
 };
 
@@ -85,22 +87,28 @@ export const ActivityCard = memo(function ActivityCardComponent({
   title = COMMON_STRINGS.recentActivity,
   icon = 'clock',
   layout = 'inline',
+  bare = false,
   testID,
 }: ActivityCardProps) {
   const styles = useN1Styles(makeStyles);
-  return (
+  const list = (
+    <View style={styles.list} testID={bare ? testID : undefined}>
+      {items.length === 0 ? (
+        <N1Text variant="small" color="secondary">
+          {COMMON_STRINGS.empty}
+        </N1Text>
+      ) : (
+        items.map(entry => (
+          <ActivityRow key={entry.id} entry={entry} layout={layout} />
+        ))
+      )}
+    </View>
+  );
+  return bare ? (
+    list
+  ) : (
     <N1Card title={title} icon={icon} testID={testID}>
-      <View style={styles.list}>
-        {items.length === 0 ? (
-          <N1Text variant="small" color="secondary">
-            {COMMON_STRINGS.empty}
-          </N1Text>
-        ) : (
-          items.map(entry => (
-            <ActivityRow key={entry.id} entry={entry} layout={layout} />
-          ))
-        )}
-      </View>
+      {list}
     </N1Card>
   );
 });

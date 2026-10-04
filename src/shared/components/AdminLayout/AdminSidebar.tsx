@@ -8,7 +8,7 @@ import {
   useN1Styles,
   useN1Theme,
 } from '..';
-import { NAV_STRINGS } from '../../constants';
+import { NAV_STRINGS, SEARCH_INPUT_PROPS } from '../../constants';
 import { makeSidebarStyles } from './AdminLayout.styles';
 import type { AdminNavItem, AdminUserSummary } from './types';
 
@@ -124,6 +124,7 @@ export function AdminSidebar<K extends string>({
             placeholder={NAV_STRINGS.searchMenu}
             placeholderTextColor={theme.colors.textTertiary}
             accessibilityLabel={NAV_STRINGS.searchMenu}
+            {...SEARCH_INPUT_PROPS}
             style={styles.searchInput}
           />
         </View>

@@ -44,8 +44,8 @@ export function DashboardScreen() {
     (customerId: string) =>
       navigation.navigate('Customers', {
         screen: 'CustomerDetails',
-        params: { customerId },
-        // Keep the list underneath so Back returns to it.
+        // Back on the customer returns here, not to the Customers list.
+        params: { customerId, from: 'dashboard' },
         initial: false,
       }),
     [navigation],

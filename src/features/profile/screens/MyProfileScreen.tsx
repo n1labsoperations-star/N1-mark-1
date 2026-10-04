@@ -1,242 +1,148 @@
-import { useCallback, useMemo } from 'react';
-import { View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { ScrollView, View } from 'react-native';
 import {
-  N1Badge,
-  N1Button,
+  AdminScreen,
+  AsyncContent,
+  DetailHeader,
   N1Card,
-  N1ConfirmDialog,
-  N1DetailGrid,
   N1Divider,
-  N1IconButton,
-  N1KeyValueList,
-  N1Text,
+  N1Tabs,
   createN1Styles,
   useN1Breakpoint,
   useN1Styles,
 } from '../../../shared/components';
-import {
-  ActivityCard,
-  AdminScreen,
-  AsyncContent,
-  DetailHeader,
-  EntityHero,
-  SplitLayout,
-} from '../../../shared/components';
-import { COMMON_STRINGS } from '../../../shared/constants';
-import { useToggle } from '../../../shared/hooks';
-import { useAuthSession } from '../../auth/hooks';
-import { formatDate } from '../../../shared/utils';
-import { ChangePasswordModal } from '../components/ChangePasswordModal';
-import { EditProfileModal } from '../components/EditProfileModal';
-import { ROLE_LABELS } from '../../auth/constants';
+import { ASIDE_WIDTH } from '../../../shared/constants';
+import { AccountSettingsForm } from '../components/AccountSettingsForm';
+import { ChangePasswordForm } from '../components/ChangePasswordForm';
+import { ProfileSummary } from '../components/ProfileSummary';
 import { PROFILE_STRINGS as S } from '../constants';
 import { useSession } from '../hooks/useSession';
 import type { ProfileScreenProps } from '../types';
 
+type ProfileTab = 'account' | 'security';
+
+const TABS: { key: ProfileTab; label: string }[] = [
+  { key: 'account', label: S.tabs.account },
+  { key: 'security', label: S.tabs.security },
+];
+
 const makeStyles = createN1Styles(t => ({
-  topRow: {
+  // One card: summary | line | tabs. Phones stack them with a line between.
+  // Wide screens: the card fills the window; the tab content scrolls.
+  card: { flex: 1, minHeight: 0 },
+  row: {
+    flex: 1,
+    minHeight: 0,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: t.spacing.md,
+    alignItems: 'stretch',
+    gap: t.spacing.xl,
   },
-  section: { gap: t.spacing.md },
-  grow: { flex: 1 },
+  aside: {
+    width: ASIDE_WIDTH,
+    paddingRight: t.spacing.xl,
+    borderRightWidth: t.borderWidth.hairline,
+    borderRightColor: t.colors.border,
+  },
+  main: { flex: 1 },
+  tabs: { marginBottom: t.spacing.xl },
+  content: { flex: 1 },
 }));
 
+/**
+ * The signed-in person's own page: a summary (photo, role, organization) and
+ * tabs for Account settings and Security. Other people are
+ * managed from Users → User details.
+ */
 export function MyProfileScreen({
   navigation,
 }: ProfileScreenProps<'MyProfile'>) {
   const styles = useN1Styles(makeStyles);
   const { isCompact } = useN1Breakpoint();
-  const { profile, organization, status, error, reload, logout } = useSession();
-  const [editOpen, openEdit, closeEdit] = useToggle(false);
-  const [passwordOpen, openPassword, closePassword] = useToggle(false);
-  const [logoutOpen, openLogout, closeLogout] = useToggle(false);
-  const { signOut } = useAuthSession();
+  const { profile, organization, status, error, reload } = useSession();
+  const [tab, setTab] = useState<ProfileTab>('account');
+  const [editing, setEditing] = useState(false);
 
+  const startEdit = useCallback(() => setEditing(true), []);
+  const stopEdit = useCallback(() => setEditing(false), []);
+  // Leaving Account settings drops its unsaved edits.
+  const changeTab = useCallback((key: ProfileTab) => {
+    setTab(key);
+    setEditing(false);
+  }, []);
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
-  const confirmLogout = useCallback(() => {
-    closeLogout();
-    logout();
-    // The root navigator swaps this area for the login screens, so Back
-    // can't return here.
-    signOut();
-  }, [closeLogout, logout, signOut]);
 
-  const orgLine = organization
-    ? `${organization.name} · ${organization.code}`
-    : '';
+  const loading = (
+    <AsyncContent status={status} error={error} onRetry={reload}>
+      {null}
+    </AsyncContent>
+  );
 
-  const details = useMemo(() => {
+  const content = () => {
     if (!profile) {
-      return [];
+      return loading;
     }
-    return isCompact
-      ? [
-          { label: S.email, value: profile.email },
-          { label: S.phone, value: profile.phone },
-          { label: S.organization, value: orgLine },
-        ]
-      : [
-          { label: S.email, value: profile.email },
-          { label: S.phone, value: profile.phone },
-          { label: S.designation, value: profile.designation },
-          { label: S.organization, value: orgLine },
-        ];
-  }, [profile, isCompact, orgLine]);
-
-  const logoutIcon = (
-    <N1IconButton
-      icon="logout"
-      size="sm"
-      variant="danger"
-      accessibilityLabel={S.logout}
-      onPress={openLogout}
-    />
-  );
-  const header = (
-    <DetailHeader title={S.title} onBack={goBack} compactRight={logoutIcon} />
-  );
-
-  if (!profile) {
-    return (
-      <AdminScreen header={header}>
-        <AsyncContent status={status} error={error} onRetry={reload}>
-          {null}
-        </AsyncContent>
-      </AdminScreen>
-    );
-  }
-
-  const roleBadge = <N1Badge label={ROLE_LABELS[profile.role]} tone="info" />;
-  const statusBadge = <N1Badge label={S.active} tone="success" dot />;
-
-  const hero = (
-    <EntityHero
-      name={profile.name}
-      subtitle={
-        isCompact
-          ? profile.designation
-          : [profile.designation, organization?.name]
-              .filter(Boolean)
-              .join(' · ')
-      }
-      badges={
-        <>
-          {roleBadge}
-          {statusBadge}
-        </>
-      }
-      actions={
-        isCompact ? (
-          <>
-            <N1Button
-              title={S.edit}
-              leftIcon="edit"
-              onPress={openEdit}
-              style={styles.grow}
-            />
-            <N1Button
-              title={S.password}
-              leftIcon="lock"
-              variant="secondary"
-              onPress={openPassword}
-              style={styles.grow}
-            />
-          </>
-        ) : (
-          <>
-            <N1Button
-              title={S.editProfile}
-              leftIcon="edit"
-              size="sm"
-              onPress={openEdit}
-              testID="edit-profile"
-            />
-            <N1Button
-              title={S.changePassword}
-              leftIcon="lock"
-              variant="secondary"
-              size="sm"
-              onPress={openPassword}
-              testID="change-password"
-            />
-          </>
-        )
-      }
-    />
-  );
-
-  const aside = (
-    <>
-      {!isCompact && (
-        <N1Card title={COMMON_STRINGS.account} icon="clipboard">
-          <N1KeyValueList
-            variant="plain"
-            items={[
-              { label: S.role, value: roleBadge },
-              { label: S.status, value: statusBadge },
-              { label: S.memberSince, value: formatDate(profile.memberSince) },
-            ]}
+    switch (tab) {
+      case 'account':
+        return (
+          <AccountSettingsForm
+            profile={profile}
+            editing={editing}
+            onEdit={startEdit}
+            onDone={stopEdit}
           />
-        </N1Card>
+        );
+      case 'security':
+        return <ChangePasswordForm />;
+    }
+  };
+
+  const summary = profile ? (
+    <ProfileSummary profile={profile} organization={organization} />
+  ) : (
+    loading
+  );
+
+  const main = (
+    <View style={!isCompact && styles.main} testID={`profile-${tab}`}>
+      <N1Tabs
+        tabs={TABS}
+        value={tab}
+        onChange={changeTab}
+        variant="underline"
+        scrollable={isCompact}
+        style={styles.tabs}
+        testID="profile-tab"
+      />
+      {isCompact ? (
+        content()
+      ) : (
+        <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
+          {content()}
+        </ScrollView>
       )}
-      <ActivityCard items={profile.activity} />
-    </>
+    </View>
   );
 
   return (
-    <AdminScreen header={header} testID="profile-screen">
-      <SplitLayout aside={aside}>
+    <AdminScreen
+      header={<DetailHeader title={S.title} onBack={goBack} />}
+      fixed
+      testID="profile-screen"
+    >
+      <N1Card radius="sm" style={!isCompact && styles.card}>
         {isCompact ? (
           <>
-            <N1Card>{hero}</N1Card>
-            <N1Card title={S.contact}>
-              <N1DetailGrid items={details} columns={1} />
-            </N1Card>
+            {summary}
+            <N1Divider spacing="xl" />
+            {main}
           </>
         ) : (
-          <N1Card padding="xxl">
-            <View style={styles.section}>
-              <View style={styles.topRow}>
-                <N1Text variant="small" color="secondary">
-                  {S.signedInAs}
-                </N1Text>
-                <N1Button
-                  title={S.logout}
-                  leftIcon="logout"
-                  variant="secondary"
-                  size="sm"
-                  onPress={openLogout}
-                  testID="logout"
-                />
-              </View>
-              <N1Divider spacing="sm" />
-              {hero}
-              <N1Divider spacing="sm" />
-              <N1DetailGrid items={details} />
-            </View>
-          </N1Card>
+          <View style={styles.row}>
+            <View style={styles.aside}>{summary}</View>
+            {main}
+          </View>
         )}
-      </SplitLayout>
-
-      <EditProfileModal
-        visible={editOpen}
-        profile={profile}
-        onClose={closeEdit}
-      />
-      <ChangePasswordModal visible={passwordOpen} onClose={closePassword} />
-      <N1ConfirmDialog
-        visible={logoutOpen}
-        title={S.logoutTitle}
-        message={S.logoutMessage}
-        confirmLabel={S.logout}
-        icon="logout"
-        onConfirm={confirmLogout}
-        onCancel={closeLogout}
-        testID="logout-dialog"
-      />
+      </N1Card>
     </AdminScreen>
   );
 }

@@ -14,7 +14,7 @@ import {
   createN1Styles,
   useN1Styles,
 } from '../../../shared/components';
-import { COMMON_STRINGS } from '../../../shared/constants';
+import { COMMON_STRINGS, SEARCH_INPUT_PROPS } from '../../../shared/constants';
 import { useListFilter, useToggle } from '../../../shared/hooks';
 import {
   JobCardCard,
@@ -94,6 +94,7 @@ export function MyJobsScreen() {
       {searching && (
         <N1TextInput
           leftIcon="search"
+          {...SEARCH_INPUT_PROPS}
           value={query}
           onChangeText={setQuery}
           placeholder={S.search}

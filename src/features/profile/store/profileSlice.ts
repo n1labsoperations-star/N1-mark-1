@@ -97,6 +97,9 @@ const profileSlice = createSlice({
     },
     changePasswordSuccess: state => {
       state.changingPassword = false;
+      if (state.profile) {
+        state.profile.hasPassword = true;
+      }
     },
     changePasswordFailure: (state, action: PayloadAction<string>) => {
       state.changingPassword = false;

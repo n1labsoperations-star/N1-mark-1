@@ -7,7 +7,12 @@ import {
 } from '../../../shared/components';
 import { FormFooter, FormRow } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
-import { useForm, useOnSettled, type FormErrors } from '../../../shared/hooks';
+import {
+  useForm,
+  useHeldWhileVisible,
+  useOnSettled,
+  type FormErrors,
+} from '../../../shared/hooks';
 import { isBlank } from '../../../shared/utils';
 import {
   MACHINE_STATUS_OPTIONS,
@@ -76,7 +81,13 @@ type Props = {
 };
 
 /** Add machine / Edit machine dialog (full screen on phones). */
-export function MachineFormModal({ visible, machine, onClose }: Props) {
+export function MachineFormModal({
+  visible,
+  machine: machineProp,
+  onClose,
+}: Props) {
+  // Kept while the dialog fades out, so the title doesn't flip to Create.
+  const machine = useHeldWhileVisible(visible, machineProp);
   const isEdit = Boolean(machine);
   const { items, create, update, saving, saveError, clearErrors } =
     useMachines();

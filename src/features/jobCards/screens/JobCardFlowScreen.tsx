@@ -168,7 +168,6 @@ function FlowEditor({ jobCard, editing, header, onDone }: EditorProps) {
                 value={step.name || null}
                 onChange={name => rename(step.key, name)}
                 placeholder={F.stepPlaceholder}
-                sheetTitle={F.stepLabel(i + 1)}
                 disabled={stepState === 'completed'}
                 errorText={
                   submitted && !step.name ? COMMON_STRINGS.required : undefined

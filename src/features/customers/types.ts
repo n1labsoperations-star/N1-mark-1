@@ -1,8 +1,11 @@
+import type { DrawerScreenProps } from '@react-navigation/drawer';
+import type { CompositeScreenProps } from '@react-navigation/native';
 import type {
   NativeStackNavigationProp,
   NativeStackScreenProps,
 } from '@react-navigation/native-stack';
 import type { ActivityEntry, ISODateString } from '../../shared/types';
+import type { AdminDrawerParamList } from '../dashboard/types';
 
 export type CustomerType = 'business' | 'individual';
 
@@ -12,11 +15,15 @@ export type Customer = {
   name: string;
   contactPerson: string;
   mobile: string;
+  /** Second number to reach them on; optional. */
+  alternateMobile: string;
   email: string;
   gstNumber: string;
   address: string;
   city: string;
   state: string;
+  pinCode: string;
+  country: string;
   notes: string;
   /** Active work orders. */
   currentProjects: number;
@@ -35,11 +42,14 @@ export type CustomerInput = Pick<
   | 'name'
   | 'contactPerson'
   | 'mobile'
+  | 'alternateMobile'
   | 'email'
   | 'gstNumber'
   | 'address'
   | 'city'
   | 'state'
+  | 'pinCode'
+  | 'country'
   | 'notes'
 >;
 
@@ -54,14 +64,25 @@ export type CustomerShare = {
   color: string;
 };
 
+/** Drawer items that open a customer; Back on the customer returns there. */
+export type CustomerDetailsOrigin = 'dashboard' | 'orders';
+
 // Stack nested inside the admin drawer's "Customers" item.
 export type CustomersStackParamList = {
   CustomersList: undefined;
-  CustomerDetails: { customerId: string };
+  CustomerDetails: {
+    customerId: string;
+    /** Where it was opened from, so Back returns there. Default: the list. */
+    from?: CustomerDetailsOrigin;
+  };
 };
 
 export type CustomersNavigation =
   NativeStackNavigationProp<CustomersStackParamList>;
 
+/** Screen props that can also reach the other admin drawer items. */
 export type CustomersScreenProps<R extends keyof CustomersStackParamList> =
-  NativeStackScreenProps<CustomersStackParamList, R>;
+  CompositeScreenProps<
+    NativeStackScreenProps<CustomersStackParamList, R>,
+    DrawerScreenProps<AdminDrawerParamList>
+  >;

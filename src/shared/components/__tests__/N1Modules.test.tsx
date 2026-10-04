@@ -340,7 +340,10 @@ describe('N1TextInput', () => {
     await ReactTestRenderer.act(() => input.props.onFocus({}));
     expect(onFocus).toHaveBeenCalled();
     const field = input.parent as ReactTestInstance;
-    expect(flatStyle(field).borderColor).toBe(lightTheme.colors.borderStrong);
+    expect(flatStyle(field).borderColor).toBe(
+      lightTheme.colors.tone.neutral.solid,
+    );
+    expect(flatStyle(field).borderRadius).toBe(lightTheme.radius.sm);
     await ReactTestRenderer.act(() => input.props.onBlur({}));
     expect(onBlur).toHaveBeenCalled();
   });
@@ -407,7 +410,7 @@ describe('N1DropDown', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  test('backdrop closes the list; phone layout uses a bottom sheet', async () => {
+  test('the list opens under the field (phones too); the backdrop closes it', async () => {
     setWindowWidth(375);
     const r = await render(
       <N1DropDown
@@ -415,10 +418,15 @@ describe('N1DropDown', () => {
         options={options}
         onChange={jest.fn()}
         errorText="Required"
+        testID="role"
       />,
     );
     await press(byLabel(r.root, 'Role'));
-    expect(r.root.findByType(RN.Modal).props.animationType).toBe('slide');
+    // A list anchored to the field, not a centred sheet.
+    const [menu] = r.root.findAll(
+      n => typeof n.type === 'string' && n.props.testID === 'role-menu',
+    );
+    expect(flatStyle(menu).position).toBe('absolute');
     await press(byLabel(r.root, 'Close options'));
     expect(r.root.findByType(RN.Modal).props.visible).toBe(false);
   });

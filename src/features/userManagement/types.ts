@@ -1,3 +1,5 @@
+import type { DrawerScreenProps } from '@react-navigation/drawer';
+import type { CompositeScreenProps } from '@react-navigation/native';
 import type {
   NativeStackNavigationProp,
   NativeStackScreenProps,
@@ -9,6 +11,7 @@ import type {
 } from '../../shared/types';
 
 import type { UserRole } from '../auth/constants';
+import type { AdminDrawerParamList } from '../dashboard/types';
 
 /** Admin uses the dashboard; Supervisor, Operator and QC use the shop-floor app. */
 export type { UserRole };
@@ -24,6 +27,13 @@ export type AdminUser = {
   designation: string;
   phone: string;
   department: string;
+  /** Building, street, area. */
+  address: string;
+  city: string;
+  /** One of STATE_OPTIONS, e.g. "Tamil Nadu". */
+  state: string;
+  pinCode: string;
+  country: string;
   role: UserRole;
   status: UserStatus;
   joinedAt: ISODateString;
@@ -43,6 +53,12 @@ export type UserInput = {
   password?: string;
   phone?: string;
   department?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pinCode?: string;
+  country?: string;
+  attachments?: Attachment[];
   permissions?: UserPermissions;
 };
 
@@ -61,6 +77,10 @@ export type UserManagementStackParamList = {
 export type UserManagementNavigation =
   NativeStackNavigationProp<UserManagementStackParamList>;
 
+/** Screen props that can also reach the other admin drawer items (Job Cards). */
 export type UserManagementScreenProps<
   R extends keyof UserManagementStackParamList,
-> = NativeStackScreenProps<UserManagementStackParamList, R>;
+> = CompositeScreenProps<
+  NativeStackScreenProps<UserManagementStackParamList, R>,
+  DrawerScreenProps<AdminDrawerParamList>
+>;

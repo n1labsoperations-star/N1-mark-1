@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import { Image, View, type StyleProp, type ViewStyle } from 'react-native';
 import {
   createN1Styles,
   useN1Styles,
@@ -19,6 +19,8 @@ export type N1AvatarProps = {
   shape?: 'circle' | 'rounded';
   /** Without a tone the avatar is dark with white text. */
   tone?: N1Tone;
+  /** A photo or logo shown instead of the initials. */
+  imageUri?: string;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 };
@@ -34,6 +36,7 @@ export function getInitials(name: string): string {
 
 const makeStyles = createN1Styles(t => ({
   base: {
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: t.colors.surfaceInverse,
@@ -43,6 +46,9 @@ const makeStyles = createN1Styles(t => ({
   sm: { width: t.avatarSize.sm, height: t.avatarSize.sm },
   md: { width: t.avatarSize.md, height: t.avatarSize.md },
   lg: { width: t.avatarSize.lg, height: t.avatarSize.lg },
+  image: { width: '100%', height: '100%' },
+  // Logos are often transparent; keep them off the dark initials tile.
+  imageBase: { backgroundColor: t.colors.surfaceMuted },
 }));
 
 export const N1Avatar = React.memo(function N1AvatarComponent({
@@ -51,6 +57,7 @@ export const N1Avatar = React.memo(function N1AvatarComponent({
   size = 'md',
   shape = 'circle',
   tone,
+  imageUri,
   style,
   testID,
 }: N1AvatarProps) {
@@ -67,17 +74,27 @@ export const N1Avatar = React.memo(function N1AvatarComponent({
         styles[shape],
         styles[size],
         toneColors && { backgroundColor: toneColors.background },
+        imageUri && styles.imageBase,
         style,
       ]}
     >
-      <N1Text
-        variant={size === 'lg' ? 'h2' : size === 'md' ? 'label' : 'caption'}
-        weight="bold"
-        color={toneColors ? undefined : 'inverse'}
-        style={toneColors && { color: toneColors.foreground }}
-      >
-        {text}
-      </N1Text>
+      {imageUri ? (
+        <Image
+          source={{ uri: imageUri }}
+          style={styles.image}
+          resizeMode="cover"
+          accessibilityIgnoresInvertColors
+        />
+      ) : (
+        <N1Text
+          variant={size === 'lg' ? 'h2' : size === 'md' ? 'label' : 'caption'}
+          weight="bold"
+          color={toneColors ? undefined : 'inverse'}
+          style={toneColors && { color: toneColors.foreground }}
+        >
+          {text}
+        </N1Text>
+      )}
     </View>
   );
 });

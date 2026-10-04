@@ -7,7 +7,12 @@ import {
 } from '../../../shared/components';
 import { FormFooter, FormRow } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
-import { useForm, useOnSettled, type FormErrors } from '../../../shared/hooks';
+import {
+  useForm,
+  useHeldWhileVisible,
+  useOnSettled,
+  type FormErrors,
+} from '../../../shared/hooks';
 import { isBlank, isEmail, isStrongPassword } from '../../../shared/utils';
 import { ROLE_OPTIONS, STATUS_OPTIONS, USER_STRINGS } from '../constants';
 import { useUsers } from '../hooks/useUsers';
@@ -79,10 +84,12 @@ export type UserFormModalProps = {
 /** Create user / Edit user dialog (full screen on phones). */
 export function UserFormModal({
   visible,
-  user,
+  user: userProp,
   organizationName,
   onClose,
 }: UserFormModalProps) {
+  // Kept while the dialog fades out, so the title doesn't flip to Create.
+  const user = useHeldWhileVisible(visible, userProp);
   const isEdit = Boolean(user);
   const { create, update, saving, saveError, clearErrors } = useUsers();
   const form = useForm<FormValues>(

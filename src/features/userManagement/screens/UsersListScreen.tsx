@@ -46,7 +46,6 @@ import {
 const makeStyles = createN1Styles(t => ({
   nameCell: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.md },
   // Matches the filled filters next to it in the toolbar.
-  toolbarButton: { borderRadius: t.radius.sm },
 }));
 
 type FormTarget = { user: AdminUser | null } | null;
@@ -171,7 +170,6 @@ export function UsersListScreen() {
       onPress={openCreate}
       size={isCompact ? 'md' : 'sm'}
       fullWidth={isCompact}
-      style={!isCompact && styles.toolbarButton}
       testID="create-user"
     />
   );

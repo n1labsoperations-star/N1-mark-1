@@ -29,51 +29,52 @@ export type N1TextInputProps = Omit<TextInputProps, 'style' | 'editable'> & {
   /** Read-only grey field (e.g. an auto-generated code). */
   readOnly?: boolean;
   disabled?: boolean;
-  /** 'filled': compact grey field with no border, e.g. a table's search. */
+  /**
+   * 'filled': compact grey field with no border, e.g. a table's search.
+   */
   variant?: 'outline' | 'filled';
   containerStyle?: StyleProp<ViewStyle>;
 };
 
 const makeStyles = createN1Styles(t => ({
   container: { gap: t.spacing.xs + t.spacing.xxs },
+  // The standard form field: square-ish corners, grey focus ring.
   field: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: t.spacing.sm,
-    minHeight: t.controlHeight.md,
-    paddingHorizontal: t.spacing.lg,
-    borderRadius: t.radius.pill,
+    minHeight: t.controlHeight.sm + t.spacing.xs,
+    paddingHorizontal: t.spacing.md,
+    borderRadius: t.radius.sm,
     borderWidth: t.borderWidth.hairline,
     borderColor: t.colors.border,
     backgroundColor: t.colors.surface,
   },
   multiline: {
     alignItems: 'flex-start',
-    borderRadius: t.radius.md,
-    paddingVertical: t.spacing.md,
+    paddingVertical: t.spacing.sm,
     minHeight: t.controlHeight.lg * 2,
   },
   filled: {
     minHeight: t.controlHeight.sm,
-    paddingHorizontal: t.spacing.md,
-    borderRadius: t.radius.sm,
     borderColor: t.colors.background,
     backgroundColor: t.colors.background,
   },
-  inputFilled: { fontSize: t.typography.small.fontSize },
-  focused: { borderColor: t.colors.borderStrong },
-  error: { borderColor: t.colors.danger },
-  readOnly: {
-    backgroundColor: t.colors.surfaceMuted,
-    borderStyle: 'dashed',
+  focused: {
+    borderColor: t.colors.tone.neutral.solid,
+    boxShadow: `0 0 0 ${t.borderWidth.thick + 1}px ${
+      t.colors.tone.neutral.background
+    }`,
   },
+  error: { borderColor: t.colors.danger },
+  readOnly: { backgroundColor: t.colors.surfaceMuted },
   disabled: { opacity: t.opacity.disabled },
   input: {
     flex: 1,
     alignSelf: 'stretch',
     color: t.colors.textPrimary,
     fontFamily: t.fontFamily.regular,
-    fontSize: t.typography.body.fontSize,
+    fontSize: t.typography.small.fontSize,
     padding: 0,
     outlineWidth: 0,
   },
@@ -116,21 +117,17 @@ export const N1TextInput = React.memo(function N1TextInputComponent({
       <View
         style={[
           styles.field,
-          variant === 'filled' && styles.filled,
           multiline && styles.multiline,
+          variant === 'filled' && styles.filled,
           // Filled fields stay borderless while typing.
-          focused && variant !== 'filled' && styles.focused,
+          focused && variant === 'outline' && styles.focused,
           readOnly && styles.readOnly,
           Boolean(errorText) && styles.error,
         ]}
       >
         {leftIcon && <N1Icon name={leftIcon} size="sm" color="textSecondary" />}
         <TextInput
-          style={[
-            styles.input,
-            variant === 'filled' && styles.inputFilled,
-            multiline && styles.inputMultiline,
-          ]}
+          style={[styles.input, multiline && styles.inputMultiline]}
           placeholderTextColor={theme.colors.textTertiary}
           editable={editable}
           multiline={multiline}

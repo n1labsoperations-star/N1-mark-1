@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   createDrawerNavigator,
   type DrawerContentComponentProps,
@@ -50,6 +50,30 @@ const PlaceholderScreen = React.memo(function PlaceholderScreenComponent() {
 });
 PlaceholderScreen.displayName = 'PlaceholderScreen';
 
+type DrawerScreenComponent = React.ComponentType<any>;
+
+/**
+ * Remounts a module each time it loses focus, so coming back to it starts
+ * fresh: search, filters, page and open dialogs all reset.
+ */
+function resetOnBlur(Screen: DrawerScreenComponent): DrawerScreenComponent {
+  function ResetOnBlur(props: {
+    navigation: { addListener: (e: 'blur', cb: () => void) => () => void };
+  }) {
+    const [mount, setMount] = useState(0);
+    const { navigation } = props;
+    useEffect(
+      () => navigation.addListener('blur', () => setMount(m => m + 1)),
+      [navigation],
+    );
+    return <Screen key={mount} {...props} />;
+  }
+  ResetOnBlur.displayName = `ResetOnBlur(${
+    Screen.displayName ?? Screen.name ?? 'Screen'
+  })`;
+  return ResetOnBlur;
+}
+
 const screenFor = (route: AdminRoute) => {
   switch (route) {
     case 'Overview':
@@ -70,6 +94,13 @@ const screenFor = (route: AdminRoute) => {
       return PlaceholderScreen;
   }
 };
+
+// Built once, so a re-render doesn't remount every module.
+const MODULE_SCREENS = new Map(
+  MENU_ITEMS.map(item => [item.route, resetOnBlur(screenFor(item.route))]),
+);
+const ProfileScreen = resetOnBlur(ProfileNavigation);
+const OrganizationModule = resetOnBlur(OrganizationScreen);
 
 /**
  * Admin shell. Wide screens: a permanent sidebar that can collapse to an icon
@@ -148,12 +179,12 @@ function AdminDashboardNavigation({ initialRouteName = 'Overview' }: Props) {
         <Drawer.Screen
           key={item.route}
           name={item.route}
-          component={screenFor(item.route)}
+          component={MODULE_SCREENS.get(item.route)!}
           options={{ title: item.label }}
         />
       ))}
-      <Drawer.Screen name="Profile" component={ProfileNavigation} />
-      <Drawer.Screen name="Organization" component={OrganizationScreen} />
+      <Drawer.Screen name="Profile" component={ProfileScreen} />
+      <Drawer.Screen name="Organization" component={OrganizationModule} />
     </Drawer.Navigator>
   );
 }

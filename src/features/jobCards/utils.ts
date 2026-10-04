@@ -243,3 +243,45 @@ export const materialRejection = (c: JobCard) =>
   c.materialQc === 'rejected'
     ? [...c.qcHistory].reverse().find(e => e.rejectedMaterial)
     : undefined;
+
+/** A job card someone worked on: their steps, when they started and last worked. */
+export type JobCardWork = {
+  jobCard: JobCard;
+  operations: JobOperation[];
+  startedAt: string;
+  lastWorkedAt: string;
+};
+
+/**
+ * Job cards where `operator` ran at least one route card step, the most
+ * recently worked first, at most `limit` of them.
+ */
+export function jobCardsWorkedBy(
+  cards: readonly JobCard[],
+  operator: string,
+  limit: number,
+): JobCardWork[] {
+  return cards
+    .map(jobCard => {
+      const operations = jobCard.operations.filter(
+        op => op.operator === operator,
+      );
+      const started = operations
+        .map(op => op.startedAt ?? '')
+        .filter(Boolean)
+        .sort();
+      const lastWorkedAt = operations
+        .map(op => op.completedAt ?? op.startedAt ?? '')
+        .sort()
+        .pop();
+      return {
+        jobCard,
+        operations,
+        startedAt: started[0] ?? '',
+        lastWorkedAt: lastWorkedAt ?? '',
+      };
+    })
+    .filter(work => work.operations.length > 0)
+    .sort((a, b) => b.lastWorkedAt.localeCompare(a.lastWorkedAt))
+    .slice(0, limit);
+}
