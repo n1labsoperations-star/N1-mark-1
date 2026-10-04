@@ -1,12 +1,7 @@
 import { memo, useMemo } from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
-import {
-  N1Text,
-  createN1Styles,
-  useN1Styles,
-  useN1Theme,
-} from '..';
+import { N1Text, createN1Styles, useN1Styles, useN1Theme } from '..';
 import { DONUT_SIZE, DONUT_THICKNESS } from '../../constants';
 
 export type DonutSegment = {
@@ -27,6 +22,8 @@ export type DonutChartProps = {
   centerCaption?: string;
   testID?: string;
 };
+
+const CENTER_VALUE_VARIANT = { xs: 'small', sm: 'h3', md: 'stat' } as const;
 
 /** Gap between segments, as a fraction of the circumference. */
 const SEGMENT_GAP = 0.004;
@@ -120,7 +117,9 @@ export const DonutChart = memo(function DonutChartComponent({
           </N1Text>
         )}
         {centerValue !== undefined && (
-          <N1Text variant={size === 'sm' ? 'h3' : 'stat'}>{centerValue}</N1Text>
+          <N1Text variant={CENTER_VALUE_VARIANT[size]} weight="bold">
+            {centerValue}
+          </N1Text>
         )}
         {centerCaption && (
           <N1Text variant="caption" color="secondary">

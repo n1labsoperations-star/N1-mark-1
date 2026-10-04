@@ -91,6 +91,11 @@ export const scanner = {
 /** Numbered circles in a process flow. */
 export const stepNumberSize = 26;
 
+/** Uploaded document thumbnails: square tiles that sit side by side. */
+export const documentTile = {
+  size: 96,
+} as const;
+
 /** Stat tiles wrap to two per row on phones below this width. */
 export const statCardMinWidth = 150;
 

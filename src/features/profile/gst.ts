@@ -1,25 +1,15 @@
 import { COMMON_STRINGS, stateForGstin } from '../../shared/constants';
 import type { FormErrors } from '../../shared/hooks';
-import {
-  formatRate,
-  isBlank,
-  isGstin,
-  normalizeGstin,
-} from '../../shared/utils';
+import { isBlank, isGstin, normalizeGstin } from '../../shared/utils';
 import type { Organization, TaxRate } from './types';
 
 export const GST_STRINGS = {
-  title: 'GST & Tax Settings',
-  subtitle: 'How GST is charged on your quotes and invoices.',
   registration: 'GST registration',
   registered: 'GST registered',
   yes: 'Yes',
   no: 'No',
   gstin: 'GSTIN',
   gstinPlaceholder: 'e.g. 33ABCDE1234F1Z5',
-  state: 'State',
-  statePlaceholder: 'Select state',
-  stateHelp: 'Used to determine CGST/SGST or IGST on invoices.',
   notApplied: 'GST will not be applied to invoices.',
   defaultRate: 'Default GST rate',
   defaultRatePlaceholder: 'Select default rate',
@@ -52,7 +42,7 @@ export const GST_STRINGS = {
   inter: 'Inter-state customer (different state)',
   example: (rate: string) => `Example: GST ${rate}`,
   errors: {
-    gstState: 'This doesn’t match the GSTIN’s state code',
+    gstState: 'The first two digits aren’t a valid state code',
     noActiveRate: 'Keep at least one active tax rate',
     defaultRate: 'Pick the default GST rate',
     rate: 'Enter a rate between 0 and 100, up to 2 decimals',
@@ -83,10 +73,6 @@ export const activeTaxRates = (rates: readonly TaxRate[]) =>
     .map(r => r.rate)
     .sort((a, b) => a - b);
 
-/** "5%, 12%, 18%" for the summary card. */
-export const taxRatesSummary = (rates: readonly TaxRate[]) =>
-  activeTaxRates(rates).map(formatRate).join(', ');
-
 export function validateGstSettings(v: GstSettings): FormErrors<GstSettings> {
   const errors: FormErrors<GstSettings> = {};
   if (!v.gstRegistered) {
@@ -96,14 +82,8 @@ export function validateGstSettings(v: GstSettings): FormErrors<GstSettings> {
     errors.gstNumber = COMMON_STRINGS.required;
   } else if (!isGstin(v.gstNumber)) {
     errors.gstNumber = COMMON_STRINGS.invalidGstin;
-  }
-  if (isBlank(v.gstState)) {
-    errors.gstState = COMMON_STRINGS.required;
-  } else if (
-    isGstin(v.gstNumber) &&
-    stateForGstin(normalizeGstin(v.gstNumber)) !== v.gstState
-  ) {
-    errors.gstState = S.errors.gstState;
+  } else if (!stateForGstin(normalizeGstin(v.gstNumber))) {
+    errors.gstNumber = S.errors.gstState;
   }
   const active = activeTaxRates(v.taxRates);
   if (!active.length) {
@@ -115,8 +95,9 @@ export function validateGstSettings(v: GstSettings): FormErrors<GstSettings> {
 }
 
 /**
- * The settings as saved. Not registered: the GSTIN and its state are
- * cleared (the configured rates are kept for when GST is switched on again).
+ * The settings as saved. The GST state comes from the GSTIN's first two
+ * digits. Not registered: the GSTIN and its state are cleared (the configured
+ * rates are kept for when GST is switched on again).
  */
 export function gstSettingsChanges(v: GstSettings): GstSettings {
   const taxRates = [...v.taxRates].sort((a, b) => a.rate - b.rate);
@@ -124,7 +105,7 @@ export function gstSettingsChanges(v: GstSettings): GstSettings {
     ? {
         gstRegistered: true,
         gstNumber: normalizeGstin(v.gstNumber),
-        gstState: v.gstState,
+        gstState: stateForGstin(normalizeGstin(v.gstNumber)),
         taxRates,
         defaultTaxRate: v.defaultTaxRate,
       }

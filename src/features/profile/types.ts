@@ -85,16 +85,41 @@ export type MyProfile = {
   email: string;
   designation: string;
   phone: string;
+  /** Profile picture; initials are shown without one. */
+  photo: Attachment | null;
+  /** False for someone who hasn't set a password yet (e.g. invited). */
+  hasPassword: boolean;
+  // Address
+  address: string;
+  city: string;
+  /** One of STATE_OPTIONS, e.g. "Tamil Nadu". */
+  state: string;
+  pinCode: string;
+  country: string;
   role: UserRole;
   status: 'active';
   memberSince: ISODateString;
   activity: ActivityEntry[];
 };
 
-export type ProfileInput = Pick<MyProfile, 'name' | 'designation' | 'phone'>;
+export type ProfileInput = Partial<
+  Pick<
+    MyProfile,
+    | 'name'
+    | 'designation'
+    | 'phone'
+    | 'photo'
+    | 'address'
+    | 'city'
+    | 'state'
+    | 'pinCode'
+    | 'country'
+  >
+>;
 
 export type PasswordChangeInput = {
-  currentPassword: string;
+  /** Not asked for on My profile; the signed-in session is trusted. */
+  currentPassword?: string;
   newPassword: string;
 };
 

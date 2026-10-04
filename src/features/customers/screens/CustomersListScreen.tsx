@@ -40,8 +40,6 @@ import { customerSearchText, formatAddress, hasAddress } from '../utils';
 
 const makeStyles = createN1Styles(t => ({
   nameCell: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.md },
-  // Matches the filled search next to it in the toolbar.
-  toolbarButton: { borderRadius: t.radius.sm },
 }));
 
 type FormTarget = { customer: Customer | null } | null;
@@ -159,7 +157,6 @@ export function CustomersListScreen() {
       leftIcon="plus"
       onPress={openCreate}
       size="sm"
-      style={styles.toolbarButton}
       testID="add-customer"
     />
   );

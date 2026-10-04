@@ -39,7 +39,7 @@ const makeStyles = createN1Styles(t => ({
     width: '100%',
     maxHeight: '100%',
     backgroundColor: t.colors.surface,
-    borderRadius: t.radius.xl,
+    borderRadius: t.radius.sm,
     padding: t.spacing.xxl,
     gap: t.spacing.lg,
     boxShadow: t.shadow.modal,

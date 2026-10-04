@@ -50,7 +50,6 @@ import {
 const makeStyles = createN1Styles(t => ({
   actions: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm },
   // Matches the filled filter next to it in the toolbar.
-  toolbarButton: { borderRadius: t.radius.sm },
 }));
 
 const COLUMNS: N1TableColumn<WorkOrder>[] = [
@@ -257,7 +256,6 @@ export function OrdersListScreen() {
       leftIcon="plus"
       onPress={openCreate}
       size="sm"
-      style={styles.toolbarButton}
       testID="create-order"
     />
   );

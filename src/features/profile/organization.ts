@@ -6,7 +6,13 @@ import {
   stateForGstin,
 } from '../../shared/constants';
 import type { FormErrors } from '../../shared/hooks';
-import { isBlank, isEmail, isPhone, normalizeGstin } from '../../shared/utils';
+import {
+  isBlank,
+  isEmail,
+  isPhone,
+  isPinCode,
+  normalizeGstin,
+} from '../../shared/utils';
 import { INDUSTRY_OPTIONS } from '../auth/constants';
 import type { Organization, OrganizationInput } from './types';
 
@@ -16,11 +22,16 @@ export const ORGANIZATION_STRINGS = {
   createdAt: 'Created on',
   open: (name: string) => `Open ${name} details`,
   edit: (section: string) => `Edit ${section.toLowerCase()}`,
-  editSubtitle: 'Update your organization’s details.',
   notSet: 'Not set',
   attached: 'Attached',
   upload: 'Upload',
   uploadHint: 'PNG or JPG, up to 2 MB',
+  changeLogo: 'Change logo',
+  completion: 'Profile completion',
+  completionDone: 'All details added',
+  completionLeft: 'Still to add',
+  completionMissing: (count: number) =>
+    `${count} ${count === 1 ? 'detail' : 'details'} to add`,
   yes: 'Yes',
   no: 'No',
   fields: {
@@ -163,7 +174,7 @@ export const SECTION_FIELDS: Record<
   Exclude<OrganizationSection, 'gst'>,
   (keyof OrganizationFormValues)[]
 > = {
-  general: ['name', 'logo', 'phone', 'email', 'website'],
+  general: ['name', 'phone', 'email', 'website'],
   business: ['businessType', 'industry', 'registrationDetails'],
   address: ['address', 'city', 'state', 'pinCode', 'country'],
   invoice: [
@@ -176,7 +187,6 @@ export const SECTION_FIELDS: Record<
 };
 
 const WEBSITE_PATTERN = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+(\/\S*)?$/i;
-const PIN_PATTERN = /^[1-9]\d{5}$/;
 
 /** Errors for one section only, so other sections never block a save. */
 export function validateSection(
@@ -203,7 +213,7 @@ export function validateSection(
     }
   }
   if (section === 'address') {
-    if (!isBlank(v.pinCode) && !PIN_PATTERN.test(v.pinCode.trim())) {
+    if (!isBlank(v.pinCode) && !isPinCode(v.pinCode)) {
       errors.pinCode = E.pinCode;
     }
   }
@@ -227,7 +237,6 @@ export function sectionChanges(
     case 'general':
       return {
         name: trimmed(v.name),
-        logo: v.logo,
         phone: trimmed(v.phone),
         email: trimmed(v.email),
         website: trimmed(v.website),
@@ -313,3 +322,77 @@ export function newOrganization(
 }
 
 export const fieldLabel = (key: keyof typeof F) => F[key];
+
+// ---- Completion ----
+
+const filled = (value: string) => !isBlank(value);
+
+/**
+ * What counts towards "Profile completion", per section. GST counts as done
+ * when the organization isn't registered.
+ */
+const COMPLETION_CHECKS: Record<
+  OrganizationSection,
+  ((o: Organization) => boolean)[]
+> = {
+  general: [
+    o => filled(o.name),
+    o => o.logo !== null,
+    o => filled(o.phone),
+    o => filled(o.email),
+    o => filled(o.website),
+  ],
+  business: [
+    o => filled(o.businessType),
+    o => filled(o.industry),
+    o => filled(o.registrationDetails),
+  ],
+  address: [
+    o => filled(o.address),
+    o => filled(o.city),
+    o => filled(o.state),
+    o => filled(o.pinCode),
+    o => filled(o.country),
+  ],
+  gst: [
+    o => !o.gstRegistered || filled(o.gstNumber),
+    o => !o.gstRegistered || o.defaultTaxRate !== null,
+  ],
+  invoice: [
+    o => filled(o.invoicePrefix),
+    o => filled(o.paymentTerms),
+    o => filled(o.invoiceFooter),
+  ],
+  documents: [
+    o => o.invoiceLogo !== null,
+    o => filled(o.termsAndConditions),
+    o => o.signature !== null,
+  ],
+};
+
+export type OrganizationCompletion = {
+  /** 0–100, rounded. */
+  percent: number;
+  /** Details still to add, overall and per section. */
+  missing: number;
+  missingBySection: Record<OrganizationSection, number>;
+};
+
+export function organizationCompletion(
+  o: Organization,
+): OrganizationCompletion {
+  let total = 0;
+  let done = 0;
+  const missingBySection = {} as Record<OrganizationSection, number>;
+  for (const [section, checks] of Object.entries(COMPLETION_CHECKS)) {
+    const passed = checks.filter(check => check(o)).length;
+    total += checks.length;
+    done += passed;
+    missingBySection[section as OrganizationSection] = checks.length - passed;
+  }
+  return {
+    percent: Math.round((done / total) * 100),
+    missing: total - done,
+    missingBySection,
+  };
+}

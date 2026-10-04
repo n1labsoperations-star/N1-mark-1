@@ -6,3 +6,4 @@ export { useForm, type FormErrors } from './useForm';
 export { useOnSettled } from './useOnSettled';
 export { useToggle } from './useToggle';
 export { useConfirmDelete } from './useConfirmDelete';
+export { useHeldWhileVisible } from './useHeldWhileVisible';

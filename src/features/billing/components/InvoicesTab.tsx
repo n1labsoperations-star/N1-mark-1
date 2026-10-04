@@ -43,8 +43,6 @@ const S = BILLING_STRINGS.invoices;
 
 const makeStyles = createN1Styles(t => ({
   actions: { flexDirection: 'row', gap: t.spacing.sm },
-  // Matches the filled search and filter next to it in the toolbar.
-  toolbarButton: { borderRadius: t.radius.sm },
 }));
 
 type Props = {
@@ -215,7 +213,6 @@ export function InvoicesTab({ toolbarStart }: Props) {
           variant="secondary"
           size="sm"
           onPress={exportList}
-          style={styles.toolbarButton}
         />
       )}
     </ListToolbar>

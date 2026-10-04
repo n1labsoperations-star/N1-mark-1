@@ -8,11 +8,17 @@ import {
 } from '../../../shared/components';
 import { FormFooter, FormRow } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
-import { useForm, useOnSettled, type FormErrors } from '../../../shared/hooks';
-import { isBlank, isEmail, isPhone } from '../../../shared/utils';
+import {
+  useForm,
+  useHeldWhileVisible,
+  useOnSettled,
+  type FormErrors,
+} from '../../../shared/hooks';
+import { isBlank, isEmail, isPhone, isPinCode } from '../../../shared/utils';
 import {
   CUSTOMER_STRINGS,
   CUSTOMER_TYPE_OPTIONS,
+  DEFAULT_COUNTRY,
   DEFAULT_STATE,
   STATE_OPTIONS,
 } from '../constants';
@@ -27,26 +33,32 @@ const EMPTY: CustomerInput = {
   name: '',
   contactPerson: '',
   mobile: '',
+  alternateMobile: '',
   email: '',
   gstNumber: '',
   address: '',
   city: '',
   state: DEFAULT_STATE,
+  pinCode: '',
+  country: DEFAULT_COUNTRY,
   notes: '',
 };
 
-const toValues = (c?: Customer | null): CustomerInput =>
+export const toCustomerValues = (c?: Customer | null): CustomerInput =>
   c
     ? {
         type: c.type,
         name: c.name,
         contactPerson: c.contactPerson,
         mobile: c.mobile,
+        alternateMobile: c.alternateMobile,
         email: c.email,
         gstNumber: c.gstNumber,
         address: c.address,
         city: c.city,
         state: c.state || DEFAULT_STATE,
+        pinCode: c.pinCode,
+        country: c.country || DEFAULT_COUNTRY,
         notes: c.notes,
       }
     : EMPTY;
@@ -64,6 +76,9 @@ export function validateCustomer(v: CustomerInput): FormErrors<CustomerInput> {
   } else if (!isPhone(v.mobile)) {
     errors.mobile = COMMON_STRINGS.invalidPhone;
   }
+  if (!isBlank(v.alternateMobile) && !isPhone(v.alternateMobile)) {
+    errors.alternateMobile = COMMON_STRINGS.invalidPhone;
+  }
   if (!isBlank(v.email) && !isEmail(v.email)) {
     errors.email = COMMON_STRINGS.invalidEmail;
   }
@@ -73,18 +88,24 @@ export function validateCustomer(v: CustomerInput): FormErrors<CustomerInput> {
   ) {
     errors.gstNumber = F.gstInvalid;
   }
+  if (!isBlank(v.pinCode) && !isPinCode(v.pinCode)) {
+    errors.pinCode = F.pinCodeInvalid;
+  }
   return errors;
 }
 
-const trimAll = (v: CustomerInput): CustomerInput => ({
+export const trimCustomer = (v: CustomerInput): CustomerInput => ({
   ...v,
   name: v.name.trim(),
   contactPerson: v.contactPerson.trim(),
   mobile: v.mobile.trim(),
+  alternateMobile: v.alternateMobile.trim(),
   email: v.email.trim(),
   gstNumber: v.gstNumber.trim().toUpperCase(),
   address: v.address.trim(),
   city: v.city.trim(),
+  pinCode: v.pinCode.trim(),
+  country: v.country.trim(),
   notes: v.notes.trim(),
 });
 
@@ -98,18 +119,23 @@ export type CustomerFormModalProps = {
 /** Add customer / Edit customer dialog (full screen on phones). */
 export function CustomerFormModal({
   visible,
-  customer,
+  customer: customerProp,
   organizationName,
   onClose,
 }: CustomerFormModalProps) {
+  // Kept while the dialog fades out, so the title doesn't flip to Create.
+  const customer = useHeldWhileVisible(visible, customerProp);
   const isEdit = Boolean(customer);
   const { create, update, saving, saveError, clearErrors } = useCustomers();
-  const form = useForm<CustomerInput>(toValues(customer), validateCustomer);
+  const form = useForm<CustomerInput>(
+    toCustomerValues(customer),
+    validateCustomer,
+  );
   const { reset, values, errors, bind } = form;
 
   useEffect(() => {
     if (visible) {
-      reset(toValues(customer));
+      reset(toCustomerValues(customer));
       clearErrors();
     }
   }, [visible, customer, reset, clearErrors]);
@@ -118,7 +144,7 @@ export function CustomerFormModal({
 
   const save = useCallback(
     (v: CustomerInput) =>
-      customer ? update(customer.id, trimAll(v)) : create(trimAll(v)),
+      customer ? update(customer.id, trimCustomer(v)) : create(trimCustomer(v)),
     [customer, create, update],
   );
 
@@ -180,6 +206,17 @@ export function CustomerFormModal({
           testID="customer-form-mobile"
         />
         <N1TextInput
+          label={F.alternateMobile}
+          placeholder={F.alternateMobilePlaceholder}
+          value={values.alternateMobile}
+          onChangeText={bind('alternateMobile')}
+          errorText={errors.alternateMobile}
+          keyboardType="phone-pad"
+          testID="customer-form-alternate-mobile"
+        />
+      </FormRow>
+      <FormRow>
+        <N1TextInput
           label={F.email}
           placeholder={F.emailPlaceholder}
           value={values.email}
@@ -190,17 +227,17 @@ export function CustomerFormModal({
           autoCorrect={false}
           testID="customer-form-email"
         />
+        <N1TextInput
+          label={F.gst}
+          placeholder={F.gstPlaceholder}
+          value={values.gstNumber}
+          onChangeText={bind('gstNumber')}
+          errorText={errors.gstNumber}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          testID="customer-form-gst"
+        />
       </FormRow>
-      <N1TextInput
-        label={F.gst}
-        placeholder={F.gstPlaceholder}
-        value={values.gstNumber}
-        onChangeText={bind('gstNumber')}
-        errorText={errors.gstNumber}
-        autoCapitalize="characters"
-        autoCorrect={false}
-        testID="customer-form-gst"
-      />
       <N1TextInput
         label={F.address}
         placeholder={F.addressPlaceholder}
@@ -219,6 +256,24 @@ export function CustomerFormModal({
           options={STATE_OPTIONS}
           value={values.state}
           onChange={bind('state')}
+        />
+      </FormRow>
+      <FormRow>
+        <N1TextInput
+          label={F.pinCode}
+          placeholder={F.pinCodePlaceholder}
+          value={values.pinCode}
+          onChangeText={bind('pinCode')}
+          errorText={errors.pinCode}
+          keyboardType="number-pad"
+          maxLength={6}
+          testID="customer-form-pin"
+        />
+        <N1TextInput
+          label={F.country}
+          placeholder={F.countryPlaceholder}
+          value={values.country}
+          onChangeText={bind('country')}
         />
       </FormRow>
       <N1TextInput

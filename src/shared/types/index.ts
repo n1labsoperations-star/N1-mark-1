@@ -25,4 +25,6 @@ export type Attachment = {
   /** e.g. "Purchase order". */
   kind?: string;
   sizeBytes: number;
+  /** Where an image can be shown from (a picked photo's data URL). */
+  uri?: string;
 };

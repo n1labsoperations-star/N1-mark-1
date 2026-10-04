@@ -39,6 +39,8 @@ export const CUSTOMER_STRINGS = {
     contactPlaceholder: 'e.g. Rajesh Kumar',
     mobile: 'Mobile Number',
     mobilePlaceholder: 'e.g. +91 98765 43210',
+    alternateMobile: 'Alternate Phone',
+    alternateMobilePlaceholder: 'e.g. +91 98400 12345',
     email: 'Email',
     emailPlaceholder: 'e.g. accounts@acmemetalworks.com',
     gst: 'GST Number',
@@ -49,6 +51,11 @@ export const CUSTOMER_STRINGS = {
     city: 'City',
     cityPlaceholder: 'e.g. Chennai',
     state: 'State',
+    pinCode: 'PIN Code',
+    pinCodePlaceholder: 'e.g. 600032',
+    pinCodeInvalid: 'Enter a 6-digit PIN code',
+    country: 'Country',
+    countryPlaceholder: 'e.g. India',
     notes: 'Notes',
     notesPlaceholder: 'Anything worth knowing about this account',
   },
@@ -72,6 +79,18 @@ export const CUSTOMER_STRINGS = {
     totalRevenue: 'Total revenue',
     outstanding: 'Outstanding balance',
     notFound: 'This customer no longer exists.',
+    backToCustomers: 'Back to customers',
+    backTo: { dashboard: 'Back to dashboard', orders: 'Back to orders' },
+    tabs: {
+      info: 'Customer info',
+      address: 'Address info',
+      stats: 'Stats',
+      orders: 'Orders',
+      quotes: 'Quotes',
+      notes: 'Notes',
+    },
+    deleteCustomer: 'Delete customer',
+    noNotes: 'No notes for this customer.',
     orderHistory: 'Order history',
     noOrders: 'No orders from this customer yet.',
     quoteHistory: 'Quote history',
@@ -153,6 +172,7 @@ export const STATE_OPTIONS: N1DropDownOption<string>[] = STATES.map(s => ({
 }));
 
 export const DEFAULT_STATE = 'Tamil Nadu';
+export const DEFAULT_COUNTRY = 'India';
 
 /** How many customers the dashboard lists before "View more". */
 export const TOP_CUSTOMERS_COUNT = 4;

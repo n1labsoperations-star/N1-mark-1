@@ -13,7 +13,7 @@ import {
   N1TextInput,
   UserScreen,
 } from '../../../shared/components';
-import { COMMON_STRINGS } from '../../../shared/constants';
+import { COMMON_STRINGS, SEARCH_INPUT_PROPS } from '../../../shared/constants';
 import { useListFilter, useToggle } from '../../../shared/hooks';
 import { jobCardSearchText, jobHeading, type JobCard } from '../../jobCards';
 import { JOBS_STRINGS, QC_STATUS_META, QC_STRINGS } from '../constants';
@@ -71,6 +71,7 @@ export function QcListScreen() {
       {searching && (
         <N1TextInput
           leftIcon="search"
+          {...SEARCH_INPUT_PROPS}
           value={query}
           onChangeText={setQuery}
           placeholder={L.search}

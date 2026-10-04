@@ -1,4 +1,3 @@
-import { Linking } from 'react-native';
 import {
   allText,
   byLabel,
@@ -9,6 +8,7 @@ import {
   renderAdmin,
   typeInto,
 } from '../../../shared/testing/testUtils';
+import { customersApi } from '../api/customersApi';
 import { validateCustomer } from '../components/CustomerFormModal';
 import { formatAddress } from '../utils';
 
@@ -84,8 +84,7 @@ test('edits and deletes from the list', async () => {
   expect(store.getState().customers.entities['CUS-4']).toBeUndefined();
 });
 
-test('details screen: account, contact, notes, message and delete', async () => {
-  const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+test('details screen: identity, section menu, account and delete', async () => {
   const h = await renderAdmin('Customers');
   await h.navigate('CustomerDetails', { customerId: 'CUS-1' });
   const screen = byTestId(h.root, 'customer-details-screen');
@@ -93,25 +92,109 @@ test('details screen: account, contact, notes, message and delete', async () => 
   expect(text).toContain('Business customer');
   expect(text).toContain('Customer since Jan 12, 2025');
   expect(text).toContain('Rajesh Kumar · Contact person');
-  expect(text).toContain('33AAAAA0000A1Z5');
-  expect(text).toContain('Long-standing bracket supplier account.');
-  expect(text).toContain('New order placed — Job A');
-  await press(byText(screen, 'Message'));
-  expect(openURL).toHaveBeenCalledWith('mailto:accounts@acmemetalworks.com');
-  await press(byTestId(screen, 'edit-customer'));
-  expect(allText(screen)).toContain('Edit customer');
-  await press(byText(screen, 'Cancel'));
+  // No Recent activity, quick actions or Edit dialog any more.
+  expect(text).not.toContain('Recent activity');
+  expect(hasTestId(screen, 'edit-customer')).toBe(false);
+  expect(text).not.toContain('Message');
+
+  // Customer info is the first tab: locked fields.
+  const field = (id: string) => byTestId(screen, id);
+  expect(field('customer-info-gstNumber').props.value).toBe('33AAAAA0000A1Z5');
+  expect(field('customer-info-name').props.editable).toBe(false);
+  expect(field('customer-info-alternateMobile').props.value).toBe(
+    '+91 98400 11037',
+  );
+  await press(byTestId(screen, 'customer-tab-address'));
+  expect(field('customer-address-city').props.value).toBe('Chennai');
+  expect(field('customer-address-pinCode').props.value).toBe('600032');
+  expect(field('customer-address-country').props.value).toBe('India');
+  await press(byTestId(screen, 'customer-tab-stats'));
+  expect(field('customer-stats-current').props.value).toBe('12 active');
+  expect(field('customer-stats-revenue').props.value).toBe('₹18,42,000');
+  await press(byTestId(screen, 'customer-tab-notes'));
+  expect(field('customer-notes-notes').props.value).toBe(
+    'Long-standing bracket supplier account.',
+  );
+
   await press(byTestId(screen, 'delete-customer'));
-  await press(byText(screen, 'Delete customer'));
+  await press(
+    byText(byTestId(screen, 'delete-customer-dialog'), 'Delete customer'),
+  );
   expect(h.currentRoute()).toBe('Customers');
 });
 
-test('message falls back to SMS without an email', async () => {
-  const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+test('details: Edit unlocks a tab in place, validates and saves only it', async () => {
+  const spy = jest.spyOn(customersApi, 'update');
   const h = await renderAdmin('Customers');
-  await h.navigate('CustomerDetails', { customerId: 'CUS-5' });
-  await press(byText(byTestId(h.root, 'customer-details-screen'), 'Message'));
-  expect(openURL).toHaveBeenCalledWith('sms:+919444011223');
+  await h.navigate('CustomerDetails', { customerId: 'CUS-1' });
+  const screen = byTestId(h.root, 'customer-details-screen');
+  const field = (id: string) => byTestId(screen, id);
+
+  await press(byTestId(screen, 'edit-customer-info'));
+  expect(hasTestId(screen, 'customer-form')).toBe(false);
+  expect(field('customer-info-name').props.editable).toBe(true);
+  await typeInto(field('customer-info-mobile'), '12');
+  await press(byTestId(screen, 'customer-info-submit'));
+  expect(allText(screen)).toContain('Enter a valid phone number');
+  expect(spy).not.toHaveBeenCalled();
+  await typeInto(field('customer-info-mobile'), '+91 90000 11111');
+  await press(byTestId(screen, 'customer-info-submit'));
+  expect(spy).toHaveBeenCalledWith('CUS-1', {
+    type: 'business',
+    name: 'Acme Metalworks',
+    contactPerson: 'Rajesh Kumar',
+    mobile: '+91 90000 11111',
+    alternateMobile: '+91 98400 11037',
+    email: 'accounts@acmemetalworks.com',
+    gstNumber: '33AAAAA0000A1Z5',
+  });
+  expect(field('customer-info-mobile').props.editable).toBe(false);
+
+  // Switching tabs drops unsaved edits.
+  await press(byTestId(screen, 'customer-tab-address'));
+  await press(byTestId(screen, 'edit-customer-address'));
+  await typeInto(field('customer-address-city'), 'Madurai');
+  await press(byTestId(screen, 'customer-tab-orders'));
+  await press(byTestId(screen, 'customer-tab-address'));
+  expect(field('customer-address-city').props.value).toBe('Chennai');
+  expect(field('customer-address-city').props.editable).toBe(false);
+});
+
+test('details: back always returns to the list', async () => {
+  const h = await renderAdmin('Customers');
+  await h.navigate('CustomerDetails', { customerId: 'CUS-1' });
+  await press(byTestId(h.root, 'customer-details-back'));
+  expect(hasTestId(h.root, 'customer-details-screen')).toBe(false);
+  expect(h.currentRoute()).toBe('Customers');
+});
+
+test('details: Back returns where the customer was opened from', async () => {
+  const back = (h: Awaited<ReturnType<typeof renderAdmin>>) =>
+    byTestId(h.root, 'customer-details-back');
+
+  // From the Dashboard: back to the Dashboard.
+  let h = await renderAdmin('Customers');
+  await h.navigate('CustomerDetails', {
+    customerId: 'CUS-1',
+    from: 'dashboard',
+  });
+  expect(allText(back(h))).toBe('Back to dashboard');
+  await press(back(h));
+  expect(h.currentRoute()).toBe('Dashboard');
+
+  // From an order: back to Orders.
+  h = await renderAdmin('Customers');
+  await h.navigate('CustomerDetails', { customerId: 'CUS-1', from: 'orders' });
+  expect(allText(back(h))).toBe('Back to orders');
+  await press(back(h));
+  expect(h.currentRoute()).toBe('Orders');
+
+  // From the list (or a link): back to the list.
+  h = await renderAdmin('Customers');
+  await h.navigate('CustomerDetails', { customerId: 'CUS-1' });
+  expect(allText(back(h))).toBe('Back to customers');
+  await press(back(h));
+  expect(h.currentRoute()).toBe('Customers');
 });
 
 test('unknown customer shows not found', async () => {
@@ -138,11 +221,14 @@ test('validator and address helpers', () => {
     name: 'A',
     contactPerson: 'B',
     mobile: '9876543210',
+    alternateMobile: '',
     email: 'bad',
     gstNumber: '',
     address: '',
     city: '',
     state: 'Kerala',
+    pinCode: '',
+    country: 'India',
     notes: '',
   };
   expect(validateCustomer(base)).toEqual({
@@ -150,6 +236,17 @@ test('validator and address helpers', () => {
   });
   expect(validateCustomer({ ...base, email: '', mobile: '12' })).toEqual({
     mobile: 'Enter a valid phone number',
+  });
+  expect(
+    validateCustomer({
+      ...base,
+      email: '',
+      alternateMobile: '12',
+      pinCode: '6000',
+    }),
+  ).toEqual({
+    alternateMobile: 'Enter a valid phone number',
+    pinCode: 'Enter a 6-digit PIN code',
   });
   expect(formatAddress({ address: '', city: 'Kochi', state: 'Kerala' })).toBe(
     'Kochi, Kerala',
@@ -160,12 +257,15 @@ test('details screen lists the customer’s orders and shared quotes', async () 
   const h = await renderAdmin('Customers');
   await h.navigate('CustomerDetails', { customerId: 'CUS-1' });
 
+  await press(byTestId(h.root, 'customer-tab-orders'));
   const orders = allText(byTestId(h.root, 'customer-orders'));
   expect(orders).toContain('WO #1042');
   expect(orders).toContain('Bracket — Job A');
   // Other customers' orders stay out.
   expect(orders).not.toContain('WO #1041');
 
+  // Quotes are the second tab.
+  await press(byTestId(h.root, 'customer-tab-quotes'));
   const quotes = allText(byTestId(h.root, 'customer-quotes'));
   expect(quotes).toContain('QT-2026-0040');
   expect(quotes).toContain('Accepted');

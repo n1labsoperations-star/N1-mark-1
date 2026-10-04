@@ -1,55 +1,89 @@
-import { useCallback, useMemo } from 'react';
-import { Linking, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { ScrollView, View } from 'react-native';
 import {
-  N1Badge,
-  N1Button,
+  AdminScreen,
+  AsyncContent,
+  ComingSoon,
+  FormRow,
   N1Card,
-  N1DetailGrid,
-  N1Divider,
-  N1IconButton,
-  N1KeyValueList,
+  N1Tabs,
+  N1TextInput,
+  type N1Tab,
   N1Text,
   createN1Styles,
   useN1Breakpoint,
   useN1Styles,
 } from '../../../shared/components';
-import type { CustomersScreenProps } from '../types';
-import {
-  ActivityCard,
-  AdminScreen,
-  AsyncContent,
-  ComingSoon,
-  DetailHeader,
-  EntityHero,
-  SplitLayout,
-} from '../../../shared/components';
-import { COMMON_STRINGS } from '../../../shared/constants';
-import { useConfirmDelete, useToggle } from '../../../shared/hooks';
-import { formatCurrency, formatDate } from '../../../shared/utils';
+import { PROFILE_PANEL_WIDTH } from '../../../shared/constants';
+import { useConfirmDelete } from '../../../shared/hooks';
+import { formatCurrency } from '../../../shared/utils';
 import { useOrganizationName } from '../../profile';
-import { CustomerFormModal } from '../components/CustomerFormModal';
-import { CustomerHistory } from '../components/CustomerHistory';
+import {
+  CustomerOrdersTable,
+  CustomerQuotesTable,
+} from '../components/CustomerHistoryTables';
+import { CustomerProfilePanel } from '../components/CustomerProfilePanel';
+import {
+  CustomerSectionForm,
+  type CustomerSection,
+} from '../components/CustomerSectionForm';
 import { DeleteCustomerDialog } from '../components/DeleteCustomerDialog';
-import { CUSTOMER_STRINGS, CUSTOMER_TYPE_BADGE } from '../constants';
+import { CUSTOMER_STRINGS } from '../constants';
 import { useCustomer } from '../hooks/useCustomers';
-import type { Customer } from '../types';
-import { formatAddress } from '../utils';
+import type { AdminDrawerParamList } from '../../dashboard/types';
+import type {
+  Customer,
+  CustomerDetailsOrigin,
+  CustomersScreenProps,
+} from '../types';
 
 const D = CUSTOMER_STRINGS.details;
 
+/** The drawer item each origin returns to. */
+const FROM_ROUTE = {
+  dashboard: 'Overview',
+  orders: 'Orders',
+} as const satisfies Record<CustomerDetailsOrigin, keyof AdminDrawerParamList>;
+
+type Tab = CustomerSection | 'stats' | 'orders' | 'quotes';
+
+const TABS: N1Tab<Tab>[] = [
+  { key: 'info', label: D.tabs.info, icon: 'user' },
+  { key: 'address', label: D.tabs.address, icon: 'building' },
+  { key: 'stats', label: D.tabs.stats, icon: 'dashboard' },
+  { key: 'orders', label: D.tabs.orders, icon: 'package' },
+  { key: 'quotes', label: D.tabs.quotes, icon: 'receipt' },
+  { key: 'notes', label: D.tabs.notes, icon: 'file' },
+];
+
 const makeStyles = createN1Styles(t => ({
-  topRow: {
+  // Wide screens: the card fills the window; the menu and the section each
+  // scroll on their own.
+  card: { flex: 1, minHeight: 0 },
+  row: {
+    flex: 1,
+    minHeight: 0,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: t.spacing.md,
+    alignItems: 'stretch',
+    gap: t.spacing.xl,
   },
-  section: { gap: t.spacing.md },
-  grow: { flex: 1 },
+  nav: {
+    width: PROFILE_PANEL_WIDTH,
+    paddingRight: t.spacing.xl,
+    borderRightWidth: t.borderWidth.hairline,
+    borderRightColor: t.colors.border,
+  },
+  fill: { flex: 1 },
+  content: { flex: 1, minWidth: 0 },
+  section: { gap: t.spacing.lg },
+  compactTabs: { marginVertical: t.spacing.lg },
 }));
 
-const orDash = (value: string) => value || COMMON_STRINGS.dash;
-
+/**
+ * One customer, laid out like User details: who they are and a section menu
+ * on the left (Customer info, Address info, Stats, Orders, Quotes, Notes),
+ * the section on the right, edited in place. Phones put the menu on top.
+ */
 export function CustomerDetailsScreen({
   route,
   navigation,
@@ -59,8 +93,25 @@ export function CustomerDetailsScreen({
   const organizationName = useOrganizationName();
   const { customer, status, error, reload, remove, deletingId, deleteError } =
     useCustomer(route.params.customerId);
-  const [formOpen, openForm, closeForm] = useToggle(false);
-  const goBack = useCallback(() => navigation.goBack(), [navigation]);
+  const [tab, setTab] = useState<Tab>('info');
+  const [editing, setEditing] = useState(false);
+  const startEdit = useCallback(() => setEditing(true), []);
+  const stopEdit = useCallback(() => setEditing(false), []);
+  // Leaving a tab drops its unsaved edits.
+  const changeTab = useCallback((key: Tab) => {
+    setTab(key);
+    setEditing(false);
+  }, []);
+  // Back returns where this page was opened from: the Dashboard or Orders,
+  // else the Customers list (also after a refresh or a shared link).
+  const { from } = route.params;
+  const goBack = useCallback(
+    () =>
+      from
+        ? navigation.navigate(FROM_ROUTE[from])
+        : navigation.popTo('CustomersList'),
+    [navigation, from],
+  );
   const deletion = useConfirmDelete<Customer>(
     remove,
     deletingId,
@@ -68,88 +119,9 @@ export function CustomerDetailsScreen({
     goBack,
   );
 
-  const message = useCallback(() => {
-    if (!customer) {
-      return;
-    }
-    const url = customer.email
-      ? `mailto:${customer.email}`
-      : `sms:${customer.mobile.replace(/\s/g, '')}`;
-    Linking.openURL(url).catch(() => undefined);
-  }, [customer]);
-
-  const accountItems = useMemo(
-    () =>
-      customer
-        ? [
-            {
-              label: D.currentProjects,
-              value: CUSTOMER_STRINGS.active(customer.currentProjects),
-            },
-            {
-              label: D.previousProjects,
-              value: CUSTOMER_STRINGS.completed(customer.previousProjects),
-            },
-            {
-              label: D.totalRevenue,
-              value: formatCurrency(customer.totalRevenue),
-            },
-            {
-              label: D.outstanding,
-              value: formatCurrency(customer.outstandingBalance),
-            },
-          ]
-        : [],
-    [customer],
-  );
-
-  const contactItems = useMemo(() => {
-    if (!customer) {
-      return [];
-    }
-    const address = orDash(formatAddress(customer));
-    return isCompact
-      ? [
-          { label: D.contactPerson, value: orDash(customer.contactPerson) },
-          { label: D.mobile, value: orDash(customer.mobile) },
-          { label: D.email, value: orDash(customer.email) },
-          { label: D.gst, value: orDash(customer.gstNumber) },
-          { label: D.address, value: address },
-        ]
-      : [
-          { label: D.mobile, value: orDash(customer.mobile) },
-          { label: D.email, value: orDash(customer.email) },
-          { label: D.gst, value: orDash(customer.gstNumber) },
-          {
-            label: D.cityState,
-            value: orDash(
-              [customer.city, customer.state].filter(Boolean).join(', '),
-            ),
-          },
-          { label: D.address, value: address },
-        ];
-  }, [customer, isCompact]);
-
-  const editIcon = (
-    <N1IconButton
-      icon="edit"
-      variant="primary"
-      size="sm"
-      accessibilityLabel={CUSTOMER_STRINGS.a11y.edit(customer?.name ?? '')}
-      onPress={openForm}
-    />
-  );
-  const header = (
-    <DetailHeader
-      title={isCompact ? D.compactTitle : D.title}
-      onBack={goBack}
-      compactRight={customer && editIcon}
-    />
-  );
-
   if (!customer) {
     return (
-      <AdminScreen header={header}>
+      <AdminScreen testID="customer-details-screen">
         <AsyncContent status={status} error={error} onRetry={reload}>
           <ComingSoon icon="building" title={D.title} message={D.notFound} />
         </AsyncContent>
@@ -157,119 +129,139 @@ export function CustomerDetailsScreen({
     );
   }
 
-  const typeBadge = (
-    <N1Badge label={CUSTOMER_TYPE_BADGE[customer.type]} tone="info" />
-  );
-  const deleteButton = (
-    <N1IconButton
-      icon="trash"
-      variant="danger"
-      accessibilityLabel={CUSTOMER_STRINGS.a11y.delete(customer.name)}
-      onPress={() => deletion.request(customer)}
-      testID="delete-customer"
+  const heading = (title: string) => <N1Text variant="h3">{title}</N1Text>;
+  // Read-only, like the locked fields of the other tabs.
+  const readOnly = (label: string, value: string, id: string) => (
+    <N1TextInput
+      label={label}
+      value={value}
+      readOnly
+      testID={`customer-stats-${id}`}
     />
   );
 
-  const hero = (
-    <EntityHero
-      name={customer.name}
-      subtitle={
-        isCompact
-          ? undefined
-          : `${customer.contactPerson} · ${D.contactPersonSuffix}`
-      }
-      badges={typeBadge}
-      actions={
-        <>
-          <N1Button
-            title={isCompact ? COMMON_STRINGS.edit : D.editDetails}
-            leftIcon="edit"
-            size={isCompact ? 'md' : 'sm'}
-            onPress={openForm}
-            style={isCompact && styles.grow}
-            testID="edit-customer"
+  const tabContent = () => {
+    switch (tab) {
+      case 'stats':
+        return (
+          <View style={styles.section} testID="customer-stats">
+            {heading(D.tabs.stats)}
+            <FormRow>
+              {readOnly(
+                D.currentProjects,
+                CUSTOMER_STRINGS.active(customer.currentProjects),
+                'current',
+              )}
+              {readOnly(
+                D.previousProjects,
+                CUSTOMER_STRINGS.completed(customer.previousProjects),
+                'previous',
+              )}
+            </FormRow>
+            <FormRow>
+              {readOnly(
+                D.totalRevenue,
+                formatCurrency(customer.totalRevenue),
+                'revenue',
+              )}
+              {readOnly(
+                D.outstanding,
+                formatCurrency(customer.outstandingBalance),
+                'outstanding',
+              )}
+            </FormRow>
+          </View>
+        );
+      case 'orders':
+        return (
+          <View style={styles.section}>
+            {heading(D.tabs.orders)}
+            <CustomerOrdersTable customer={customer} />
+          </View>
+        );
+      case 'quotes':
+        return (
+          <View style={styles.section}>
+            {heading(D.tabs.quotes)}
+            <CustomerQuotesTable customer={customer} />
+          </View>
+        );
+      default:
+        return (
+          <CustomerSectionForm
+            key={tab}
+            customer={customer}
+            section={tab}
+            editing={editing}
+            onEdit={startEdit}
+            onDone={stopEdit}
           />
-          <N1Button
-            title={D.message}
-            leftIcon="message"
-            variant="secondary"
-            size={isCompact ? 'md' : 'sm'}
-            onPress={message}
-            style={isCompact && styles.grow}
-          />
-          {deleteButton}
-        </>
-      }
+        );
+    }
+  };
+
+  const tabs = (
+    <N1Tabs
+      tabs={TABS}
+      value={tab}
+      onChange={changeTab}
+      variant={isCompact ? 'segmented' : 'menu'}
+      scrollable={isCompact}
+      style={isCompact && styles.compactTabs}
+      testID="customer-tab"
     />
   );
 
-  const notes = (
-    <View style={styles.section}>
-      <N1Text variant="title" weight="bold">
-        {D.notes}
-      </N1Text>
-      <N1Text color="secondary">{orDash(customer.notes)}</N1Text>
-    </View>
+  const profile = (
+    <CustomerProfilePanel
+      customer={customer}
+      backLabel={from ? D.backTo[from] : D.backToCustomers}
+      onBack={goBack}
+      onDelete={() => deletion.request(customer)}
+    >
+      {!isCompact && tabs}
+    </CustomerProfilePanel>
   );
 
-  const aside = !isCompact && (
-    <>
-      <N1Card title={COMMON_STRINGS.account} icon="clipboard">
-        <N1KeyValueList variant="plain" items={accountItems} />
-      </N1Card>
-      <ActivityCard items={customer.activity} />
-    </>
+  const dialog = (
+    <DeleteCustomerDialog
+      customer={deletion.target}
+      organizationName={organizationName}
+      loading={deletion.loading}
+      onConfirm={deletion.confirm}
+      onCancel={deletion.cancel}
+    />
   );
+
+  if (isCompact) {
+    return (
+      <AdminScreen testID="customer-details-screen">
+        <N1Card radius="sm">
+          {profile}
+          {tabs}
+          {tabContent()}
+        </N1Card>
+        {dialog}
+      </AdminScreen>
+    );
+  }
 
   return (
-    <AdminScreen header={header} testID="customer-details-screen">
-      <SplitLayout aside={aside}>
-        {isCompact ? (
-          <>
-            {hero}
-            <N1KeyValueList
-              title={COMMON_STRINGS.account}
-              items={accountItems}
-            />
-            <N1DetailGrid title={D.contact} items={contactItems} columns={1} />
-            <N1Divider />
-            {notes}
-            <CustomerHistory customer={customer} />
-          </>
-        ) : (
-          <N1Card padding="xxl">
-            <View style={styles.section}>
-              <View style={styles.topRow}>
-                {typeBadge}
-                <N1Text variant="small" color="secondary">
-                  {D.since(formatDate(customer.customerSince))}
-                </N1Text>
-              </View>
-              <N1Divider spacing="sm" />
-              {hero}
-              <N1Divider spacing="sm" />
-              <N1DetailGrid items={contactItems} />
-              <N1Divider spacing="sm" />
-              {notes}
-            </View>
-          </N1Card>
-        )}
-        {!isCompact && <CustomerHistory customer={customer} />}
-      </SplitLayout>
-
-      <CustomerFormModal
-        visible={formOpen}
-        customer={customer}
-        organizationName={organizationName}
-        onClose={closeForm}
-      />
-      <DeleteCustomerDialog
-        customer={deletion.target}
-        organizationName={organizationName}
-        loading={deletion.loading}
-        onConfirm={deletion.confirm}
-        onCancel={deletion.cancel}
-      />
+    <AdminScreen fixed testID="customer-details-screen">
+      <N1Card radius="sm" style={styles.card}>
+        <View style={styles.row}>
+          <View style={styles.nav}>
+            <ScrollView style={styles.fill}>{profile}</ScrollView>
+          </View>
+          <ScrollView
+            style={styles.content}
+            keyboardShouldPersistTaps="handled"
+          >
+            {tabContent()}
+          </ScrollView>
+        </View>
+      </N1Card>
+      {dialog}
     </AdminScreen>
   );
 }

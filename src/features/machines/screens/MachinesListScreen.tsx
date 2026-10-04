@@ -9,9 +9,7 @@ import {
   N1Pagination,
   N1Table,
   N1Text,
-  createN1Styles,
   useN1Breakpoint,
-  useN1Styles,
   type FilterValues,
   type N1TableColumn,
 } from '../../../shared/components';
@@ -39,15 +37,9 @@ import {
   matchesMachineFilters,
 } from '../utils';
 
-const makeStyles = createN1Styles(t => ({
-  // Matches the filled search and filter next to it in the toolbar.
-  toolbarButton: { borderRadius: t.radius.sm },
-}));
-
 type FormTarget = { machine: Machine | null } | null;
 
 export function MachinesListScreen() {
-  const styles = useN1Styles(makeStyles);
   const { isCompact } = useN1Breakpoint();
   const { items, status, error, reload } = useMachines();
   const stats = useMachineStats();
@@ -186,7 +178,6 @@ export function MachinesListScreen() {
       leftIcon="plus"
       size="sm"
       onPress={openCreate}
-      style={styles.toolbarButton}
       testID="add-machine"
     />
   );

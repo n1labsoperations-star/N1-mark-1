@@ -9,6 +9,7 @@ import {
   type N1DropDownOption,
 } from '..';
 import {
+  SEARCH_INPUT_PROPS,
   TOOLBAR_FILTER_MIN_WIDTH,
   TOOLBAR_SEARCH_WIDTH,
 } from '../../constants';
@@ -71,12 +72,7 @@ export function ListToolbar({
         placeholder={searchPlaceholder}
         accessibilityLabel={searchPlaceholder}
         leftIcon="search"
-        autoCapitalize="none"
-        autoCorrect={false}
-        // A real search field (type="search" on web) with autofill off, so
-        // the browser never mistakes it for a login's username box.
-        keyboardType="web-search"
-        autoComplete="off"
+        {...SEARCH_INPUT_PROPS}
         variant={variant}
         containerStyle={!isCompact && styles.search}
       />
@@ -93,12 +89,12 @@ export type ToolbarFilterProps<T extends string> = {
   options: N1DropDownOption<T>[];
   value: T;
   onChange: (value: T) => void;
-  /** Screen-reader label and sheet title, e.g. "Role". */
+  /** Screen-reader label, e.g. "Role". */
   label: string;
   testID?: string;
 };
 
-/** Label-less pill drop-down for list filters ("All roles"). */
+/** Label-less drop-down for list filters ("All roles"). */
 export function ToolbarFilter<T extends string>({
   options,
   value,
@@ -114,7 +110,7 @@ export function ToolbarFilter<T extends string>({
       options={options}
       value={value}
       onChange={onChange}
-      sheetTitle={label}
+      accessibilityLabel={label}
       containerStyle={styles.filter}
       testID={testID}
     />

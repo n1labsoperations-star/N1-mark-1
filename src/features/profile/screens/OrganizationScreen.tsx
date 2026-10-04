@@ -1,174 +1,245 @@
-import { useCallback, useState, type ReactNode } from 'react';
-import { View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ScrollView, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
   AdminScreen,
   AsyncContent,
+  DonutChart,
   DetailHeader,
   EntityHero,
   N1Badge,
   N1Card,
-  N1DetailGrid,
-  N1IconButton,
+  N1Divider,
+  N1Tabs,
+  N1Text,
   createN1Styles,
+  useN1Breakpoint,
   useN1Styles,
+  useN1Theme,
 } from '../../../shared/components';
-import { COMMON_STRINGS } from '../../../shared/constants';
-import { formatDate } from '../../../shared/utils';
-import { EditOrganizationSectionModal } from '../components/EditOrganizationSectionModal';
-import { GstSettingsModal } from '../components/GstSettingsModal';
-import { taxRatesSummary } from '../gst';
+import { SECTION_NAV_WIDTH } from '../../../shared/constants';
+import { useOnSettled } from '../../../shared/hooks';
+import { pickImage } from '../../../services/files/pickImage';
+import { GstSettingsForm } from '../components/GstSettingsForm';
+import { OrganizationSectionForm } from '../components/OrganizationSectionForm';
 import { useSession } from '../hooks/useSession';
 import {
-  BUSINESS_TYPE_OPTIONS,
   INDUSTRY_OPTIONS,
   ORGANIZATION_SECTIONS,
   ORGANIZATION_STRINGS as S,
-  PAYMENT_TERMS_OPTIONS,
   optionLabel,
+  organizationCompletion,
   type OrganizationSection,
 } from '../organization';
-import type { Organization } from '../types';
-import type { Attachment } from '../../../shared/types';
-
-const F = S.fields;
 
 const makeStyles = createN1Styles(t => ({
-  sections: { gap: t.spacing.lg },
+  hero: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.xl },
+  heroCompact: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: t.spacing.lg,
+  },
+  heroIdentity: { flex: 1 },
+  progress: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.md },
+  progressText: { gap: t.spacing.xxs },
+  // Wide screens: the card fills the window; only the fields scroll.
+  card: { flex: 1, minHeight: 0 },
+  panel: {
+    flex: 1,
+    minHeight: 0,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: t.spacing.xl,
+  },
+  nav: {
+    width: SECTION_NAV_WIDTH,
+    paddingRight: t.spacing.xl,
+    borderRightWidth: t.borderWidth.hairline,
+    borderRightColor: t.colors.border,
+  },
+  content: { flex: 1 },
+  contentInner: { flexGrow: 1, paddingBottom: t.spacing.xs },
+  // The loader / error sits in the middle of the form area.
+  loading: { flexGrow: 1, justifyContent: 'center' },
+  heroPlaceholder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.lg,
+  },
+  placeholderAvatar: {
+    width: t.avatarSize.lg,
+    height: t.avatarSize.lg,
+    borderRadius: t.radius.pill,
+    backgroundColor: t.colors.surfaceMuted,
+  },
+  placeholderLines: { flex: 1, gap: t.spacing.sm },
+  placeholderLine: {
+    height: t.typography.h3.lineHeight,
+    borderRadius: t.radius.xs,
+    backgroundColor: t.colors.surfaceMuted,
+  },
+  placeholderTitle: { width: '40%' },
+  placeholderSubtitle: { width: '25%' },
+  compactTabs: { marginBottom: t.spacing.lg },
 }));
-
-const orDash = (value: string) => value || COMMON_STRINGS.dash;
-const fileName = (file: Attachment | null) => file?.name ?? S.notSet;
-
-/** Label / value rows for each section, as shown on the page. */
-function sectionItems(
-  section: OrganizationSection,
-  o: Organization,
-): { label: string; value: ReactNode }[] {
-  switch (section) {
-    case 'general':
-      return [
-        { label: F.name, value: o.name },
-        { label: S.code, value: o.code },
-        { label: F.logo, value: fileName(o.logo) },
-        { label: F.phone, value: orDash(o.phone) },
-        { label: F.email, value: orDash(o.email) },
-        { label: F.website, value: orDash(o.website) },
-      ];
-    case 'business':
-      return [
-        {
-          label: F.businessType,
-          value: orDash(optionLabel(BUSINESS_TYPE_OPTIONS, o.businessType)),
-        },
-        {
-          label: F.industry,
-          value: orDash(optionLabel(INDUSTRY_OPTIONS, o.industry)),
-        },
-        {
-          label: F.registrationDetails,
-          value: orDash(o.registrationDetails),
-        },
-        { label: S.createdAt, value: orDash(formatDate(o.createdAt)) },
-      ];
-    case 'address':
-      return [
-        { label: F.address, value: orDash(o.address) },
-        { label: F.city, value: orDash(o.city) },
-        { label: F.state, value: orDash(o.state) },
-        { label: F.pinCode, value: orDash(o.pinCode) },
-        { label: F.country, value: orDash(o.country) },
-      ];
-    case 'gst':
-      return [
-        { label: F.gstRegistered, value: o.gstRegistered ? S.yes : S.no },
-        { label: F.gstNumber, value: orDash(o.gstNumber) },
-        { label: F.gstState, value: orDash(o.gstState) },
-        { label: F.taxRates, value: orDash(taxRatesSummary(o.taxRates)) },
-      ];
-    case 'invoice':
-      return [
-        { label: F.invoicePrefix, value: orDash(o.invoicePrefix) },
-        { label: F.invoiceStartNumber, value: String(o.invoiceStartNumber) },
-        {
-          label: F.paymentTerms,
-          value: orDash(optionLabel(PAYMENT_TERMS_OPTIONS, o.paymentTerms)),
-        },
-        { label: F.invoiceFooter, value: orDash(o.invoiceFooter) },
-      ];
-    case 'documents':
-      return [
-        { label: F.invoiceLogo, value: fileName(o.invoiceLogo) },
-        { label: F.termsAndConditions, value: orDash(o.termsAndConditions) },
-        { label: F.signature, value: fileName(o.signature) },
-      ];
-  }
-}
 
 /**
  * The signed-in organization: General, Business details, Address, GST & tax,
- * Invoice settings and Document settings, each edited on its own.
+ * Invoice settings and Document settings, one tab each. Fields stay locked
+ * until the section's Edit is pressed.
  */
 export function OrganizationScreen() {
   const styles = useN1Styles(makeStyles);
+  const theme = useN1Theme();
+  const { isCompact } = useN1Breakpoint();
   const navigation = useNavigation();
-  const { organization, status, error, reload } = useSession();
-  const [editing, setEditing] = useState<OrganizationSection | null>(null);
-  const closeEdit = useCallback(() => setEditing(null), []);
+  const { organization, status, error, reload, updateOrganization, saving } =
+    useSession();
+  const [logoSaving, setLogoSaving] = useState(false);
+  const [tab, setTab] = useState<OrganizationSection>('general');
+  const [editing, setEditing] = useState(false);
+  const startEdit = useCallback(() => setEditing(true), []);
+  const stopEdit = useCallback(() => setEditing(false), []);
+  // Leaving a section drops its unsaved edits.
+  const changeTab = useCallback((key: OrganizationSection) => {
+    setTab(key);
+    setEditing(false);
+  }, []);
+  // The logo saves as soon as it's picked; no Edit needed.
+  const changeLogo = useCallback(async () => {
+    const logo = await pickImage('logo', 'logo.png');
+    if (logo) {
+      setLogoSaving(true);
+      updateOrganization({ logo });
+    }
+  }, [updateOrganization]);
+  useOnSettled(saving, null, () => setLogoSaving(false));
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
   const header = <DetailHeader title={S.title} onBack={goBack} />;
 
-  if (!organization) {
-    return (
-      <AdminScreen header={header} testID="organization-screen">
-        <AsyncContent status={status} error={error} onRetry={reload}>
-          {null}
-        </AsyncContent>
-      </AdminScreen>
-    );
-  }
+  const completion = useMemo(
+    () => (organization ? organizationCompletion(organization) : null),
+    [organization],
+  );
+  const sectionTabs = useMemo(
+    () =>
+      ORGANIZATION_SECTIONS.map(({ key, title, icon }) => ({
+        key,
+        label: title,
+        icon,
+        badge: completion?.missingBySection[key],
+      })),
+    [completion],
+  );
+
+  const tabs = (
+    <N1Tabs
+      tabs={sectionTabs}
+      value={tab}
+      onChange={changeTab}
+      variant={isCompact ? 'segmented' : 'menu'}
+      scrollable={isCompact}
+      style={isCompact && styles.compactTabs}
+      testID="organization-tab"
+    />
+  );
 
   return (
-    <AdminScreen header={header} testID="organization-screen">
-      <N1Card>
-        <EntityHero
-          name={organization.name}
-          subtitle={optionLabel(INDUSTRY_OPTIONS, organization.industry)}
-          badges={<N1Badge label={organization.code} tone="info" />}
-        />
-      </N1Card>
-      <View style={styles.sections}>
-        {ORGANIZATION_SECTIONS.map(section => (
-          <N1Card
-            key={section.key}
-            title={section.title}
-            icon={section.icon}
-            headerRight={
-              <N1IconButton
-                icon="edit"
-                variant="primary"
-                size="sm"
-                accessibilityLabel={S.edit(section.title)}
-                onPress={() => setEditing(section.key)}
-                testID={`edit-organization-${section.key}`}
+    <AdminScreen header={header} fixed testID="organization-screen">
+      <N1Card radius="sm" style={!isCompact && styles.card}>
+        {organization && completion ? (
+          <View style={[styles.hero, isCompact && styles.heroCompact]}>
+            <View style={!isCompact && styles.heroIdentity}>
+              <EntityHero
+                name={organization.name}
+                subtitle={optionLabel(INDUSTRY_OPTIONS, organization.industry)}
+                badges={<N1Badge label={organization.code} tone="info" />}
+                avatarUri={organization.logo?.uri}
+                onAvatarPress={changeLogo}
+                avatarLabel={S.changeLogo}
+                avatarLoading={logoSaving}
+                testID="organization-hero"
               />
-            }
-            testID={`organization-${section.key}`}
+            </View>
+            <View style={styles.progress} testID="organization-completion">
+              <DonutChart
+                size="xs"
+                centerValue={`${completion.percent}%`}
+                // Empty segments are dropped so a full ring has no gap.
+                segments={[
+                  {
+                    key: 'done',
+                    label: S.completion,
+                    value: completion.percent,
+                    color: theme.colors.primary,
+                  },
+                  {
+                    key: 'left',
+                    label: S.completionLeft,
+                    value: 100 - completion.percent,
+                    color: theme.colors.surfaceMuted,
+                  },
+                ].filter(segment => segment.value > 0)}
+              />
+              <View style={styles.progressText}>
+                <N1Text weight="semiBold">{S.completion}</N1Text>
+                <N1Text variant="small" color="secondary">
+                  {completion.missing
+                    ? S.completionMissing(completion.missing)
+                    : S.completionDone}
+                </N1Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          // Same size as the hero, so nothing jumps when it loads.
+          <View style={styles.heroPlaceholder}>
+            <View style={styles.placeholderAvatar} />
+            <View style={styles.placeholderLines}>
+              <View style={[styles.placeholderLine, styles.placeholderTitle]} />
+              <View
+                style={[styles.placeholderLine, styles.placeholderSubtitle]}
+              />
+            </View>
+          </View>
+        )}
+        <N1Divider spacing="xl" />
+        {isCompact && tabs}
+        <View style={!isCompact && styles.panel}>
+          {!isCompact && <View style={styles.nav}>{tabs}</View>}
+          <ScrollView
+            style={styles.content}
+            contentContainerStyle={styles.contentInner}
+            keyboardShouldPersistTaps="handled"
+            scrollEnabled={!isCompact}
+            testID={`organization-${tab}`}
           >
-            <N1DetailGrid items={sectionItems(section.key, organization)} />
-          </N1Card>
-        ))}
-      </View>
-      <EditOrganizationSectionModal
-        section={editing === 'gst' ? null : editing}
-        organization={organization}
-        onClose={closeEdit}
-      />
-      <GstSettingsModal
-        visible={editing === 'gst'}
-        organization={organization}
-        onClose={closeEdit}
-      />
+            {!organization ? (
+              <View style={styles.loading}>
+                <AsyncContent status={status} error={error} onRetry={reload}>
+                  {null}
+                </AsyncContent>
+              </View>
+            ) : tab === 'gst' ? (
+              <GstSettingsForm
+                organization={organization}
+                editing={editing}
+                onEdit={startEdit}
+                onDone={stopEdit}
+              />
+            ) : (
+              <OrganizationSectionForm
+                key={tab}
+                section={tab}
+                organization={organization}
+                editing={editing}
+                onEdit={startEdit}
+                onDone={stopEdit}
+              />
+            )}
+          </ScrollView>
+        </View>
+      </N1Card>
     </AdminScreen>
   );
 }

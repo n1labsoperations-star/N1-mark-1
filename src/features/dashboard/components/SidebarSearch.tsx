@@ -12,6 +12,7 @@ import {
   useN1Styles,
   useN1Theme,
 } from '../../../shared/components';
+import { SEARCH_INPUT_PROPS } from '../../../shared/constants';
 import { makeSidebarSearchStyles } from '../styles';
 
 // Just the bits of the browser API the shortcut needs; the project's
@@ -98,8 +99,7 @@ function SidebarSearch({
         placeholder="Search here..."
         placeholderTextColor={theme.colors.textTertiary}
         accessibilityLabel="Search menu"
-        autoCapitalize="none"
-        autoCorrect={false}
+        {...SEARCH_INPUT_PROPS}
         autoFocus={autoFocus}
         style={styles.input}
       />

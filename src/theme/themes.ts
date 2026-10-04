@@ -3,6 +3,7 @@ import {
   borderWidth,
   breakpoints,
   controlHeight,
+  documentTile,
   fontFamily,
   iconSize,
   modalWidth,
@@ -201,6 +202,7 @@ const shared = {
   statCardMinWidth,
   scanner,
   stepNumberSize,
+  documentTile,
   shadow,
   opacity,
 };

@@ -41,7 +41,7 @@ const makeStyles = createN1Styles(t => ({
     alignItems: 'center',
     gap: t.spacing.md,
     padding: t.spacing.xxl,
-    borderRadius: t.radius.xl,
+    borderRadius: t.radius.sm,
     backgroundColor: t.colors.surface,
     boxShadow: t.shadow.modal,
   },
