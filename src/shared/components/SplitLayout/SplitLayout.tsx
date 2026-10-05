@@ -1,10 +1,6 @@
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
-import {
-  createN1Styles,
-  useN1Breakpoint,
-  useN1Styles,
-} from '..';
+import { createN1Styles, useN1Breakpoint, useN1Styles } from '..';
 import { ASIDE_WIDTH } from '../../constants';
 
 export type SplitLayoutProps = {

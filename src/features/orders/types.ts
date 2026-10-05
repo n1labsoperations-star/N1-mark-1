@@ -69,9 +69,19 @@ export type OrderFilters = {
 // Stack nested inside the admin drawer's "Orders" item.
 export type OrdersStackParamList = {
   OrdersList: undefined;
-  OrderDetails: { orderId: string };
+  OrderDetails: {
+    orderId: string;
+    /** Opened from this customer's details: Back returns there. */
+    fromCustomerId?: string;
+  };
   /** Without an id the form creates a new order. */
-  OrderForm: { orderId?: string } | undefined;
+  OrderForm:
+    | {
+        orderId?: string;
+        /** Edit opened from the order's details: Back and Save return there. */
+        from?: 'details';
+      }
+    | undefined;
 };
 
 export type OrdersNavigation = NativeStackNavigationProp<OrdersStackParamList>;

@@ -1,10 +1,6 @@
 import { Children, type ReactNode } from 'react';
 import { View } from 'react-native';
-import {
-  createN1Styles,
-  useN1Breakpoint,
-  useN1Styles,
-} from '..';
+import { createN1Styles, useN1Breakpoint, useN1Styles } from '..';
 
 export type FormRowProps = {
   /** Fields that sit side by side on wide screens and stack on phones. */

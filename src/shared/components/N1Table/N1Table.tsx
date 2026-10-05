@@ -65,6 +65,11 @@ export type N1TableProps<T> = {
    * title, the rest as label / value pairs.
    */
   renderCompactItem?: (row: T) => ReactNode;
+  /**
+   * Wide screens: the columns never squeeze below this width; when the
+   * table is narrower, the header and rows scroll sideways together.
+   */
+  minWidth?: number;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 };
@@ -101,6 +106,8 @@ const makeStyles = createN1Styles(t => ({
   },
   headerRowBelowToolbar: { marginTop: 0 },
   fill: { flex: 1 },
+  // At least the table's width, so wide windows don't scroll sideways.
+  wide: { flexGrow: 1 },
   // Inset like the header band, so columns line up with their labels and
   // the hover highlight is a rounded box starting at the content.
   row: {
@@ -197,6 +204,7 @@ export const N1Table = React.memo(function N1TableComponent<T>({
   scrollable = false,
   loading = false,
   renderCompactItem,
+  minWidth,
   style,
   testID,
 }: N1TableProps<T>) {
@@ -329,12 +337,8 @@ export const N1Table = React.memo(function N1TableComponent<T>({
     );
   });
 
-  return (
-    <View
-      testID={testID}
-      style={[styles.table, scrollable && styles.fill, style]}
-    >
-      {topBar}
+  const body = (
+    <>
       {headerRow}
       {scrollable ? (
         <ScrollView style={styles.fill} testID={testID && `${testID}-scroll`}>
@@ -342,6 +346,28 @@ export const N1Table = React.memo(function N1TableComponent<T>({
         </ScrollView>
       ) : (
         rows
+      )}
+    </>
+  );
+
+  return (
+    <View
+      testID={testID}
+      style={[styles.table, scrollable && styles.fill, style]}
+    >
+      {topBar}
+      {minWidth ? (
+        // The top bar and footer stay put; columns scroll sideways.
+        <ScrollView
+          horizontal
+          style={scrollable && styles.fill}
+          contentContainerStyle={[styles.wide, { minWidth }]}
+          testID={testID && `${testID}-hscroll`}
+        >
+          <View style={styles.fill}>{body}</View>
+        </ScrollView>
+      ) : (
+        body
       )}
       {footer && <View style={styles.footer}>{footer}</View>}
     </View>

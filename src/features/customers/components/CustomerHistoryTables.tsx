@@ -106,7 +106,8 @@ function useOpenInModule() {
     (o: WorkOrder) =>
       drawer?.navigate('Orders', {
         screen: 'OrderDetails',
-        params: { orderId: o.id },
+        // Back on the order returns to this customer.
+        params: { orderId: o.id, fromCustomerId: o.customerId },
         initial: false,
       }),
     [drawer],

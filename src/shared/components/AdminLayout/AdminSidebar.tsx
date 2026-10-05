@@ -1,13 +1,6 @@
 import { memo, useMemo, useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
-import {
-  N1Avatar,
-  N1Icon,
-  N1Logo,
-  N1Text,
-  useN1Styles,
-  useN1Theme,
-} from '..';
+import { N1Avatar, N1Icon, N1Logo, N1Text, useN1Styles, useN1Theme } from '..';
 import { NAV_STRINGS, SEARCH_INPUT_PROPS } from '../../constants';
 import { makeSidebarStyles } from './AdminLayout.styles';
 import type { AdminNavItem, AdminUserSummary } from './types';

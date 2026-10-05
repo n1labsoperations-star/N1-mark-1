@@ -10,13 +10,21 @@ import {
 } from '../../../shared/utils';
 import { COMMON_STRINGS } from '../../../shared/constants';
 import { ORDER_STRINGS } from '../constants';
-import type { OrderInput, OrderPriority, WorkOrder } from '../types';
+import type {
+  MaterialSource,
+  OrderInput,
+  OrderPriority,
+  WorkOrder,
+} from '../types';
 
 /** Form state: every field is text so partial input (e.g. "12/0") survives. */
 export type OrderFormValues = {
   designFile: Attachment | null;
   purchaseOrder: Attachment | null;
+  /** Set when the name matches a saved customer; blank for a new name. */
   customerId: string;
+  /** As typed or picked. */
+  customerName: string;
   customerEmail: string;
   poNumber: string;
   quantity: string;
@@ -26,6 +34,7 @@ export type OrderFormValues = {
   routeCardNo: string;
   dcNo: string;
   dcDate: string;
+  partName: string;
   partNumber: string;
   drawingNumber: string;
   rmPartNumber: string;
@@ -34,21 +43,26 @@ export type OrderFormValues = {
   heatNumber: string;
   projectId: string;
   rawMaterialGrade: string;
+  materialSource: MaterialSource | '';
+  /** Form only: the material is in, so its details are required. */
+  rawMaterialArrived: boolean;
 };
 
 export const EMPTY_ORDER_FORM: OrderFormValues = {
   designFile: null,
   purchaseOrder: null,
   customerId: '',
+  customerName: '',
   customerEmail: '',
   poNumber: '',
   quantity: '',
   description: '',
-  priority: '',
+  priority: 'low',
   deliveryDate: '',
   routeCardNo: '',
   dcNo: '',
   dcDate: '',
+  partName: '',
   partNumber: '',
   drawingNumber: '',
   rmPartNumber: '',
@@ -57,7 +71,18 @@ export const EMPTY_ORDER_FORM: OrderFormValues = {
   heatNumber: '',
   projectId: '',
   rawMaterialGrade: '',
+  materialSource: '',
+  rawMaterialArrived: false,
 };
+
+/** Required once the raw material is marked as arrived. */
+export const RAW_MATERIAL_FIELDS = [
+  'materialSource',
+  'rmPartNumber',
+  'rawMaterialSize',
+  'heatNumber',
+  'rawMaterialGrade',
+] as const satisfies (keyof OrderFormValues & keyof WorkOrder)[];
 
 export function orderToFormValues(order?: WorkOrder): OrderFormValues {
   if (!order) {
@@ -67,6 +92,7 @@ export function orderToFormValues(order?: WorkOrder): OrderFormValues {
     designFile: order.designFile,
     purchaseOrder: order.documents[0] ?? null,
     customerId: order.customerId,
+    customerName: order.customerName,
     customerEmail: order.customerEmail,
     poNumber: order.poNumber,
     quantity: order.quantity ? String(order.quantity) : '',
@@ -76,6 +102,7 @@ export function orderToFormValues(order?: WorkOrder): OrderFormValues {
     routeCardNo: order.routeCardNo,
     dcNo: order.dcNo,
     dcDate: toDisplayDate(order.dcDate),
+    partName: order.partName,
     partNumber: order.partNumber,
     drawingNumber: order.drawingNumber,
     rmPartNumber: order.rmPartNumber,
@@ -84,14 +111,69 @@ export function orderToFormValues(order?: WorkOrder): OrderFormValues {
     heatNumber: order.heatNumber,
     projectId: order.projectId,
     rawMaterialGrade: order.rawMaterialGrade,
+    materialSource: order.materialSource,
+    rawMaterialArrived: RAW_MATERIAL_FIELDS.every(key => !isBlank(order[key])),
   };
 }
 
-/** Step 1 checks format only — every field is optional. */
-export function validateOrderStep1(
+/** The form's steps, in order, and the fields each one holds. */
+export const ORDER_FORM_STEPS: (keyof OrderFormValues)[][] = [
+  [
+    'designFile',
+    'purchaseOrder',
+    'customerId',
+    'customerName',
+    'customerEmail',
+  ],
+  [
+    'poNumber',
+    'quantity',
+    'partName',
+    'partNumber',
+    'drawingNumber',
+    'projectId',
+    'shopOrderNumber',
+    'routeCardNo',
+    'dcNo',
+    'dcDate',
+    'priority',
+    'deliveryDate',
+    'description',
+  ],
+  ['rawMaterialArrived', ...RAW_MATERIAL_FIELDS],
+];
+
+/**
+ * Text fields filled in on every order (the form marks them with *). The
+ * design file is required too.
+ */
+export const REQUIRED_ORDER_FIELDS = [
+  'customerName',
+  'poNumber',
+  'partName',
+  'drawingNumber',
+  'routeCardNo',
+  'deliveryDate',
+  'dcNo',
+  'dcDate',
+] as const satisfies (keyof OrderFormValues)[];
+
+/** Required fields, then format checks on the rest. */
+export function validateOrderForm(
   v: OrderFormValues,
 ): FormErrors<OrderFormValues> {
   const errors: FormErrors<OrderFormValues> = {};
+  if (!v.designFile) {
+    errors.designFile = COMMON_STRINGS.required;
+  }
+  [
+    ...REQUIRED_ORDER_FIELDS,
+    ...(v.rawMaterialArrived ? RAW_MATERIAL_FIELDS : []),
+  ].forEach(key => {
+    if (isBlank(v[key])) {
+      errors[key] = COMMON_STRINGS.required;
+    }
+  });
   if (!isBlank(v.customerEmail) && !isEmail(v.customerEmail)) {
     errors.customerEmail = COMMON_STRINGS.invalidEmail;
   }
@@ -110,24 +192,38 @@ export function validateOrderStep1(
   return errors;
 }
 
-const DEFAULT_PRIORITY: OrderPriority = 'medium';
+/** Whether this step (1-based) has a problem; later steps can't block Next. */
+export const hasStepErrors = (step: number, v: OrderFormValues) => {
+  const errors = validateOrderForm(v);
+  return ORDER_FORM_STEPS[step - 1].some(key => errors[key]);
+};
+
+/** The first step (1-based) with a problem, else the last step. */
+export const firstStepWithErrors = (v: OrderFormValues) => {
+  const index = ORDER_FORM_STEPS.findIndex((_, i) => hasStepErrors(i + 1, v));
+  return index < 0 ? ORDER_FORM_STEPS.length : index + 1;
+};
+
+const DEFAULT_PRIORITY: OrderPriority = 'low';
 
 /**
- * Form values → API input. Editing keeps the original part / job names unless
- * the description changed.
+ * Form values → API input. A blank part name falls back to the description's
+ * first line; editing keeps the original job name unless the description
+ * changed.
  */
 export function formValuesToOrderInput(
   v: OrderFormValues,
-  customerName: string,
   existing?: WorkOrder,
 ): OrderInput {
   const description = v.description.trim();
   const keepNames = existing && existing.description === description;
   return {
     customerId: v.customerId,
-    customerName,
+    customerName: v.customerName.trim(),
     customerEmail: v.customerEmail.trim(),
-    partName: keepNames ? existing.partName : description.split('\n')[0],
+    partName:
+      v.partName.trim() ||
+      (keepNames ? existing.partName : description.split('\n')[0]),
     jobName: keepNames ? existing.jobName : '',
     description,
     material: existing?.material || v.rawMaterialGrade.trim(),
@@ -146,8 +242,7 @@ export function formValuesToOrderInput(
     heatNumber: v.heatNumber.trim(),
     projectId: v.projectId.trim(),
     rawMaterialGrade: v.rawMaterialGrade.trim(),
-    // Not on the admin form; set from the shop floor's Raw Material Details.
-    materialSource: existing?.materialSource ?? '',
+    materialSource: v.materialSource,
     quoteId: existing?.quoteId ?? '',
     notes: existing?.notes ?? '',
     designFile: v.designFile,

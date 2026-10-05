@@ -21,7 +21,7 @@ import {
 import { BillingNavigation } from '../../features/billing';
 import { CustomersNavigation } from '../../features/customers';
 import { JobCardsNavigation } from '../../features/jobCards';
-import { MachinesListScreen } from '../../features/machines';
+import { MachinesNavigation } from '../../features/machines';
 import { OrdersNavigation } from '../../features/orders';
 import {
   OrganizationScreen,
@@ -89,7 +89,7 @@ const screenFor = (route: AdminRoute) => {
     case 'JobCards':
       return JobCardsNavigation;
     case 'Machines':
-      return MachinesListScreen;
+      return MachinesNavigation;
     default:
       return PlaceholderScreen;
   }

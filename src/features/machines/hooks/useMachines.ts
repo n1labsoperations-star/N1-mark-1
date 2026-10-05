@@ -3,6 +3,7 @@ import { useAppSelector } from '../../../app/store/hooks';
 import { machineActions } from '../store/machinesSlice';
 import {
   selectAllMachines,
+  selectMachineById,
   selectMachineStats,
   selectMachinesState,
 } from '../store/selectors';
@@ -14,6 +15,12 @@ export function useMachines() {
     selectMachinesState,
     selectAllMachines,
   );
+}
+
+export function useMachine(id: string) {
+  const resource = useMachines();
+  const machine = useAppSelector(state => selectMachineById(state, id));
+  return { ...resource, machine };
 }
 
 export const useMachineStats = () => useAppSelector(selectMachineStats);

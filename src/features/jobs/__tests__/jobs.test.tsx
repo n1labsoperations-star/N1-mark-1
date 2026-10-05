@@ -159,7 +159,7 @@ test('a job already on My Jobs opens its job card from the order', async () => {
 });
 
 test('an order without a job card gets one created', async () => {
-  // A new work order; it gets the next number, 1043.
+  // A new work order; it gets the next number, 1045.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { id, status, statusHistory, createdAt, ...input } = MOCK_ORDERS[0];
   app = await renderAppAs('supervisor@n1.com', 'Supervisor@123', () =>
@@ -167,14 +167,14 @@ test('an order without a job card gets one created', async () => {
   );
   const root = app.root;
 
-  await importCode(root, 'WO-1043');
+  await importCode(root, 'WO-1045');
   await press(byTestId(root, 'create-job-card'));
   // Every detail is already there, so the modal asks to confirm them.
   expect(allText(root)).toContain('Check the raw material details');
   await press(byTestId(root, 'raw-material-submit'));
 
   expect(allText(root)).toContain('Route card & progress');
-  const created = (await jobCardsApi.list()).find(c => c.id === '1043');
+  const created = (await jobCardsApi.list()).find(c => c.id === '1045');
   expect(created).toMatchObject({ status: 'not_started', operations: [] });
 });
 

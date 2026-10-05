@@ -62,7 +62,13 @@ export const linking: LinkingOptions<RootStackParamList> = {
                   JobCardFlow: ':jobCardId/flow',
                 },
               },
-              Machines: 'machines',
+              Machines: {
+                path: 'machines',
+                screens: {
+                  MachinesList: '',
+                  MachineDetails: ':machineId',
+                },
+              },
               Profile: {
                 path: 'profile',
                 screens: { MyProfile: '' },

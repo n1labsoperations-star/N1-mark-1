@@ -1,5 +1,5 @@
-import { memo } from 'react';
-import { View } from 'react-native';
+import { memo, useState } from 'react';
+import { Pressable, View } from 'react-native';
 import {
   N1IconButton,
   N1Icon,
@@ -14,6 +14,9 @@ import { ORDER_STRINGS } from '../constants';
 type Props = {
   documents: readonly Attachment[];
   onDownload: (doc: Attachment) => void;
+  /** Pressing a row views it too. */
+  onView?: (doc: Attachment) => void;
+  onPrint?: (doc: Attachment) => void;
 };
 
 const makeStyles = createN1Styles(t => ({
@@ -34,13 +37,18 @@ const makeStyles = createN1Styles(t => ({
     backgroundColor: t.colors.tone.info.background,
   },
   text: { flex: 1, gap: t.spacing.xxs },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs },
+  hovered: { backgroundColor: t.colors.background },
 }));
 
 export const DocumentList = memo(function DocumentListComponent({
   documents,
   onDownload,
+  onView,
+  onPrint,
 }: Props) {
   const styles = useN1Styles(makeStyles);
+  const [hovered, setHovered] = useState<string | null>(null);
   if (documents.length === 0) {
     return (
       <N1Text variant="small" color="secondary">
@@ -51,7 +59,16 @@ export const DocumentList = memo(function DocumentListComponent({
   return (
     <View style={styles.list}>
       {documents.map(doc => (
-        <View key={doc.id} style={styles.row}>
+        <Pressable
+          key={doc.id}
+          // A row of buttons isn't a button itself; View is in the row.
+          disabled={!onView}
+          onPress={() => onView?.(doc)}
+          onHoverIn={() => setHovered(doc.id)}
+          onHoverOut={() => setHovered(null)}
+          style={[styles.row, onView && hovered === doc.id && styles.hovered]}
+          testID={`document-${doc.id}`}
+        >
           <View style={styles.icon}>
             <N1Icon name="file" size="md" color="textPrimary" />
           </View>
@@ -65,14 +82,34 @@ export const DocumentList = memo(function DocumentListComponent({
                 .join(' · ')}
             </N1Text>
           </View>
-          <N1IconButton
-            icon="download"
-            size="sm"
-            variant="soft"
-            accessibilityLabel={ORDER_STRINGS.details.download(doc.name)}
-            onPress={() => onDownload(doc)}
-          />
-        </View>
+          <View style={styles.actions}>
+            {onView && (
+              <N1IconButton
+                icon="eye"
+                size="sm"
+                variant="soft"
+                accessibilityLabel={ORDER_STRINGS.details.view(doc.name)}
+                onPress={() => onView(doc)}
+              />
+            )}
+            {onPrint && (
+              <N1IconButton
+                icon="printer"
+                size="sm"
+                variant="soft"
+                accessibilityLabel={ORDER_STRINGS.details.printFile(doc.name)}
+                onPress={() => onPrint(doc)}
+              />
+            )}
+            <N1IconButton
+              icon="download"
+              size="sm"
+              variant="soft"
+              accessibilityLabel={ORDER_STRINGS.details.download(doc.name)}
+              onPress={() => onDownload(doc)}
+            />
+          </View>
+        </Pressable>
       ))}
     </View>
   );

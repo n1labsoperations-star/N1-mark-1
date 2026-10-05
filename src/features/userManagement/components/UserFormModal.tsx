@@ -1,19 +1,30 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import {
+  N1Checklist,
   N1DropDown,
   N1Modal,
   N1Text,
   N1TextInput,
 } from '../../../shared/components';
 import { FormFooter, FormRow } from '../../../shared/components';
-import { COMMON_STRINGS } from '../../../shared/constants';
+import {
+  COMMON_STRINGS,
+  NO_AUTOFILL_PASSWORD_PROPS,
+  PASSWORD_MASK,
+  PASSWORD_STRINGS,
+} from '../../../shared/constants';
 import {
   useForm,
   useHeldWhileVisible,
   useOnSettled,
   type FormErrors,
 } from '../../../shared/hooks';
-import { isBlank, isEmail, isStrongPassword } from '../../../shared/utils';
+import {
+  checkPassword,
+  isBlank,
+  isEmail,
+  isStrongPassword,
+} from '../../../shared/utils';
 import { ROLE_OPTIONS, STATUS_OPTIONS, USER_STRINGS } from '../constants';
 import { useUsers } from '../hooks/useUsers';
 import type { AdminUser, UserInput, UserRole, UserStatus } from '../types';
@@ -23,6 +34,8 @@ type FormValues = {
   designation: string;
   email: string;
   password: string;
+  /** Edit only: the new password typed again. */
+  confirmPassword: string;
   role: UserRole;
   status: UserStatus;
 };
@@ -32,6 +45,7 @@ const EMPTY: FormValues = {
   designation: '',
   email: '',
   password: '',
+  confirmPassword: '',
   role: 'operator',
   status: 'active',
 };
@@ -43,6 +57,7 @@ const toValues = (user?: AdminUser | null): FormValues =>
         designation: user.designation,
         email: user.email,
         password: '',
+        confirmPassword: '',
         role: user.role,
         status: user.status,
       }
@@ -61,9 +76,19 @@ function makeValidator(isEdit: boolean) {
     } else if (!isEmail(v.email)) {
       errors.email = COMMON_STRINGS.invalidEmail;
     }
-    if (!isEdit && isBlank(v.password)) {
+    if (isEdit) {
+      // Both blank keeps the current password.
+      if (v.password || v.confirmPassword) {
+        const rules = checkPassword(v.password, v.confirmPassword);
+        if (!rules.minLength || !rules.lettersAndNumbers) {
+          errors.password = PASSWORD_STRINGS.rulesUnmet;
+        } else if (!rules.matches) {
+          errors.confirmPassword = PASSWORD_STRINGS.mismatch;
+        }
+      }
+    } else if (isBlank(v.password)) {
       errors.password = COMMON_STRINGS.required;
-    } else if (!isBlank(v.password) && !isStrongPassword(v.password)) {
+    } else if (!isStrongPassword(v.password)) {
       errors.password = F.passwordWeak;
     }
     return errors;
@@ -109,7 +134,7 @@ export function UserFormModal({
   useOnSettled(saving, saveError, onClose);
 
   const save = useCallback(
-    ({ password, ...values }: FormValues) => {
+    ({ password, confirmPassword: _confirm, ...values }: FormValues) => {
       const input: UserInput = {
         ...values,
         name: values.name.trim(),
@@ -127,6 +152,14 @@ export function UserFormModal({
   );
 
   const { values, errors, bind } = form;
+  const passwordRules = useMemo(() => {
+    const r = checkPassword(values.password, values.confirmPassword);
+    return [
+      { label: PASSWORD_STRINGS.minLength, done: r.minLength },
+      { label: PASSWORD_STRINGS.lettersAndNumbers, done: r.lettersAndNumbers },
+      { label: PASSWORD_STRINGS.match, done: r.matches },
+    ];
+  }, [values.password, values.confirmPassword]);
 
   return (
     <N1Modal
@@ -178,22 +211,59 @@ export function UserFormModal({
         autoComplete="off"
         testID="user-form-email"
       />
-      <N1TextInput
-        label={F.password}
-        required={!isEdit}
-        secure
-        placeholder={
-          isEdit ? F.passwordEditPlaceholder : F.passwordCreatePlaceholder
-        }
-        helperText={isEdit ? F.passwordEditHelp : F.passwordCreateHelp}
-        value={values.password}
-        onChangeText={bind('password')}
-        errorText={errors.password}
-        autoCapitalize="none"
-        // A password for someone else, not the admin's own saved one.
-        autoComplete="new-password"
-        testID="user-form-password"
-      />
+      {isEdit ? (
+        <>
+          <N1TextInput
+            label={PASSWORD_STRINGS.current}
+            value={user?.status !== 'invited' ? PASSWORD_MASK : ''}
+            placeholder={PASSWORD_STRINGS.noPassword}
+            readOnly
+            autoComplete="off"
+            testID="user-form-current-password"
+          />
+          <FormRow>
+            <N1TextInput
+              label={PASSWORD_STRINGS.newPassword}
+              secure
+              placeholder={PASSWORD_STRINGS.newPasswordPlaceholder}
+              value={values.password}
+              onChangeText={bind('password')}
+              errorText={errors.password}
+              {...NO_AUTOFILL_PASSWORD_PROPS}
+              testID="user-form-password"
+            />
+            <N1TextInput
+              label={PASSWORD_STRINGS.confirmPassword}
+              secure
+              placeholder={PASSWORD_STRINGS.confirmPasswordPlaceholder}
+              value={values.confirmPassword}
+              onChangeText={bind('confirmPassword')}
+              errorText={errors.confirmPassword}
+              {...NO_AUTOFILL_PASSWORD_PROPS}
+              testID="user-form-confirm-password"
+            />
+          </FormRow>
+          <N1Checklist items={passwordRules} />
+          <N1Text variant="small" color="secondary">
+            {F.passwordEditHelp}
+          </N1Text>
+        </>
+      ) : (
+        <N1TextInput
+          label={F.password}
+          required
+          secure
+          placeholder={F.passwordCreatePlaceholder}
+          helperText={F.passwordCreateHelp}
+          value={values.password}
+          onChangeText={bind('password')}
+          errorText={errors.password}
+          autoCapitalize="none"
+          // A password for someone else, not the admin's own saved one.
+          autoComplete="new-password"
+          testID="user-form-password"
+        />
+      )}
       <FormRow>
         <N1DropDown
           label={F.role}

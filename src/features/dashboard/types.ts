@@ -5,6 +5,7 @@ import type { N1IconName } from '../../shared/components';
 import type { BillingStackParamList } from '../billing/types';
 import type { CustomersStackParamList } from '../customers/types';
 import type { JobCardsStackParamList } from '../jobCards/types';
+import type { MachinesStackParamList } from '../machines/types';
 import type { OrdersStackParamList } from '../orders/types';
 import type { ProfileStackParamList } from '../profile/types';
 
@@ -15,7 +16,7 @@ export type AdminDrawerParamList = {
   Customers: NavigatorScreenParams<CustomersStackParamList> | undefined;
   Orders: NavigatorScreenParams<OrdersStackParamList> | undefined;
   JobCards: NavigatorScreenParams<JobCardsStackParamList> | undefined;
-  Machines: undefined;
+  Machines: NavigatorScreenParams<MachinesStackParamList> | undefined;
   Billing: NavigatorScreenParams<BillingStackParamList> | undefined;
   /** Not in the menu; opened from the signed-in user in the top bar. */
   Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;

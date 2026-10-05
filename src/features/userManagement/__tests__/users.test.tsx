@@ -138,6 +138,44 @@ describe('Users list (desktop)', () => {
     );
   });
 
+  test('edit shows the current password, then a new one and its confirmation', async () => {
+    const { root, store } = await renderAdmin('Users');
+    await press(byLabel(root, 'Edit Priya Sharma'));
+    expect(byTestId(root, 'user-form-current-password').props.value).toBe(
+      '••••••••',
+    );
+    expect(allText(byTestId(root, 'user-form'))).toContain('Passwords match');
+
+    await typeInto(byTestId(root, 'user-form-password'), 'short');
+    await press(byTestId(root, 'user-form-submit'));
+    expect(allText(root)).toContain(
+      'The new password doesn’t meet the rules below',
+    );
+
+    await typeInto(byTestId(root, 'user-form-password'), 'welcome123');
+    await typeInto(byTestId(root, 'user-form-confirm-password'), 'welcome12');
+    await press(byTestId(root, 'user-form-submit'));
+    expect(allText(root)).toContain('Passwords don’t match');
+    expect(allText(root)).toContain('Edit user');
+
+    const spy = jest.spyOn(userManagementApi, 'update');
+    await typeInto(byTestId(root, 'user-form-confirm-password'), 'welcome123');
+    await press(byTestId(root, 'user-form-submit'));
+    expect(spy).toHaveBeenCalledWith(
+      'USR-2',
+      expect.objectContaining({ password: 'welcome123' }),
+    );
+    expect(spy.mock.calls[0][1]).not.toHaveProperty('confirmPassword');
+    expect(store.getState().userManagement.entities['USR-2']).toBeTruthy();
+    spy.mockRestore();
+  });
+
+  test('an invited user has no current password yet', async () => {
+    const { root } = await renderAdmin('Users');
+    await press(byLabel(root, 'Edit Arjun Mehta'));
+    expect(byTestId(root, 'user-form-current-password').props.value).toBe('');
+  });
+
   test('deletes a user after confirming', async () => {
     const { root, store } = await renderAdmin('Users');
     await press(byLabel(root, 'Delete Karthik Iyer'));
