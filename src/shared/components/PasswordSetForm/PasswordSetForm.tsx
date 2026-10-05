@@ -13,6 +13,7 @@ import {
 import {
   COMMON_STRINGS,
   NO_AUTOFILL_PASSWORD_PROPS,
+  PASSWORD_MASK,
   PASSWORD_STRINGS as S,
 } from '../../constants';
 import { useForm, useOnSettled, type FormErrors } from '../../hooks';
@@ -35,12 +36,6 @@ export type PasswordSetFormProps = {
 type Values = { newPassword: string; confirmPassword: string };
 
 const EMPTY: Values = { newPassword: '', confirmPassword: '' };
-
-/**
- * Stands in for the current password. The real one is never readable by the
- * app, so this only shows that one is set.
- */
-const PASSWORD_MASK = '••••••••';
 
 const validate = (v: Values): FormErrors<Values> => {
   const errors: FormErrors<Values> = {};

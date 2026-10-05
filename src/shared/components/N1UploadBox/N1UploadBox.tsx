@@ -8,6 +8,7 @@ import { N1Text } from '../N1Text/N1Text';
 
 export type N1UploadBoxProps = {
   label?: string;
+  required?: boolean;
   /** e.g. "Click or drop design file (PDF, DWG, STEP)". */
   hint: string;
   /** Open your file picker here; the box itself does not pick files. */
@@ -45,6 +46,7 @@ const makeStyles = createN1Styles(t => ({
 /** Dashed drop zone for attachments (design file, PO documents). */
 export const N1UploadBox = React.memo(function N1UploadBoxComponent({
   label,
+  required,
   hint,
   onPress,
   fileName,
@@ -58,7 +60,7 @@ export const N1UploadBox = React.memo(function N1UploadBoxComponent({
   const styles = useN1Styles(makeStyles);
   return (
     <View style={[styles.container, disabled && styles.disabled, style]}>
-      {label && <N1FieldLabel label={label} />}
+      {label && <N1FieldLabel label={label} required={required} />}
       <Pressable
         testID={testID}
         accessibilityRole="button"

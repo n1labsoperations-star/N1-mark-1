@@ -1,5 +1,5 @@
 import { useNavigation } from '@react-navigation/native';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo } from 'react';
 import { View } from 'react-native';
 import {
   N1Button,
@@ -23,12 +23,8 @@ import {
   type FilterValues,
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
-import {
-  useListFilter,
-  useOnSettled,
-  usePagination,
-} from '../../../shared/hooks';
-import { jobCardFromOrder, useJobCards } from '../../jobCards';
+import { useListFilter, usePagination } from '../../../shared/hooks';
+import { useJobCards } from '../../jobCards';
 import { formatDayMonth } from '../../../shared/utils';
 import { OrderCard } from '../components/OrderCard';
 import { OrderStatusBadge, PriorityBadge } from '../components/OrderBadges';
@@ -41,7 +37,6 @@ import { useOrderStats, useOrders } from '../hooks/useOrders';
 import type { OrderFilters, WorkOrder } from '../types';
 import {
   INITIAL_ORDER_FILTERS,
-  materialLine,
   matchesOrderFilters,
   orderSearchText,
   orderTitle,
@@ -66,12 +61,27 @@ const COLUMNS: N1TableColumn<WorkOrder>[] = [
       </View>
     ),
   },
-  { key: 'customerName', title: S.columns.customer, flex: 1.5 },
   {
-    key: 'material',
-    title: S.columns.material,
-    flex: 1.6,
-    render: o => <N1Text>{materialLine(o) || COMMON_STRINGS.dash}</N1Text>,
+    key: 'customerName',
+    title: S.columns.customer,
+    flex: 1.5,
+    render: o => (
+      <N1Text numberOfLines={2}>{o.customerName || COMMON_STRINGS.dash}</N1Text>
+    ),
+  },
+  {
+    key: 'poNumber',
+    title: S.columns.poNumber,
+    render: o => (
+      <N1Text numberOfLines={1}>{o.poNumber || COMMON_STRINGS.dash}</N1Text>
+    ),
+  },
+  {
+    key: 'routeCardNo',
+    title: S.columns.rcNumber,
+    render: o => (
+      <N1Text numberOfLines={1}>{o.routeCardNo || COMMON_STRINGS.dash}</N1Text>
+    ),
   },
   {
     key: 'priority',
@@ -92,6 +102,9 @@ const COLUMNS: N1TableColumn<WorkOrder>[] = [
     ),
   },
 ];
+
+/** Below this the columns get cramped, so the table scrolls sideways. */
+const TABLE_MIN_WIDTH = 1100;
 
 const renderCompactItem = (o: WorkOrder) => <OrderCard order={o} />;
 
@@ -149,7 +162,8 @@ export function OrdersListScreen() {
   );
 
   // Opens the order's job card in Job Cards (Back returns here): its details
-  // once it has a route card, else Create flow.
+  // once it has a route, else Create flow. Orders without one get theirs from
+  // Create order (raw material arrived) or the shop floor.
   const openJobCard = useCallback(
     (orderId: string, screen: 'JobCardDetails' | 'JobCardFlow') =>
       navigation.navigate('JobCards', {
@@ -159,31 +173,9 @@ export function OrdersListScreen() {
       }),
     [navigation],
   );
-  const creating = useRef<string | null>(null);
-  useOnSettled(jobCards.saving, jobCards.saveError, () => {
-    if (creating.current) {
-      openJobCard(creating.current, 'JobCardFlow');
-      creating.current = null;
-    }
-  });
   const jobCardFor = useCallback(
     (o: WorkOrder) => jobCards.items.find(c => c.id === o.id),
     [jobCards.items],
-  );
-  const createJobCard = useCallback(
-    (o: WorkOrder) => {
-      const existing = jobCardFor(o);
-      if (existing) {
-        openJobCard(
-          o.id,
-          existing.operations.length ? 'JobCardDetails' : 'JobCardFlow',
-        );
-      } else {
-        creating.current = o.id;
-        jobCards.create(jobCardFromOrder(o));
-      }
-    },
-    [jobCardFor, openJobCard, jobCards],
   );
 
   const columns = useMemo<N1TableColumn<WorkOrder>[]>(
@@ -196,21 +188,28 @@ export function OrdersListScreen() {
         align: 'right',
         interactive: true,
         render: o => {
-          const hasFlow = Boolean(jobCardFor(o)?.operations.length);
+          const card = jobCardFor(o);
           return (
             <View style={styles.actions}>
-              <N1IconButton
-                icon="clipboard"
-                size="sm"
-                accessibilityLabel={
-                  hasFlow
-                    ? S.a11y.openJobCard(o.id)
-                    : S.a11y.createJobCard(o.id)
-                }
-                disabled={jobCards.status !== 'succeeded' || jobCards.saving}
-                onPress={() => createJobCard(o)}
-                testID={`job-card-${o.id}`}
-              />
+              {/* Only orders that have a job card show the clipboard. */}
+              {card && (
+                <N1IconButton
+                  icon="clipboard"
+                  size="sm"
+                  accessibilityLabel={
+                    card.operations.length
+                      ? S.a11y.openJobCard(o.id)
+                      : S.a11y.createJobCard(o.id)
+                  }
+                  onPress={() =>
+                    openJobCard(
+                      o.id,
+                      card.operations.length ? 'JobCardDetails' : 'JobCardFlow',
+                    )
+                  }
+                  testID={`job-card-${o.id}`}
+                />
+              )}
               <N1IconButton
                 icon="edit"
                 variant="primary"
@@ -224,14 +223,7 @@ export function OrdersListScreen() {
         },
       },
     ],
-    [
-      styles,
-      jobCardFor,
-      jobCards.status,
-      jobCards.saving,
-      createJobCard,
-      openEdit,
-    ],
+    [styles, jobCardFor, openJobCard, openEdit],
   );
 
   const statItems = useMemo(
@@ -304,6 +296,7 @@ export function OrdersListScreen() {
           toolbarTitle={isCompact ? undefined : S.title}
           toolbar={toolbar}
           scrollable={!isCompact}
+          minWidth={TABLE_MIN_WIDTH}
           emptyText={
             items.length ? COMMON_STRINGS.noResults : COMMON_STRINGS.empty
           }

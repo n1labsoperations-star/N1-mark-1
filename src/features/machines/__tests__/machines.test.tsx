@@ -2,6 +2,7 @@ import {
   allText,
   byLabel,
   byTestId,
+  byText,
   choose,
   hasTestId,
   press,
@@ -85,9 +86,10 @@ test('adds a machine with required fields and a unique code', async () => {
   );
 });
 
-test('edits a machine status; its own code is allowed', async () => {
+test('edits a machine status in the dialog; its own code is allowed', async () => {
   const { root, store } = await renderAdmin('Machines');
   await press(byLabel(root, 'Edit Milling Center 1'));
+  expect(hasTestId(root, 'machine-details-screen')).toBe(false);
   expect(allText(root)).toContain("Update Milling Center 1's details.");
   expect(byTestId(root, 'machine-form-code').props.value).toBe('CNC-03');
   await choose(root, 'machine-form-status', 'Idle');
@@ -98,6 +100,74 @@ test('edits a machine status; its own code is allowed', async () => {
   });
 });
 
+test('clicking a row opens the machine details, locked until Edit', async () => {
+  const { root } = await renderAdmin('Machines');
+  await press(byText(root, 'Milling Center 1'));
+  expect(hasTestId(root, 'machine-details-screen')).toBe(true);
+  expect(hasTestId(root, 'machine-form')).toBe(false);
+  // Wide screens: the heading sits outside the scrolling content.
+  const scroll = byTestId(root, 'machine-details-scroll');
+  expect(hasTestId(scroll, 'machine-details-heading')).toBe(false);
+  expect(hasTestId(scroll, 'machine-form-notes')).toBe(true);
+  expect(allText(root)).toContain('CNC-03 · CNC Mill');
+  expect(byTestId(root, 'machine-form-code').props.value).toBe('CNC-03');
+  expect(byTestId(root, 'machine-form-code').props.editable).toBe(false);
+  expect(byTestId(root, 'machine-form-notes').props.value).toBe(
+    'Spindle bearing replacement scheduled this week.',
+  );
+});
+
+test('clicking a row opens its details with the current work', async () => {
+  const { root } = await renderAdmin('Machines');
+  await press(byText(root, 'Turning Center 1'));
+  expect(allText(byTestId(root, 'machine-current-work'))).toContain(
+    'WO #1036 · Coupling — Job G',
+  ); // No notes: the locked field says so.
+  expect(byTestId(root, 'machine-form-notes').props.value).toBe(
+    'No notes added',
+  );
+});
+
+test('edits a machine in place on its details', async () => {
+  const { root, store } = await renderAdmin('Machines');
+  await press(byText(root, 'Milling Center 1'));
+  await press(byTestId(root, 'edit-machine'));
+  expect(byTestId(root, 'machine-form-code').props.editable).toBe(true);
+  await choose(root, 'machine-form-status', 'Idle');
+  await press(byTestId(root, 'machine-form-submit'));
+  expect(store.getState().machines.entities['MCH-3']).toMatchObject({
+    code: 'CNC-03',
+    status: 'idle',
+  });
+  // Saved: the fields lock again.
+  expect(byTestId(root, 'machine-form-code').props.editable).toBe(false);
+});
+
+test('details edit rejects a code another machine uses; Cancel drops it', async () => {
+  const { root, store } = await renderAdmin('Machines');
+  await press(byText(root, 'Milling Center 1'));
+  await press(byTestId(root, 'edit-machine'));
+  await typeInto(byTestId(root, 'machine-form-code'), 'cnc-01');
+  await press(byTestId(root, 'machine-form-submit'));
+  expect(allText(root)).toContain('Another machine already uses this code');
+  await press(byLabel(root, 'Cancel'));
+  expect(byTestId(root, 'machine-form-code').props.value).toBe('CNC-03');
+  expect(store.getState().machines.entities['MCH-3']?.code).toBe('CNC-03');
+});
+
+test('Back on the details returns to the list', async () => {
+  const h = await renderAdmin('Machines');
+  await h.navigate('MachineDetails', { machineId: 'MCH-1' });
+  await press(byTestId(h.root, 'machine-details-back'));
+  expect(h.currentRoute()).toBe('Machines');
+});
+
+test('unknown machine shows not found', async () => {
+  const h = await renderAdmin('Machines');
+  await h.navigate('MachineDetails', { machineId: 'MCH-404' });
+  expect(allText(h.root)).toContain('This machine could not be found.');
+});
+
 test('phone shows cards with current work and edit buttons', async () => {
   mockWidth = 390;
   const { root } = await renderAdmin('Machines');
@@ -105,6 +175,7 @@ test('phone shows cards with current work and edit buttons', async () => {
   expect(allText(byTestId(root, 'stat-maintenance'))).toContain('Maintenance');
   await press(byLabel(root, 'Edit Turning Center 1'));
   expect(allText(root)).toContain('Edit machine');
+  expect(hasTestId(root, 'machine-details-screen')).toBe(false);
 });
 
 test('search finds the machine running a work order', async () => {

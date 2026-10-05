@@ -1,33 +1,50 @@
-import { useCallback, useMemo } from 'react';
-import { View } from 'react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Platform, Pressable, ScrollView, View } from 'react-native';
 import {
+  N1Badge,
   N1Button,
   N1Card,
   N1DetailGrid,
   N1Divider,
-  N1IconButton,
-  N1KeyValueList,
+  N1Icon,
+  N1Tabs,
   N1Text,
   createN1Styles,
   useN1Breakpoint,
   useN1Styles,
+  type N1Tab,
 } from '../../../shared/components';
 import type { OrdersScreenProps } from '../types';
 import {
-  ActivityCard,
   AdminScreen,
   AsyncContent,
   ComingSoon,
-  DetailHeader,
-  SplitLayout,
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
+import { useOnSettled } from '../../../shared/hooks';
 import { formatLongDate, notifyUnavailable } from '../../../shared/utils';
+import { useCustomers } from '../../customers';
+import { jobCardFromOrder, useJobCards, type JobCard } from '../../jobCards';
+import { OrderJobCardItem } from '../components/OrderJobCardItem';
+import {
+  DocumentViewer,
+  type ViewerTarget,
+} from '../components/DocumentViewer';
+import {
+  openDocument,
+  printDocument,
+} from '../../../services/files/viewDocument';
+import type { Attachment } from '../../../shared/types';
+import {
+  RawMaterialDialog,
+  isRawMaterialMissing,
+} from '../components/RawMaterialDialog';
 import { DocumentList } from '../components/DocumentList';
 import { DrawingPreview } from '../components/DrawingPreview';
 import { OrderStatusBadge, PriorityBadge } from '../components/OrderBadges';
 import { QrPlaceholder } from '../components/QrPlaceholder';
-import { ORDER_STRINGS } from '../constants';
+import { RAW_MATERIAL_FIELDS } from '../components/orderForm';
+import { MATERIAL_SOURCE_OPTIONS, ORDER_STRINGS } from '../constants';
 import { useOrder } from '../hooks/useOrders';
 import { orderHeading } from '../utils';
 
@@ -35,23 +52,72 @@ const D = ORDER_STRINGS.details;
 const F = ORDER_STRINGS.form;
 const orDash = (v: string) => v || COMMON_STRINGS.dash;
 
+type Tab = 'details' | 'material' | 'documents' | 'jobCard';
+
+const TABS: N1Tab<Tab>[] = [
+  { key: 'details', label: D.tabs.details, icon: 'file' },
+  { key: 'material', label: D.tabs.material, icon: 'package' },
+  { key: 'documents', label: D.tabs.documents, icon: 'file' },
+  { key: 'jobCard', label: D.tabs.jobCard, icon: 'clipboard' },
+];
+
 const makeStyles = createN1Styles(t => ({
-  section: { gap: t.spacing.md },
+  top: { gap: t.spacing.md },
+  backLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: t.spacing.xs,
+  },
+  pressed: { opacity: t.opacity.pressed },
   titleRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: t.spacing.md,
   },
-  titleText: { flex: 1, gap: t.spacing.xs },
+  title: { flexShrink: 1 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm },
+  spacer: { flex: 1 },
+  // Wide screens: the card fills the window. Title and tabs stay put; only
+  // the tab's content scrolls.
+  card: { gap: t.spacing.lg },
+  fullCard: { flex: 1, minHeight: 0 },
+  scroll: { flex: 1 },
+  scrollContent: { gap: t.spacing.xl, paddingBottom: t.spacing.xs },
+  compactContent: { gap: t.spacing.xl },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm },
+  link: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.xxs },
+  section: { gap: t.spacing.md },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: t.spacing.md,
+  },
   drawingMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: t.spacing.md,
   },
+  drawingActions: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm },
+  emptyJobCard: {
+    alignItems: 'center',
+    gap: t.spacing.sm,
+    padding: t.spacing.xxl,
+    borderRadius: t.radius.md,
+    borderWidth: t.borderWidth.hairline,
+    borderStyle: 'dashed',
+    borderColor: t.colors.border,
+  },
 }));
 
+/**
+ * One work order in a single card: back link, title, badges, Route card and
+ * Edit on top, then tabs for the order (customer first), raw material,
+ * documents and its job card.
+ */
 export function OrderDetailsScreen({
   route,
   navigation,
@@ -59,10 +125,32 @@ export function OrderDetailsScreen({
   const styles = useN1Styles(makeStyles);
   const { isCompact } = useN1Breakpoint();
   const { order, status, error, reload } = useOrder(route.params.orderId);
+  const { items: customers } = useCustomers();
+  const [tab, setTab] = useState<Tab>('details');
+  const jobCards = useJobCards();
+  const jobCard = jobCards.items.find(c => c.id === route.params.orderId);
 
-  const goBack = useCallback(() => navigation.goBack(), [navigation]);
+  // Back to where the order was opened from: the customer it was opened
+  // on (keeping that page's own Back), else the orders list.
+  const { fromCustomerId } = route.params;
+  const goBack = useCallback(() => {
+    if (fromCustomerId) {
+      navigation.navigate('Customers', {
+        screen: 'CustomerDetails',
+        params: { customerId: fromCustomerId },
+        merge: true,
+      });
+    } else {
+      navigation.popTo('OrdersList');
+    }
+  }, [navigation, fromCustomerId]);
+  const backLabel = fromCustomerId ? D.backToCustomer : D.backToOrders;
   const edit = useCallback(
-    () => navigation.navigate('OrderForm', { orderId: route.params.orderId }),
+    () =>
+      navigation.navigate('OrderForm', {
+        orderId: route.params.orderId,
+        from: 'details',
+      }),
     [navigation, route.params.orderId],
   );
   const openCustomer = useCallback(() => {
@@ -75,63 +163,91 @@ export function OrderDetailsScreen({
       });
     }
   }, [navigation, order?.customerId]);
-  const openRouteCard = useCallback(
-    () =>
+  const openJobCard = useCallback(
+    (card: JobCard) =>
       navigation.navigate('JobCards', {
         screen: 'JobCardDetails',
-        params: { jobCardId: route.params.orderId },
+        params: { jobCardId: card.id },
         // Keep the list underneath so Back returns to it.
         initial: false,
       }),
-    [navigation, route.params.orderId],
+    [navigation],
   );
+  // No job card yet: make one from the order, then show it on its tab. If
+  // raw material details are missing, a popup collects them first.
+  const creating = useRef(false);
+  const [askRawMaterial, setAskRawMaterial] = useState(false);
+  const makeJobCard = useCallback(() => {
+    if (order) {
+      creating.current = true;
+      jobCards.create(jobCardFromOrder(order));
+    }
+  }, [order, jobCards]);
+  const createJobCard = useCallback(() => {
+    if (order && isRawMaterialMissing(order)) {
+      setAskRawMaterial(true);
+    } else {
+      makeJobCard();
+    }
+  }, [order, makeJobCard]);
+  const closeRawMaterial = useCallback(() => setAskRawMaterial(false), []);
+  // The order now has its details (and `order` is the saved one).
+  const rawMaterialSaved = useCallback(() => {
+    setAskRawMaterial(false);
+    makeJobCard();
+  }, [makeJobCard]);
+  useOnSettled(jobCards.saving, jobCards.saveError, () => {
+    if (creating.current) {
+      creating.current = false;
+      setTab('jobCard');
+    }
+  });
   const printDrawing = useCallback(() => notifyUnavailable(D.printDrawing), []);
   const download = useCallback(() => notifyUnavailable(D.downloadAction), []);
+  // View / print a document or the drawing. Files the app holds (picked
+  // images, and PDFs picked this session on web) open and print for real.
+  const [viewing, setViewing] = useState<ViewerTarget | null>(null);
+  const closeViewer = useCallback(() => setViewing(null), []);
+  const viewDocument = useCallback(
+    (doc: Attachment) => setViewing({ type: 'document', doc }),
+    [],
+  );
+  const printFile = useCallback((doc: Attachment) => {
+    if (!printDocument(doc)) {
+      notifyUnavailable(D.printAction);
+    }
+  }, []);
+  const printTarget = useCallback(
+    (target: ViewerTarget) =>
+      target.type === 'drawing' ? printDrawing() : printFile(target.doc),
+    [printDrawing, printFile],
+  );
+  const openFile = Platform.OS === 'web' ? openDocument : null;
 
-  const additional = useMemo(
-    () =>
-      order
-        ? [
-            { label: F.poNumber, value: orDash(order.poNumber) },
-            { label: F.routeCardNo, value: orDash(order.routeCardNo) },
-            { label: F.dcNo, value: orDash(order.dcNo) },
-            { label: F.dcDate, value: orDash(formatLongDate(order.dcDate)) },
-            { label: F.partNumber, value: orDash(order.partNumber) },
-            { label: F.drawingNumber, value: orDash(order.drawingNumber) },
-            { label: F.rmPartNumber, value: orDash(order.rmPartNumber) },
-            { label: F.shopOrderNumber, value: orDash(order.shopOrderNumber) },
-            { label: F.rawMaterialSize, value: orDash(order.rawMaterialSize) },
-            { label: F.heatNumber, value: orDash(order.heatNumber) },
-            { label: F.projectId, value: orDash(order.projectId) },
-            {
-              label: F.rawMaterialGrade,
-              value: orDash(order.rawMaterialGrade),
-            },
-          ]
-        : [],
-    [order],
+  const customer = useMemo(
+    () => customers.find(c => c.id === order?.customerId),
+    [customers, order?.customerId],
   );
 
-  const editIcon = (
-    <N1IconButton
-      icon="edit"
-      variant="primary"
-      size="sm"
-      accessibilityLabel={D.edit}
-      onPress={edit}
-    />
-  );
-  const header = (
-    <DetailHeader
-      title={isCompact ? D.compactTitle : D.title}
-      onBack={goBack}
-      compactRight={order && editIcon}
-    />
+  const backLink = (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={backLabel}
+      onPress={goBack}
+      style={({ pressed }) => [styles.backLink, pressed && styles.pressed]}
+      testID="order-details-back"
+    >
+      <N1Icon name="arrow-left" size="sm" color="textSecondary" />
+      <N1Text variant="label" color="secondary">
+        {backLabel}
+      </N1Text>
+    </Pressable>
   );
 
   if (!order) {
     return (
-      <AdminScreen header={header}>
+      <AdminScreen testID="order-details-screen">
+        {backLink}
         <AsyncContent status={status} error={error} onRetry={reload}>
           <ComingSoon icon="package" title={D.title} message={D.notFound} />
         </AsyncContent>
@@ -139,64 +255,202 @@ export function OrderDetailsScreen({
     );
   }
 
-  const mainDetails = [
-    {
-      label: D.material,
-      value: orDash(order.material || order.rawMaterialGrade),
-    },
-    {
-      label: D.quantity,
-      value: order.quantity
-        ? ORDER_STRINGS.quantity(order.quantity)
-        : COMMON_STRINGS.dash,
-    },
-    { label: D.dueDate, value: orDash(formatLongDate(order.dueDate)) },
-  ];
-
-  const summary = (
-    <View style={styles.titleRow}>
-      <View style={styles.titleText}>
+  const top = (
+    <View style={styles.top}>
+      {backLink}
+      <View style={styles.titleRow}>
+        <N1Text
+          variant={isCompact ? 'h2' : 'h1'}
+          accessibilityRole="header"
+          style={styles.title}
+        >
+          {orderHeading(order)}
+        </N1Text>
         <View style={styles.badges}>
           <PriorityBadge priority={order.priority} suffix="priority" />
           <OrderStatusBadge status={order.status} />
         </View>
-        <N1Text variant={isCompact ? 'h2' : 'h1'}>{orderHeading(order)}</N1Text>
-        {order.customerName !== '' && (
+        <View style={styles.spacer} />
+        <View style={styles.actions}>
+          {!jobCard && (
+            <N1Button
+              title={D.createJobCard}
+              leftIcon="plus"
+              variant="secondary"
+              size="sm"
+              loading={jobCards.saving}
+              // Wait for the job cards, so an existing one is never made twice.
+              disabled={jobCards.status !== 'succeeded'}
+              onPress={createJobCard}
+              testID="order-create-job-card"
+            />
+          )}
           <N1Button
-            title={order.customerName}
-            variant="ghost"
+            title={D.edit}
+            leftIcon="edit"
             size="sm"
-            onPress={openCustomer}
+            onPress={edit}
+            testID="edit-order"
           />
-        )}
+        </View>
       </View>
-      {!isCompact && (
-        <N1Button
-          title={D.edit}
-          leftIcon="edit"
-          variant="secondary"
-          size="sm"
-          onPress={edit}
-          testID="edit-order"
-        />
-      )}
     </View>
   );
 
-  const notes = order.notes !== '' && (
+  const heading = (text: string) => (
+    <N1Text variant="title" weight="bold">
+      {text}
+    </N1Text>
+  );
+
+  const customerSection = (
+    <View style={styles.section} testID="order-customer">
+      <View style={styles.sectionHead}>
+        {heading(D.customer)}
+        {customer && (
+          <Pressable
+            accessibilityRole="link"
+            onPress={openCustomer}
+            style={({ pressed }) => [styles.link, pressed && styles.pressed]}
+            testID="order-view-customer"
+          >
+            <N1Text variant="small" weight="semiBold">
+              {D.viewCustomer}
+            </N1Text>
+            <N1Icon name="arrow-right" size="sm" />
+          </Pressable>
+        )}
+      </View>
+      <N1DetailGrid
+        columns={isCompact ? 2 : 3}
+        items={[
+          { label: D.customerName, value: orDash(order.customerName) },
+          {
+            label: D.email,
+            value: orDash(order.customerEmail || customer?.email || ''),
+          },
+          { label: D.mobile, value: orDash(customer?.mobile ?? '') },
+        ]}
+      />
+    </View>
+  );
+
+  const detailsTab = (
+    <>
+      {customerSection}
+      <N1Divider />
+      <View style={styles.section}>
+        {heading(D.overview)}
+        <N1DetailGrid
+          columns={isCompact ? 2 : 3}
+          items={[
+            { label: F.poNumber, value: orDash(order.poNumber) },
+            { label: F.partName, value: orDash(order.partName) },
+            { label: F.partNumber, value: orDash(order.partNumber) },
+            { label: F.drawingNumber, value: orDash(order.drawingNumber) },
+            {
+              label: D.quantity,
+              value: order.quantity
+                ? ORDER_STRINGS.quantity(order.quantity)
+                : COMMON_STRINGS.dash,
+            },
+            {
+              label: D.material,
+              value: orDash(order.material || order.rawMaterialGrade),
+            },
+            {
+              label: F.deliveryDate,
+              value: orDash(formatLongDate(order.dueDate)),
+            },
+            { label: F.projectId, value: orDash(order.projectId) },
+            { label: F.shopOrderNumber, value: orDash(order.shopOrderNumber) },
+          ]}
+          testID="order-overview"
+        />
+      </View>
+      <N1Divider />
+      <View style={styles.section}>
+        {heading(D.dispatch)}
+        <N1DetailGrid
+          columns={isCompact ? 2 : 3}
+          items={[
+            { label: F.routeCardNo, value: orDash(order.routeCardNo) },
+            { label: F.dcNo, value: orDash(order.dcNo) },
+            { label: F.dcDate, value: orDash(formatLongDate(order.dcDate)) },
+          ]}
+        />
+      </View>
+      {(order.description !== '' || order.notes !== '') && <N1Divider />}
+      {order.description !== '' && (
+        <View style={styles.section}>
+          {heading(D.description)}
+          <N1Text color="secondary">{order.description}</N1Text>
+        </View>
+      )}
+      {order.notes !== '' && (
+        <View style={styles.section}>
+          {heading(D.notes)}
+          <N1Text color="secondary">{order.notes}</N1Text>
+        </View>
+      )}
+    </>
+  );
+
+  const arrived = RAW_MATERIAL_FIELDS.every(key => order[key] !== '');
+  const source = MATERIAL_SOURCE_OPTIONS.find(
+    o => o.value === order.materialSource,
+  );
+  const materialTab = (
     <View style={styles.section}>
-      <N1Text variant="title" weight="bold">
-        {D.notes}
-      </N1Text>
-      <N1Text color="secondary">{order.notes}</N1Text>
+      <View style={styles.sectionHead}>
+        {heading(D.tabs.material)}
+        <N1Badge
+          label={arrived ? D.materialArrived : D.materialPending}
+          tone={arrived ? 'success' : 'warning'}
+          dot
+        />
+      </View>
+      {!arrived && (
+        <N1Text variant="small" color="secondary">
+          {D.materialPendingHelp}
+        </N1Text>
+      )}
+      <N1DetailGrid
+        columns={isCompact ? 2 : 3}
+        items={[
+          {
+            label: F.materialSource,
+            value: source?.label ?? COMMON_STRINGS.dash,
+          },
+          { label: F.rmPartNumber, value: orDash(order.rmPartNumber) },
+          { label: F.rawMaterialSize, value: orDash(order.rawMaterialSize) },
+          { label: F.heatNumber, value: orDash(order.heatNumber) },
+          {
+            label: F.rawMaterialGrade,
+            value: orDash(order.rawMaterialGrade),
+          },
+        ]}
+        testID="order-raw-material"
+      />
     </View>
   );
 
   const drawingNo = orDash(order.drawingNumber);
-  const drawingCard = (
-    <N1Card title={D.drawing}>
+  const documentsTab = (
+    <>
       <View style={styles.section}>
-        <DrawingPreview drawingNumber={drawingNo} />
+        {heading(D.drawing)}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={D.viewDrawing}
+          onPress={() =>
+            setViewing({ type: 'drawing', drawingNumber: drawingNo })
+          }
+          style={({ pressed }) => pressed && styles.pressed}
+          testID="order-drawing"
+        >
+          <DrawingPreview drawingNumber={drawingNo} />
+        </Pressable>
         <View style={styles.drawingMeta}>
           <View>
             <N1Text variant="caption" color="secondary">
@@ -206,70 +460,133 @@ export function OrderDetailsScreen({
           </View>
           <QrPlaceholder />
         </View>
-        <N1Button
-          title={D.printDrawing}
-          leftIcon="printer"
-          variant="secondary"
-          fullWidth
-          onPress={printDrawing}
-        />
-      </View>
-    </N1Card>
-  );
-
-  const aside = (
-    <>
-      {drawingCard}
-      <N1Card title={D.documents}>
-        <DocumentList documents={order.documents} onDownload={download} />
-      </N1Card>
-      <N1Card title={D.routeCard}>
-        <View style={styles.section}>
-          <N1Text variant="small" color="secondary">
-            {D.routeCardHelp}
-          </N1Text>
+        <View style={styles.drawingActions}>
           <N1Button
-            title={D.viewRouteCard}
-            leftIcon="file"
-            fullWidth
-            onPress={openRouteCard}
-            testID="view-route-card"
+            title={D.viewDrawing}
+            leftIcon="eye"
+            variant="secondary"
+            size="sm"
+            onPress={() =>
+              setViewing({ type: 'drawing', drawingNumber: drawingNo })
+            }
+            testID="order-view-drawing"
+          />
+          <N1Button
+            title={D.printDrawing}
+            leftIcon="printer"
+            variant="secondary"
+            size="sm"
+            onPress={printDrawing}
           />
         </View>
-      </N1Card>
-      <ActivityCard
-        title={D.statusHistory}
-        icon="clock"
-        layout="stacked"
-        items={order.statusHistory}
-      />
-      {isCompact && notes}
+      </View>
+      <N1Divider />
+      <View style={styles.section}>
+        {heading(D.documents)}
+        <DocumentList
+          documents={[
+            ...(order.designFile ? [order.designFile] : []),
+            ...order.documents,
+          ]}
+          onDownload={download}
+          onView={viewDocument}
+          onPrint={printFile}
+        />
+      </View>
     </>
   );
 
+  const jobCardTab = (
+    <View style={styles.section} testID="order-job-cards">
+      {heading(D.jobCards)}
+      {jobCard ? (
+        <OrderJobCardItem jobCard={jobCard} onPress={openJobCard} />
+      ) : (
+        <View style={styles.emptyJobCard}>
+          <N1Icon name="clipboard" size="lg" color="textTertiary" />
+          <N1Text weight="semiBold">{D.noJobCard}</N1Text>
+          <N1Text variant="small" color="secondary" align="center">
+            {D.noJobCardHelp}
+          </N1Text>
+          {jobCards.saveError && (
+            <N1Text variant="small" color="danger">
+              {jobCards.saveError}
+            </N1Text>
+          )}
+        </View>
+      )}
+    </View>
+  );
+
+  const content = {
+    details: detailsTab,
+    material: materialTab,
+    documents: documentsTab,
+    jobCard: jobCardTab,
+  }[tab];
+
+  const tabs = (
+    <N1Tabs
+      tabs={TABS}
+      value={tab}
+      onChange={setTab}
+      variant={isCompact ? 'segmented' : 'underline'}
+      scrollable={isCompact}
+      testID="order-tab"
+    />
+  );
+
+  const viewer = (
+    <DocumentViewer
+      target={viewing}
+      onClose={closeViewer}
+      onPrint={printTarget}
+      onDownload={download}
+      onOpen={openFile}
+    />
+  );
+
+  const rawMaterialDialog = (
+    <RawMaterialDialog
+      visible={askRawMaterial}
+      order={order}
+      onClose={closeRawMaterial}
+      onSaved={rawMaterialSaved}
+    />
+  );
+
+  // Phones: the page scrolls as one.
+  if (isCompact) {
+    return (
+      <AdminScreen testID="order-details-screen">
+        <N1Card padding="lg" radius="sm" style={styles.card}>
+          {top}
+          {tabs}
+          <View style={styles.compactContent}>{content}</View>
+        </N1Card>
+        {rawMaterialDialog}
+        {viewer}
+      </AdminScreen>
+    );
+  }
+
   return (
-    <AdminScreen header={header} testID="order-details-screen">
-      <SplitLayout aside={aside}>
-        {isCompact ? (
-          <>
-            {summary}
-            <N1KeyValueList title={D.details} items={mainDetails} />
-            <N1DetailGrid title={D.additional} items={additional} />
-          </>
-        ) : (
-          <N1Card padding="xxl">
-            <View style={styles.section}>
-              {summary}
-              <N1Divider spacing="sm" />
-              <N1DetailGrid items={mainDetails} />
-              <N1Divider spacing="sm" />
-              <N1DetailGrid title={D.additional} items={additional} />
-              {notes && <N1Divider spacing="sm" />}
-              {notes}
-            </View>
-          </N1Card>
-        )}
-      </SplitLayout>
+    <AdminScreen fixed testID="order-details-screen">
+      <N1Card padding="xxl" radius="sm" style={[styles.card, styles.fullCard]}>
+        {top}
+        {tabs}
+        {/* A new tab starts at the top. */}
+        <ScrollView
+          key={tab}
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          testID="order-details-scroll"
+        >
+          {content}
+        </ScrollView>
+      </N1Card>
+      {rawMaterialDialog}
+      {viewer}
     </AdminScreen>
   );
 }

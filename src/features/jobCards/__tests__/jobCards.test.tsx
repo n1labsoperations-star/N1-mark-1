@@ -501,7 +501,9 @@ describe('Job card details', () => {
   test('order details open this work order’s job card', async () => {
     const h = await renderAdmin('Orders');
     await h.navigate('OrderDetails', { orderId: '1042' });
-    await press(byTestId(h.root, 'view-route-card'));
+    // Its Job card details tab lists the job card.
+    await press(byTestId(h.root, 'order-tab-jobCard'));
+    await press(byTestId(h.root, 'order-job-card-1042'));
     expect(h.currentRoute()).toBe('JobCardDetails');
     expect(allText(byTestId(h.root, 'job-card-details-screen'))).toContain(
       'WO #1042 · Acme Metalworks',

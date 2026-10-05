@@ -55,6 +55,7 @@ export const PASSWORD_STRINGS = {
   minLength: 'Minimum 8 characters',
   lettersAndNumbers: 'Letters and numbers',
   match: 'Passwords match',
+  mismatch: 'Passwords don’t match',
   current: 'Current password',
   noPassword: 'No password set',
   newPassword: 'New password',

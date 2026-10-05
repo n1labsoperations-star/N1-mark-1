@@ -4,7 +4,7 @@ import { machinesCrud } from './machinesSlice';
 
 export const selectMachinesState = (state: RootState) => state.machines;
 
-export const { selectAll: selectAllMachines } =
+export const { selectAll: selectAllMachines, selectById: selectMachineById } =
   machinesCrud.adapter.getSelectors(selectMachinesState);
 
 export const selectMachineStats = createSelector(
