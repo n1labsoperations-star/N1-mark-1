@@ -47,3 +47,33 @@ jest.mock(
       './node_modules/react-native-drawer-layout/lib/module/views/Overlay.js',
     ),
 );
+
+// VisionCamera is native-only. The mock Camera renders a View carrying its
+// props, so tests can read `isActive` / `torchMode` and fire a scan through
+// `outputs[0].onBarcodeScanned`. Set `__permission.status` to test prompts
+// and `__device.current` to test a phone without a back camera.
+jest.mock('react-native-vision-camera', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const permission = {
+    status: 'authorized',
+    request: jest.fn(async () => true),
+  };
+  const device = { current: { id: 'back', hasTorch: true } };
+  return {
+    __permission: permission,
+    __device: device,
+    useCameraPermission: () => ({
+      status: permission.status,
+      hasPermission: permission.status === 'authorized',
+      canRequestPermission: permission.status === 'not-determined',
+      requestPermission: permission.request,
+    }),
+    useCameraDevice: () => device.current,
+    Camera: props =>
+      React.createElement(View, { testID: 'qr-camera', ...props }),
+  };
+});
+jest.mock('react-native-vision-camera-barcode-scanner', () => ({
+  useBarcodeScannerOutput: options => options,
+}));

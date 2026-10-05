@@ -133,6 +133,12 @@ export {
   type N1TimelineStatus,
 } from './N1TimelineItem';
 export { N1ScanFrame, type N1ScanFrameProps } from './N1ScanFrame';
+export {
+  N1QrScanner,
+  useCameraAccess,
+  type CameraAccess,
+  type N1QrScannerProps,
+} from './N1QrScanner';
 export { N1Timer, formatElapsed, type N1TimerProps } from './N1Timer';
 
 // Overlays
