@@ -71,6 +71,12 @@ export {
   type N1DropDownProps,
   type N1DropDownOption,
 } from './N1DropDown';
+export { N1DatePicker, type N1DatePickerProps } from './N1DatePicker';
+export {
+  N1Combobox,
+  findOptionByLabel,
+  type N1ComboboxProps,
+} from './N1Combobox';
 export {
   N1RadioButton,
   N1RadioGroup,

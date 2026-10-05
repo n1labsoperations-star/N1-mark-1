@@ -33,11 +33,10 @@ export const USER_STRINGS = {
     emailPlaceholder: 'e.g. priya.sharma@abcengineering.com',
     password: 'Password',
     passwordCreatePlaceholder: 'Set a password for this user',
-    passwordEditPlaceholder: 'Leave blank to keep current password',
     passwordCreateHelp:
       'As an admin, you’re setting this person’s initial password. They can change it after signing in.',
     passwordEditHelp:
-      'As an admin, you can reset this person’s password here. Leave blank to keep it unchanged.',
+      'As an admin, you can reset this person’s password here. Leave both blank to keep it unchanged.',
     passwordWeak: 'Use at least 8 characters with letters and numbers',
     role: 'Role',
     status: 'Status',

@@ -40,7 +40,7 @@ export function compareOrders(a: WorkOrder, b: WorkOrder): number {
 export const orderSearchText = (o: WorkOrder) =>
   `${workOrderSearchTerms(o.id)} ${o.partName} ${o.jobName} ${o.customerName} ${
     o.material
-  } ${o.poNumber} ${o.description}`;
+  } ${o.poNumber} ${o.routeCardNo} ${o.description}`;
 
 export const matchesOrderFilters = (o: WorkOrder, f: OrderFilters) =>
   matchesAny(f.priority, o.priority) && matchesAny(f.status, o.status);

@@ -1,9 +1,4 @@
-import {
-  N1Button,
-  createN1Styles,
-  useN1Styles,
-  type N1IconName,
-} from '..';
+import { N1Button, createN1Styles, useN1Styles, type N1IconName } from '..';
 import { COMMON_STRINGS } from '../../constants';
 
 export type FormFooterProps = {

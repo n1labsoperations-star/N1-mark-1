@@ -1,14 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, View } from 'react-native';
 import {
   N1Button,
   N1Card,
+  N1Combobox,
+  N1DatePicker,
   N1DropDown,
   N1Divider,
+  N1Icon,
+  N1RadioGroup,
+  N1Switch,
   N1Text,
   N1TextInput,
   N1UploadBox,
   createN1Styles,
+  findOptionByLabel,
   useN1Breakpoint,
   useN1Styles,
   type N1DropDownOption,
@@ -18,7 +24,6 @@ import { pickDocument } from '../../../services/files/pickDocument';
 import {
   AdminScreen,
   AsyncContent,
-  DetailHeader,
   FormFooter,
   FormRow,
 } from '../../../shared/components';
@@ -26,24 +31,73 @@ import { COMMON_STRINGS } from '../../../shared/constants';
 import { useForm, useOnSettled } from '../../../shared/hooks';
 import { formatFileSize } from '../../../shared/utils';
 import { useCustomers } from '../../customers';
-import { StepIndicator } from '../components/StepIndicator';
+import { jobCardFromOrder, useJobCards } from '../../jobCards';
+import { FieldsScrollView } from '../components/FieldsScrollView';
+import { OrderStepper } from '../components/OrderStepper';
 import {
   formValuesToOrderInput,
   orderToFormValues,
-  validateOrderStep1,
+  RAW_MATERIAL_FIELDS,
+  REQUIRED_ORDER_FIELDS,
+  firstStepWithErrors,
+  hasStepErrors,
+  validateOrderForm,
   type OrderFormValues,
 } from '../components/orderForm';
-import { ORDER_STRINGS, PRIORITY_OPTIONS } from '../constants';
+import {
+  MATERIAL_SOURCE_OPTIONS,
+  ORDER_STRINGS,
+  PRIORITY_OPTIONS,
+} from '../constants';
 import { useOrder } from '../hooks/useOrders';
 
 const F = ORDER_STRINGS.form;
 
-const makeStyles = createN1Styles(t => ({
-  section: { gap: t.spacing.lg },
-  actions: { flexDirection: 'row', gap: t.spacing.sm },
-}));
+const STEP_COUNT = F.steps.length;
 
-type Step = 1 | 2;
+const isRawMaterialField = (key: keyof OrderFormValues) =>
+  (RAW_MATERIAL_FIELDS as readonly string[]).includes(key);
+
+/** Plain text fields (not files, the customer or priority). */
+type OrderTextField = Exclude<
+  keyof OrderFormValues,
+  | 'designFile'
+  | 'purchaseOrder'
+  | 'customerId'
+  | 'priority'
+  | 'materialSource'
+  | 'rawMaterialArrived'
+>;
+
+const makeStyles = createN1Styles(t => ({
+  // Wide screens: the card fills the window. The title and stepper stay at
+  // the top, the buttons at the bottom; only the fields scroll.
+  card: { flex: 1, minHeight: 0, gap: t.spacing.xl },
+  top: { gap: t.spacing.xl },
+  compact: { gap: t.spacing.lg },
+  backLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: t.spacing.xs,
+  },
+  pressed: { opacity: t.opacity.pressed },
+  section: { gap: t.spacing.lg },
+  arrived: {
+    gap: t.spacing.xs,
+    padding: t.spacing.md,
+    borderRadius: t.radius.md,
+    backgroundColor: t.colors.background,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: t.spacing.md,
+    paddingTop: t.spacing.lg,
+    borderTopWidth: t.borderWidth.hairline,
+    borderTopColor: t.colors.border,
+  },
+}));
 
 export function OrderFormScreen({
   route,
@@ -54,6 +108,7 @@ export function OrderFormScreen({
   const orderId = route.params?.orderId;
   const {
     order,
+    items,
     status,
     error,
     reload,
@@ -64,12 +119,14 @@ export function OrderFormScreen({
     clearErrors,
   } = useOrder(orderId);
   const { items: customers } = useCustomers();
-  const [step, setStep] = useState<Step>(1);
   const isEdit = Boolean(orderId);
-
+  const [step, setStep] = useState(1);
+  // The furthest step opened so far; editing can open any step.
+  const [reached, setReached] = useState(1);
+  const reachable = isEdit ? STEP_COUNT : reached;
   const form = useForm<OrderFormValues>(
     orderToFormValues(order),
-    validateOrderStep1,
+    validateOrderForm,
   );
   const { values, errors, bind, setField, reset } = form;
 
@@ -84,31 +141,87 @@ export function OrderFormScreen({
     clearErrors();
   }, [clearErrors]);
 
-  const goBack = useCallback(() => navigation.goBack(), [navigation]);
-  useOnSettled(saving, saveError, goBack);
+  // Back, Cancel and Save return where the form was opened from: an edit opened
+  // from the order's details goes back there, everything else to the list.
+  const fromDetails = Boolean(orderId) && route.params?.from === 'details';
+  const leave = useCallback(
+    () =>
+      fromDetails && orderId
+        ? navigation.popTo('OrderDetails', { orderId }, { merge: true })
+        : navigation.popTo('OrdersList'),
+    [navigation, fromDetails, orderId],
+  );
+  // Every save leaves the form (see `leave`). Creating with the raw material
+  // in adds its job card first; if that fails, the order still exists and
+  // its job card button on the list can retry.
+  const jobCards = useJobCards();
+  const idsBeforeCreate = useRef<Set<string> | null>(null);
+  const jobCardFor = useRef<string | null>(null);
+  const onOrderSaved = useCallback(() => {
+    const before = idsBeforeCreate.current;
+    idsBeforeCreate.current = null;
+    const created = before && items.find(o => !before.has(o.id));
+    if (created) {
+      jobCardFor.current = created.id;
+      jobCards.create(jobCardFromOrder(created));
+    } else {
+      leave();
+    }
+  }, [items, jobCards, leave]);
+  useOnSettled(saving, saveError, onOrderSaved);
+  const jobCardWasSaving = useRef(false);
+  useEffect(() => {
+    const id = jobCardFor.current;
+    if (jobCardWasSaving.current && !jobCards.saving && id) {
+      jobCardFor.current = null;
+      leave();
+    }
+    jobCardWasSaving.current = jobCards.saving;
+  }, [jobCards.saving, leave]);
 
   const customerOptions = useMemo<N1DropDownOption<string>[]>(
     () => customers.map(c => ({ value: c.id, label: c.name })),
     [customers],
   );
 
-  const chooseCustomer = useCallback(
-    (id: string) => {
+  // Picking a saved customer fills in their email.
+  const pickCustomer = useCallback(
+    (id: string, name: string) => {
       setField('customerId', id);
-      const customer = customers.find(c => c.id === id);
-      if (customer?.email) {
-        setField('customerEmail', customer.email);
+      setField('customerName', name);
+      const email = customers.find(c => c.id === id)?.email;
+      if (email) {
+        setField('customerEmail', email);
       }
     },
     [customers, setField],
+  );
+  const selectCustomer = useCallback(
+    (option: N1DropDownOption<string>) =>
+      pickCustomer(option.value, option.label),
+    [pickCustomer],
+  );
+  // Typing a saved customer's exact name counts as picking them; any other
+  // name is kept as a new customer's.
+  const typeCustomer = useCallback(
+    (text: string) => {
+      const match = findOptionByLabel(customerOptions, text);
+      if (match) {
+        pickCustomer(match.value, text);
+      } else {
+        setField('customerId', '');
+        setField('customerName', text);
+      }
+    },
+    [customerOptions, pickCustomer, setField],
   );
 
   const attach = useCallback(
     async (field: 'designFile' | 'purchaseOrder') => {
       const file =
         field === 'designFile'
-          ? await pickDocument('Design file', F.designSample)
-          : await pickDocument(F.poKind, F.poSample);
+          ? await pickDocument(F.designFile, F.designSample, F.designAccept)
+          : await pickDocument(F.poKind, F.poSample, F.poAccept);
       if (file) {
         setField(field, file);
       }
@@ -116,91 +229,62 @@ export function OrderFormScreen({
     [setField],
   );
 
-  const goToStep2 = form.submit(() => setStep(2));
-  const goToStep1 = useCallback(() => setStep(1), []);
+  const show = useCallback((n: number) => {
+    setStep(n);
+    setReached(r => Math.max(r, n));
+  }, []);
+  // Moving on checks this step first (and shows its errors); going back
+  // never does.
+  const goTo = useCallback(
+    (n: number) => {
+      if (n < step) {
+        setStep(n);
+      } else if (hasStepErrors(step, values)) {
+        form.validate();
+      } else {
+        show(n);
+      }
+    },
+    [step, values, form, show],
+  );
+  const next = useCallback(() => goTo(step + 1), [goTo, step]);
+  const previous = useCallback(() => setStep(s => s - 1), []);
 
   const save = useCallback(() => {
-    const customerName =
-      customers.find(c => c.id === values.customerId)?.name ??
-      order?.customerName ??
-      '';
-    const input = formValuesToOrderInput(values, customerName, order);
+    const input = formValuesToOrderInput(values, order);
     if (orderId) {
       update(orderId, input);
     } else {
+      if (values.rawMaterialArrived) {
+        idsBeforeCreate.current = new Set(items.map(o => o.id));
+      }
       create(input);
     }
-  }, [customers, values, order, orderId, create, update]);
+  }, [values, order, orderId, items, create, update]);
 
-  const title = `${isEdit ? F.editTitle : F.createTitle} · ${F.step(step)}`;
-  const submitLabel = isEdit ? F.submitEdit : F.submitCreate;
-
-  const desktopActions =
-    step === 1 ? (
-      <View style={styles.actions}>
-        <N1Button
-          title={COMMON_STRINGS.cancel}
-          variant="secondary"
-          onPress={goBack}
-        />
-        <N1Button
-          title={F.next}
-          rightIcon="arrow-right"
-          onPress={goToStep2}
-          testID="order-form-next"
-        />
-      </View>
-    ) : (
-      <View style={styles.actions}>
-        <N1Button
-          title={F.back}
-          leftIcon="arrow-left"
-          variant="secondary"
-          onPress={goToStep1}
-        />
-        <N1Button
-          title={submitLabel}
-          loading={saving}
-          onPress={save}
-          testID="order-form-submit"
-        />
-      </View>
-    );
-
-  const compactFooter =
-    step === 1 ? (
-      <N1Button
-        title={F.next}
-        rightIcon="arrow-right"
-        fullWidth
-        onPress={goToStep2}
-        testID="order-form-next"
-      />
-    ) : (
-      <FormFooter
-        onCancel={goToStep1}
-        cancelLabel={F.back}
-        submitLabel={submitLabel}
-        onSubmit={save}
-        loading={saving}
-        submitTestID="order-form-submit"
-      />
-    );
-
-  const header = (
-    <DetailHeader
-      title={title}
-      subtitle={step === 1 ? F.step1Subtitle : F.step2Subtitle}
-      onBack={step === 2 && isCompact ? goToStep1 : goBack}
-      backIcon={step === 1 && isCompact ? 'close' : 'arrow-left'}
-      right={desktopActions}
-      compactRight={null}
-    />
-  );
+  const isLast = step === STEP_COUNT;
+  const backLinkLabel = fromDetails ? F.backToOrder : F.backToOrders;
+  const busy = saving || jobCards.saving;
+  const submitLabel = isEdit
+    ? F.submitEdit
+    : values.rawMaterialArrived
+    ? F.submitCreateWithJobCard
+    : F.submitCreate;
+  const backLabel = step === 1 ? COMMON_STRINGS.cancel : F.back;
+  const onBack = step === 1 ? leave : previous;
+  // Saving checks every step; a problem opens the first step that has one.
+  const submit = () => {
+    if (form.validate()) {
+      save();
+    } else {
+      setStep(firstStepWithErrors(values));
+    }
+  };
+  const onNext = isLast ? submit : next;
 
   if (isEdit && !order) {
     return (
-      <AdminScreen header={header} testID="order-form-screen">
+      <AdminScreen testID="order-form-screen">
         <AsyncContent status={status} error={error} onRetry={reload}>
           <N1Text>{ORDER_STRINGS.details.notFound}</N1Text>
         </AsyncContent>
@@ -210,12 +294,13 @@ export function OrderFormScreen({
 
   const heading = (text: string) => <N1Text variant="overline">{text}</N1Text>;
 
-  const step1 = (
-    <View style={styles.section}>
-      {!isCompact && heading(F.customerSection)}
+  const customerStep = (
+    <View style={styles.section} testID="order-form-step-1">
+      {heading(F.customerSection)}
       <FormRow>
         <N1UploadBox
           label={F.designFile}
+          required
           hint={isCompact ? F.designHintCompact : F.designHint}
           onPress={() => attach('designFile')}
           fileName={values.designFile?.name}
@@ -225,6 +310,7 @@ export function OrderFormScreen({
               : undefined
           }
           onRemove={() => setField('designFile', null)}
+          errorText={errors.designFile}
           testID="order-form-design"
         />
         <N1UploadBox
@@ -241,12 +327,21 @@ export function OrderFormScreen({
         />
       </FormRow>
       <FormRow>
-        <N1DropDown
+        <N1Combobox
           label={F.customer}
+          required
           placeholder={F.customerPlaceholder}
+          leftIcon="search"
           options={customerOptions}
-          value={values.customerId || null}
-          onChange={chooseCustomer}
+          value={values.customerName}
+          onChangeText={typeCustomer}
+          onSelect={selectCustomer}
+          errorText={errors.customerName}
+          helperText={
+            values.customerName.trim() && !values.customerId
+              ? F.newCustomer
+              : undefined
+          }
           testID="order-form-customer"
         />
         <N1TextInput
@@ -261,34 +356,78 @@ export function OrderFormScreen({
           testID="order-form-email"
         />
       </FormRow>
-      {!isCompact && <N1Divider spacing="sm" />}
-      {!isCompact && heading(F.orderSection)}
+    </View>
+  );
+
+  // Raw material is required only once it has arrived; switching that off
+  // drops its errors too.
+  const isRequired = (key: keyof OrderFormValues) =>
+    (REQUIRED_ORDER_FIELDS as readonly string[]).includes(key) ||
+    (values.rawMaterialArrived && isRawMaterialField(key));
+  const errorFor = (key: keyof OrderFormValues) =>
+    isRawMaterialField(key) && !values.rawMaterialArrived
+      ? undefined
+      : errors[key];
+
+  const text = (
+    key: OrderTextField,
+    label: string,
+    placeholder: string,
+    extra?: Partial<React.ComponentProps<typeof N1TextInput>>,
+  ) => (
+    <N1TextInput
+      label={label}
+      required={isRequired(key)}
+      placeholder={placeholder}
+      value={values[key]}
+      onChangeText={bind(key)}
+      errorText={errorFor(key)}
+      {...extra}
+    />
+  );
+  const date = (
+    key: 'dcDate' | 'deliveryDate',
+    label: string,
+    testID: string,
+  ) => (
+    <N1DatePicker
+      label={label}
+      required={isRequired(key)}
+      placeholder={F.datePlaceholder}
+      value={values[key]}
+      onChange={bind(key)}
+      errorText={errorFor(key)}
+      testID={testID}
+    />
+  );
+
+  const orderStep = (
+    <View style={styles.section} testID="order-form-step-2">
+      {heading(F.orderSection)}
       <FormRow>
-        <N1TextInput
-          label={F.poNumber}
-          placeholder={F.poNumberPlaceholder}
-          value={values.poNumber}
-          onChangeText={bind('poNumber')}
-        />
-        <N1TextInput
-          label={F.quantity}
-          placeholder={F.quantityPlaceholder}
-          value={values.quantity}
-          onChangeText={bind('quantity')}
-          errorText={errors.quantity}
-          keyboardType="number-pad"
-          testID="order-form-quantity"
-        />
+        {text('poNumber', F.poNumber, F.poNumberPlaceholder, {
+          testID: 'order-form-po-number',
+        })}
+        {text('partName', F.partName, F.partNamePlaceholder, {
+          testID: 'order-form-part-name',
+        })}
       </FormRow>
-      <N1TextInput
-        label={F.description}
-        placeholder={F.descriptionPlaceholder}
-        value={values.description}
-        onChangeText={bind('description')}
-        multiline
-        testID="order-form-description"
-      />
       <FormRow>
+        {text('drawingNumber', F.drawingNumber, F.drawingNumberPlaceholder, {
+          testID: 'order-form-drawing-number',
+        })}
+        {text('routeCardNo', F.routeCardNo, F.routeCardPlaceholder, {
+          testID: 'order-form-route-card',
+        })}
+      </FormRow>
+      <FormRow>
+        {text('dcNo', F.dcNo, F.dcNoPlaceholder, {
+          testID: 'order-form-dc-no',
+        })}
+        {date('dcDate', F.dcDate, 'order-form-dc-date')}
+      </FormRow>
+      <FormRow>
+        {date('deliveryDate', F.deliveryDate, 'order-form-delivery')}
         <N1DropDown
           label={F.priority}
           placeholder={F.priorityPlaceholder}
@@ -297,138 +436,167 @@ export function OrderFormScreen({
           onChange={bind('priority')}
           testID="order-form-priority"
         />
-        <N1TextInput
-          label={F.deliveryDate}
-          placeholder={F.datePlaceholder}
-          value={values.deliveryDate}
-          onChangeText={bind('deliveryDate')}
-          errorText={errors.deliveryDate}
-          keyboardType="numbers-and-punctuation"
-          testID="order-form-delivery"
-        />
       </FormRow>
       <FormRow>
-        <N1TextInput
-          label={F.routeCardNo}
-          placeholder={F.routeCardPlaceholder}
-          value={values.routeCardNo}
-          onChangeText={bind('routeCardNo')}
-        />
-        <N1TextInput
-          label={F.dcNo}
-          placeholder={F.dcNoPlaceholder}
-          value={values.dcNo}
-          onChangeText={bind('dcNo')}
-        />
+        {text('quantity', F.quantity, F.quantityPlaceholder, {
+          keyboardType: 'number-pad',
+          testID: 'order-form-quantity',
+        })}
+        {text('partNumber', F.partNumber, F.partNumberPlaceholder, {
+          testID: 'order-form-part-number',
+        })}
       </FormRow>
       <FormRow>
-        <N1TextInput
-          label={F.dcDate}
-          placeholder={F.datePlaceholder}
-          value={values.dcDate}
-          onChangeText={bind('dcDate')}
-          errorText={errors.dcDate}
-          keyboardType="numbers-and-punctuation"
-        />
-        {/* Keeps DC date at half width, as in the design. */}
-        <View />
+        {text('projectId', F.projectId, F.projectIdPlaceholder)}
+        {text('shopOrderNumber', F.shopOrderNumber, F.shopOrderPlaceholder)}
       </FormRow>
+      {text('description', F.description, F.descriptionPlaceholder, {
+        multiline: true,
+        testID: 'order-form-description',
+      })}
     </View>
   );
 
-  const step2 = (
-    <View style={styles.section}>
-      {!isCompact && heading(F.partSection)}
-      <FormRow>
-        <N1TextInput
-          label={F.partNumber}
-          placeholder={F.partNumberPlaceholder}
-          value={values.partNumber}
-          onChangeText={bind('partNumber')}
-          testID="order-form-part-number"
+  const rawMaterialStep = (
+    <View style={styles.section} testID="order-form-step-3">
+      {heading(F.rawMaterialSection)}
+      <View style={styles.arrived}>
+        <N1Switch
+          label={F.rawMaterialArrived}
+          value={values.rawMaterialArrived}
+          onValueChange={bind('rawMaterialArrived')}
+          testID="order-form-rm-arrived"
         />
-        <N1TextInput
-          label={F.drawingNumber}
-          placeholder={F.drawingNumberPlaceholder}
-          value={values.drawingNumber}
-          onChangeText={bind('drawingNumber')}
-        />
-      </FormRow>
-      <FormRow>
-        <N1TextInput
-          label={F.rmPartNumber}
-          placeholder={F.rmPartNumberPlaceholder}
-          value={values.rmPartNumber}
-          onChangeText={bind('rmPartNumber')}
-        />
-        <N1TextInput
-          label={F.shopOrderNumber}
-          placeholder={F.shopOrderPlaceholder}
-          value={values.shopOrderNumber}
-          onChangeText={bind('shopOrderNumber')}
-        />
-      </FormRow>
-      <FormRow>
-        <N1TextInput
-          label={F.rawMaterialSize}
-          placeholder={F.rawMaterialSizePlaceholder}
-          value={values.rawMaterialSize}
-          onChangeText={bind('rawMaterialSize')}
-        />
-        <N1TextInput
-          label={F.heatNumber}
-          placeholder={F.heatNumberPlaceholder}
-          value={values.heatNumber}
-          onChangeText={bind('heatNumber')}
-        />
-      </FormRow>
-      <FormRow>
-        <N1TextInput
-          label={F.projectId}
-          placeholder={F.projectIdPlaceholder}
-          value={values.projectId}
-          onChangeText={bind('projectId')}
-        />
-        <N1TextInput
-          label={F.rawMaterialGrade}
-          placeholder={F.rawMaterialGradePlaceholder}
-          value={values.rawMaterialGrade}
-          onChangeText={bind('rawMaterialGrade')}
-        />
-      </FormRow>
-    </View>
-  );
-
-  const body = (
-    <>
-      {isCompact && step === 2 && (
         <N1Text variant="small" color="secondary">
-          {F.step2Subtitle}
+          {values.rawMaterialArrived
+            ? isEdit
+              ? F.rawMaterialArrivedEditHelp
+              : F.rawMaterialArrivedHelp
+            : F.rawMaterialPendingHelp}
         </N1Text>
-      )}
-      {step === 1 ? step1 : step2}
+      </View>
+      <N1RadioGroup
+        label={F.materialSource}
+        required={isRequired('materialSource')}
+        options={MATERIAL_SOURCE_OPTIONS}
+        value={values.materialSource || null}
+        onChange={bind('materialSource')}
+        errorText={errorFor('materialSource')}
+      />
+      <FormRow>
+        {text('rmPartNumber', F.rmPartNumber, F.rmPartNumberPlaceholder, {
+          testID: 'order-form-rm-part-number',
+        })}
+        {text(
+          'rawMaterialSize',
+          F.rawMaterialSize,
+          F.rawMaterialSizePlaceholder,
+        )}
+      </FormRow>
+      <FormRow>
+        {text('heatNumber', F.heatNumber, F.heatNumberPlaceholder)}
+        {text(
+          'rawMaterialGrade',
+          F.rawMaterialGrade,
+          F.rawMaterialGradePlaceholder,
+        )}
+      </FormRow>
+    </View>
+  );
+
+  const stepContent = [customerStep, orderStep, rawMaterialStep][step - 1];
+
+  const footer = (
+    <View style={styles.footer}>
+      <N1Button
+        title={backLabel}
+        leftIcon={step === 1 ? undefined : 'arrow-left'}
+        variant="secondary"
+        disabled={saving}
+        onPress={onBack}
+        testID="order-form-back"
+      />
+      <N1Button
+        title={isLast ? submitLabel : F.next}
+        rightIcon={isLast ? undefined : 'arrow-right'}
+        loading={isLast && busy}
+        onPress={onNext}
+        testID={isLast ? 'order-form-submit' : 'order-form-next'}
+      />
+    </View>
+  );
+
+  const compactFooter = (
+    <FormFooter
+      onCancel={onBack}
+      cancelLabel={backLabel}
+      submitLabel={isLast ? submitLabel : F.next}
+      onSubmit={onNext}
+      loading={isLast && busy}
+      submitTestID={isLast ? 'order-form-submit' : 'order-form-next'}
+    />
+  );
+
+  const top = (
+    <View style={styles.top}>
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel={backLinkLabel}
+        onPress={leave}
+        style={({ pressed }) => [styles.backLink, pressed && styles.pressed]}
+        testID="order-form-back-to-list"
+      >
+        <N1Icon name="arrow-left" size="sm" color="textSecondary" />
+        <N1Text variant="label" color="secondary">
+          {backLinkLabel}
+        </N1Text>
+      </Pressable>
+      <N1Text variant="h1" accessibilityRole="header">
+        {isEdit ? F.editTitle : F.createTitle}
+      </N1Text>
+      <OrderStepper
+        steps={F.steps}
+        current={step}
+        reachable={reachable}
+        onSelect={goTo}
+      />
+      <N1Divider />
+    </View>
+  );
+
+  const fields = (
+    <>
+      {stepContent}
       {saveError && (
         <N1Text variant="small" color="danger">
           {saveError}
         </N1Text>
       )}
-      {!isCompact && (
-        <StepIndicator
-          step={step}
-          total={2}
-          label={step === 1 ? F.step1Footer : F.step2Footer}
-        />
-      )}
     </>
   );
 
+  // Phones: the page scrolls and the buttons sit in the bottom bar.
+  if (isCompact) {
+    return (
+      <AdminScreen compactFooter={compactFooter} testID="order-form-screen">
+        <View style={styles.compact}>
+          {top}
+          {fields}
+        </View>
+      </AdminScreen>
+    );
+  }
+
   return (
-    <AdminScreen
-      header={header}
-      compactFooter={compactFooter}
-      testID="order-form-screen"
-    >
-      {isCompact ? body : <N1Card padding="xxl">{body}</N1Card>}
+    <AdminScreen fixed testID="order-form-screen">
+      <N1Card padding="xxl" radius="sm" style={styles.card}>
+        {top}
+        {/* A new step starts at the top. */}
+        <FieldsScrollView key={step} testID="order-form-scroll">
+          {fields}
+        </FieldsScrollView>
+        {footer}
+      </N1Card>
     </AdminScreen>
   );
 }

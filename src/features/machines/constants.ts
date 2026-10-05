@@ -52,8 +52,18 @@ export const MACHINE_STRINGS = {
     status: 'Status',
     notes: 'Notes',
     notesPlaceholder: 'Any additional details',
+    noNotes: 'No notes added',
   },
-  a11y: { edit: (name: string) => `Edit ${name}` },
+  details: {
+    title: 'Machine details',
+    back: 'Back to machines',
+    section: 'Machine info',
+    currentWork: 'Current work',
+    notFound: 'This machine could not be found.',
+  },
+  a11y: {
+    edit: (name: string) => `Edit ${name}`,
+  },
 } as const;
 
 export const MACHINE_TYPE_LABELS: Record<MachineType, string> = {

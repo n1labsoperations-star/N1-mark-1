@@ -1,3 +1,11 @@
+import type { DrawerScreenProps } from '@react-navigation/drawer';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from '@react-navigation/native-stack';
+import type { AdminDrawerParamList } from '../dashboard/types';
+
 export type MachineType =
   | 'cnc_lathe'
   | 'cnc_mill'
@@ -35,3 +43,19 @@ export type MachineInput = Pick<
 export type MachineFilters = {
   status: MachineStatus[];
 };
+
+// Stack nested inside the admin drawer's "Machines" item.
+export type MachinesStackParamList = {
+  MachinesList: undefined;
+  MachineDetails: { machineId: string };
+};
+
+export type MachinesNavigation =
+  NativeStackNavigationProp<MachinesStackParamList>;
+
+/** Screen props that can also reach the other admin drawer items. */
+export type MachinesScreenProps<R extends keyof MachinesStackParamList> =
+  CompositeScreenProps<
+    NativeStackScreenProps<MachinesStackParamList, R>,
+    DrawerScreenProps<AdminDrawerParamList>
+  >;

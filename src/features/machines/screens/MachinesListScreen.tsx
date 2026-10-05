@@ -1,3 +1,4 @@
+import { useNavigation } from '@react-navigation/native';
 import { useCallback, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import {
@@ -30,7 +31,7 @@ import {
   MACHINE_TYPE_LABELS,
 } from '../constants';
 import { useMachineStats, useMachines } from '../hooks/useMachines';
-import type { Machine, MachineFilters } from '../types';
+import type { Machine, MachineFilters, MachinesNavigation } from '../types';
 import {
   INITIAL_MACHINE_FILTERS,
   machineSearchText,
@@ -40,6 +41,7 @@ import {
 type FormTarget = { machine: Machine | null } | null;
 
 export function MachinesListScreen() {
+  const navigation = useNavigation<MachinesNavigation>();
   const { isCompact } = useN1Breakpoint();
   const { items, status, error, reload } = useMachines();
   const stats = useMachineStats();
@@ -76,6 +78,10 @@ export function MachinesListScreen() {
     [],
   );
   const closeForm = useCallback(() => setFormTarget(null), []);
+  const openDetails = useCallback(
+    (m: Machine) => navigation.navigate('MachineDetails', { machineId: m.id }),
+    [navigation],
+  );
 
   const statItems = useMemo(
     () => [
@@ -159,6 +165,7 @@ export function MachinesListScreen() {
     [openEdit],
   );
 
+  // Clicking a row opens Machine details; the pencil opens the Edit dialog.
   const renderCompactItem = useCallback(
     (m: Machine) => <MachineCard machine={m} onEdit={openEdit} />,
     [openEdit],
@@ -225,6 +232,7 @@ export function MachinesListScreen() {
           columns={columns}
           data={pager.pageItems}
           keyExtractor={m => m.id}
+          onRowPress={openDetails}
           renderCompactItem={renderCompactItem}
           toolbarTitle={isCompact ? undefined : S.title}
           toolbar={toolbar}

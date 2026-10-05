@@ -16,6 +16,12 @@ export const SEARCH_INPUT_PROPS = {
  * Props for password fields that must never be filled from saved passwords
  * (a new password, or one set for someone else).
  */
+/**
+ * Stands in for a current password. The real one is never readable by the
+ * app, so this only shows that one is set.
+ */
+export const PASSWORD_MASK = '••••••••';
+
 export const NO_AUTOFILL_PASSWORD_PROPS = {
   autoComplete: 'new-password',
   textContentType: 'newPassword',
