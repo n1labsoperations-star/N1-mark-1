@@ -97,7 +97,8 @@ export const JOBS_STRINGS = {
     frameTitle: 'Align the QR code within the frame',
     message: 'The job details will import automatically once scanned',
     manual: 'Enter code manually',
-    flash: 'Flash',
+    flash: 'Turn on flash',
+    flashOff: 'Turn off flash',
   },
   code: {
     title: 'Enter Job Code',

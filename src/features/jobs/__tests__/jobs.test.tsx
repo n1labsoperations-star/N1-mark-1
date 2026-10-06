@@ -1,3 +1,4 @@
+import { Linking } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import {
   allText,
@@ -90,6 +91,69 @@ test('job codes that are blank or unknown show an error', async () => {
   await typeInto(byTestId(root, 'job-code-input'), 'WO-9999');
   await press(byTestId(root, 'job-code-submit'));
   expect(allText(root)).toContain('No work order found for WO-9999');
+});
+
+/** Fires the mocked camera's barcode callback with one QR value. */
+async function scan(root: ReactTestRenderer.ReactTestInstance, value: string) {
+  const camera = byTestId(root, 'qr-camera');
+  await ReactTestRenderer.act(async () =>
+    camera.props.outputs[0].onBarcodeScanned([{ rawValue: value }]),
+  );
+}
+
+describe('Scan QR code', () => {
+  const permission = jest.requireMock('react-native-vision-camera')
+    .__permission as { status: string };
+  afterEach(() => {
+    permission.status = 'authorized';
+  });
+
+  test('a scanned job code imports the order', async () => {
+    const root = await secondAdmin();
+    await press(byTestId(root, 'import-job'));
+    expect(byTestId(root, 'qr-camera').props.isActive).toBe(true);
+
+    await scan(root, 'WO-01036');
+    expect(allText(root)).toContain('WO #1036 · Coupling — Job G');
+  });
+
+  test('a bad code shows its error once, and the flash toggles', async () => {
+    const root = await secondAdmin();
+    await press(byTestId(root, 'import-job'));
+
+    await scan(root, 'WO-9999');
+    expect(allText(root)).toContain('No work order found for WO-9999');
+    // The same code stays in view; it isn't reported again.
+    await scan(root, 'WO-9999');
+    await scan(root, 'https://example.com');
+    expect(allText(root)).toContain(
+      'No work order found for https://example.com',
+    );
+
+    expect(byTestId(root, 'qr-camera').props.torchMode).toBe('off');
+    await press(byLabel(root, 'Turn on flash'));
+    expect(byTestId(root, 'qr-camera').props.torchMode).toBe('on');
+    expect(hasTestId(root, 'scan-flash')).toBe(true);
+    byLabel(root, 'Turn off flash');
+  });
+
+  test('without camera access it offers Settings and manual entry', async () => {
+    permission.status = 'denied';
+    const openSettings = jest
+      .spyOn(Linking, 'openSettings')
+      .mockResolvedValue(undefined);
+    const root = await secondAdmin();
+    await press(byTestId(root, 'import-job'));
+
+    expect(hasTestId(root, 'qr-camera')).toBe(false);
+    expect(hasTestId(root, 'scan-flash')).toBe(false);
+    expect(allText(root)).toContain('Camera access needed');
+    await press(byText(root, 'Open settings'));
+    expect(openSettings).toHaveBeenCalled();
+
+    await press(byText(root, 'Enter code manually'));
+    expect(hasTestId(root, 'job-code-input')).toBe(true);
+  });
 });
 
 test('order → raw material modal → job added to My Jobs → job card', async () => {

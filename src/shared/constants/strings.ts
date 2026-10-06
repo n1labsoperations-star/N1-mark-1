@@ -68,3 +68,12 @@ export const PASSWORD_STRINGS = {
   save: 'Save password',
   updated: 'Password updated',
 } as const;
+
+export const SCANNER_STRINGS = {
+  permissionTitle: 'Camera access needed',
+  permissionMessage: 'Allow camera access to scan QR codes.',
+  allow: 'Allow camera',
+  openSettings: 'Open settings',
+  unsupported: "Scanning isn't available here. Enter the code instead.",
+  cameraFailed: 'The camera could not start.',
+} as const;

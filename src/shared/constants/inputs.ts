@@ -27,3 +27,9 @@ export const NO_AUTOFILL_PASSWORD_PROPS = {
   textContentType: 'newPassword',
   autoCapitalize: 'none',
 } as const satisfies TextInputProps;
+
+/**
+ * The camera reports a code on every frame it's visible; the same code read
+ * again within this window is the same scan, not a new one.
+ */
+export const QR_RESCAN_DELAY_MS = 2000;

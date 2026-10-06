@@ -15,6 +15,8 @@ export type N1ScanFrameProps = {
   children?: ReactNode;
   title?: string;
   message?: string;
+  /** Shown under the message, e.g. an "Allow camera" button. */
+  accessory?: ReactNode;
   /** Underlined link at the bottom, e.g. "Enter code manually". */
   actionLabel?: string;
   onActionPress?: () => void;
@@ -98,6 +100,7 @@ export const N1ScanFrame = React.memo(function N1ScanFrameComponent({
   children,
   title = 'Align the QR code within the frame',
   message,
+  accessory,
   actionLabel,
   onActionPress,
   style,
@@ -129,6 +132,7 @@ export const N1ScanFrame = React.memo(function N1ScanFrameComponent({
             </N1Text>
           )}
         </View>
+        {accessory}
       </View>
       {actionLabel && onActionPress && (
         <Pressable
