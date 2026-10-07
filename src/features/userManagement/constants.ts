@@ -5,21 +5,21 @@ import type { StatusMeta } from '../../shared/types';
 import type { UserPermissionKey, UserRole, UserStatus } from './types';
 
 export const USER_STRINGS = {
-  title: 'Users',
+  title: 'Employees',
   subtitle: (org: string) => `Manage everyone in ${org}.`,
-  create: 'Create User',
-  createTitle: 'Create user',
+  create: 'Create Employee',
+  createTitle: 'Create employee',
   createSubtitle: (org: string) => `Add a new person to ${org}.`,
-  createSubmit: 'Create user',
-  editTitle: 'Edit user',
+  createSubmit: 'Create employee',
+  editTitle: 'Edit employee',
   editSubtitle: 'Update this person’s details.',
-  search: 'Search users',
+  search: 'Search employees',
   roleFilter: 'Role',
   statusFilter: 'Status',
-  noun: 'users',
+  noun: 'employees',
   columns: {
     name: 'Name',
-    email: 'Email',
+    email: 'Email / Phone',
     role: 'Role',
     status: 'Status',
     joined: 'Joined',
@@ -31,8 +31,10 @@ export const USER_STRINGS = {
     designationPlaceholder: 'e.g. Production Supervisor',
     email: 'Email',
     emailPlaceholder: 'e.g. priya.sharma@abcengineering.com',
+    phone: 'Phone number',
+    phonePlaceholder: 'e.g. +91 98765 43210',
     password: 'Password',
-    passwordCreatePlaceholder: 'Set a password for this user',
+    passwordCreatePlaceholder: 'Set a password for this employee',
     passwordCreateHelp:
       'As an admin, you’re setting this person’s initial password. They can change it after signing in.',
     passwordEditHelp:
@@ -42,8 +44,8 @@ export const USER_STRINGS = {
     status: 'Status',
   },
   details: {
-    title: 'User details',
-    backToUsers: 'Back to users',
+    title: 'Employee details',
+    backToUsers: 'Back to employees',
     joined: (date: string) => `Joined ${date}`,
     resetPassword: 'Reset password',
     resetPasswordHelp: (name: string) =>
@@ -57,7 +59,7 @@ export const USER_STRINGS = {
     attachments: 'Attachments',
     role: 'Role',
     status: 'Status',
-    notFound: 'This user no longer exists.',
+    notFound: 'This employee no longer exists.',
     sections: {
       profile: 'Profile',
       security: 'Security',
@@ -70,7 +72,9 @@ export const USER_STRINGS = {
         `The last 10 job cards ${name} worked a step on.`,
       empty: (name: string) =>
         `No job cards yet. They show here once ${name} runs a step.`,
-      title: (wo: string, job: string) => `WO #${wo} · ${job}`,
+      title: (jobCard: string, job: string) =>
+        [jobCard, job].filter(Boolean).join(' · '),
+      workOrder: (wo: string) => `WO #${wo}`,
       routeCard: (id: string) => `RC #${id}`,
       started: (date: string) => `Started ${date}`,
     },
@@ -89,9 +93,9 @@ export const USER_STRINGS = {
     },
     personalInfo: 'Personal information',
     account: 'Account',
-    deleteUser: 'Delete user',
+    deleteUser: 'Delete employee',
     noDocuments: 'No documents uploaded yet.',
-    documentsKind: 'User document',
+    documentsKind: 'Employee document',
     documentsSample: 'ID proof.pdf',
     upload: {
       add: 'Add',
@@ -101,14 +105,14 @@ export const USER_STRINGS = {
     },
   },
   delete: {
-    title: 'Delete user?',
+    title: 'Delete employee?',
     message: (name: string) =>
       [
         'This will permanently remove ',
         name,
         ' and their access. This can’t be undone.',
       ] as const,
-    confirm: 'Delete user',
+    confirm: 'Delete employee',
   },
   a11y: {
     edit: (name: string) => `Edit ${name}`,

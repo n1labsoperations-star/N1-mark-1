@@ -74,7 +74,7 @@ export const OrderJobCardItem = memo(function OrderJobCardItemComponent({
             {where}
           </N1Text>
         </View>
-        <JobCardStatusBadge status={jobCard.status} />
+        <JobCardStatusBadge jobCard={jobCard} />
         <N1Icon name="chevron-right" size="sm" color="textSecondary" />
       </View>
       <JobProgress value={jobProgress(jobCard)} />

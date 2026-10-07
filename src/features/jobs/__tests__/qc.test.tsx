@@ -66,13 +66,21 @@ describe('qc rules', () => {
     expect(machineQc(mock('1036')).status).toBe('waiting');
   });
 
-  test('a fail logs the remark and rejects raw material', () => {
-    const changes = qcResult(mock('1039'), 'rm', false, 'Rusty', '2026-10-02');
+  test('a fail logs the remark and who checked, and rejects raw material', () => {
+    const changes = qcResult(
+      mock('1039'),
+      'rm',
+      false,
+      'Rusty',
+      '2026-10-02',
+      'Suresh Babu',
+    );
     expect(changes.materialQc).toBe('rejected');
     expect(changes.qcHistory?.at(-1)).toMatchObject({
       stage: 'Material QC',
       result: 'rejected',
       remark: 'Rusty',
+      inspector: 'Suresh Babu',
     });
   });
 });

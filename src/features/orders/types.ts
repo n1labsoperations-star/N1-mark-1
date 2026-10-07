@@ -14,7 +14,17 @@ import type {
 /** Where the raw material comes from. */
 export type MaterialSource = 'bought_out' | 'in_house';
 export type OrderPriority = 'high' | 'medium' | 'low';
-export type OrderStatus = 'new' | 'in_progress' | 'qc_pending' | 'completed';
+/**
+ * Where an order is, worked out from its job card and invoice (orderStatus):
+ * new → yet to start → in progress / paused → payment due → completed.
+ */
+export type OrderStatus =
+  | 'new'
+  | 'yet_to_start'
+  | 'in_progress'
+  | 'paused'
+  | 'payment_due'
+  | 'completed';
 
 export type WorkOrder = {
   /** Work order number, e.g. "1042" (shown as "WO #1042"). */
@@ -29,6 +39,7 @@ export type WorkOrder = {
   material: string;
   quantity: number;
   priority: OrderPriority;
+  /** Set by the selectors from the job card and invoice; see orderStatus. */
   status: OrderStatus;
   dueDate: ISODateString;
   poNumber: string;
@@ -73,6 +84,8 @@ export type OrdersStackParamList = {
     orderId: string;
     /** Opened from this customer's details: Back returns there. */
     fromCustomerId?: string;
+    /** Opened from this job card: Back returns there. */
+    fromJobCardId?: string;
   };
   /** Without an id the form creates a new order. */
   OrderForm:

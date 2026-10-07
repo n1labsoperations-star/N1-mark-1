@@ -5,7 +5,7 @@ import type {
   NativeStackScreenProps,
 } from '@react-navigation/native-stack';
 import type { AdminDrawerParamList } from '../dashboard/types';
-import type { OrderPriority } from '../orders/types';
+import type { MaterialSource, OrderPriority } from '../orders/types';
 import type { Attachment, ISODateString } from '../../shared/types';
 
 export type JobCardStatus =
@@ -15,7 +15,6 @@ export type JobCardStatus =
   | 'completed';
 export type OperationStatus = 'pending' | 'running' | 'paused' | 'completed';
 export type DesignApproval = 'approved' | 'pending' | 'rejected';
-export type MaterialSource = 'company' | 'customer';
 export type MaterialQc = 'accepted' | 'pending' | 'rejected';
 export type QcResult = 'accepted' | 'passed' | 'failed' | 'rejected';
 export type QuotationStatus = 'accepted' | 'pending' | 'rejected';
@@ -51,6 +50,10 @@ export type QcEntry = {
   operationId?: string;
   /** RM QC rejection: the grade, heat number and size received. */
   rejectedMaterial?: RejectedMaterial;
+  /** Who did the check, e.g. "Suresh Babu". */
+  inspector?: string;
+  /** The inspection report uploaded for this check. */
+  report?: Attachment;
 };
 
 /**
@@ -60,6 +63,8 @@ export type QcEntry = {
 export type JobCard = {
   /** Work order number, e.g. "1042". */
   id: string;
+  /** Job card number, e.g. "JOB1". Given when the card is created. */
+  code: string;
   customerId: string;
   customerName: string;
   partName: string;
@@ -71,7 +76,8 @@ export type JobCard = {
   status: JobCardStatus;
   designFile: Attachment | null;
   designApproval: DesignApproval;
-  materialSource: MaterialSource;
+  /** From the work order: bought out or in-house; blank if not given. */
+  materialSource: MaterialSource | '';
   materialQc: MaterialQc;
   /** The route card, in order. Empty until a flow is created. */
   operations: JobOperation[];
@@ -90,12 +96,27 @@ export type JobCardFilters = {
   machine: string[];
 };
 
+/**
+ * Admin screens outside Job Cards that open a job card; Back returns there.
+ * "order" is the work order with the card's id.
+ */
+export type JobCardOrigin = 'dashboard' | 'order' | 'employee';
+
+/** Where a job card screen was opened from. Default: the screen below it. */
+export type JobCardOriginParams = {
+  from?: JobCardOrigin;
+  /** With from "employee": whose work history it was opened from. */
+  fromUserId?: string;
+};
+
 // Stack nested inside the admin drawer's "Job Cards" item.
 export type JobCardsStackParamList = {
   JobCardsList: undefined;
-  JobCardDetails: { jobCardId: string };
-  /** Create flow when the card has no operations yet, Edit flow otherwise. */
-  JobCardFlow: { jobCardId: string };
+  JobCardDetails: {
+    jobCardId: string;
+    /** Opens with Create / Edit flow already open on the Machining tab. */
+    editFlow?: boolean;
+  } & JobCardOriginParams;
 };
 
 export type JobCardsNavigation =

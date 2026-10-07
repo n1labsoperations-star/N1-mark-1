@@ -23,7 +23,7 @@ describe('visibleMenuItems', () => {
       labels(visibleMenuItems(MENU_ITEMS, { compact: false, query: '' })),
     ).toEqual([
       'Dashboard',
-      'Users',
+      'Employees',
       'Customers',
       'Orders',
       'Job Cards',
@@ -35,7 +35,7 @@ describe('visibleMenuItems', () => {
   test('phones show the shorter menu', () => {
     expect(
       labels(visibleMenuItems(MENU_ITEMS, { compact: true, query: '' })),
-    ).toEqual(['Dashboard', 'Users', 'Orders']);
+    ).toEqual(['Dashboard', 'Employees', 'Orders']);
   });
 
   test('search matches labels case-insensitively', () => {
@@ -194,7 +194,7 @@ describe('customerRows', () => {
         order('big', 'new'),
         order('big', 'in_progress'),
         order('big', 'completed'),
-        order('small', 'qc_pending'),
+        order('small', 'paused'),
       ],
     );
     expect(rows.map(r => [r.id, r.pendingDelivery])).toEqual([

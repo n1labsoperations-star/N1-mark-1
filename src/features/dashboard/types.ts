@@ -8,11 +8,12 @@ import type { JobCardsStackParamList } from '../jobCards/types';
 import type { MachinesStackParamList } from '../machines/types';
 import type { OrdersStackParamList } from '../orders/types';
 import type { ProfileStackParamList } from '../profile/types';
+import type { UserManagementStackParamList } from '../userManagement/types';
 
 // Screens in the admin sidebar / drawer.
 export type AdminDrawerParamList = {
   Overview: undefined;
-  Users: undefined;
+  Users: NavigatorScreenParams<UserManagementStackParamList> | undefined;
   Customers: NavigatorScreenParams<CustomersStackParamList> | undefined;
   Orders: NavigatorScreenParams<OrdersStackParamList> | undefined;
   JobCards: NavigatorScreenParams<JobCardsStackParamList> | undefined;

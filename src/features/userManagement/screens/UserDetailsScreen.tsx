@@ -29,11 +29,15 @@ import { RoleBadge, UserStatusBadge } from '../components/UserBadges';
 import { UserDetailsForm } from '../components/UserDetailsForm';
 import { USER_STRINGS } from '../constants';
 import { useUser } from '../hooks/useUsers';
-import type { AdminUser, UserManagementScreenProps } from '../types';
+import type {
+  AdminUser,
+  UserDetailsSection,
+  UserManagementScreenProps,
+} from '../types';
 
 const D = USER_STRINGS.details;
 
-type Section = 'profile' | 'address' | 'work' | 'security' | 'documents';
+type Section = UserDetailsSection;
 
 const SECTIONS: N1Tab<Section>[] = [
   { key: 'profile', label: D.sections.profile, icon: 'user' },
@@ -115,7 +119,9 @@ export function UserDetailsScreen({
     deletingId,
     deleteError,
   } = useUser(route.params.userId);
-  const [section, setSection] = useState<Section>('profile');
+  const [section, setSection] = useState<Section>(
+    route.params.section ?? 'profile',
+  );
   const [editing, setEditing] = useState(false);
   // Always the Users list, wherever this page was opened from.
   const goBack = useCallback(() => navigation.popTo('UsersList'), [navigation]);
@@ -140,10 +146,14 @@ export function UserDetailsScreen({
     (jobCardId: string) =>
       navigation.navigate('JobCards', {
         screen: 'JobCardDetails',
-        params: { jobCardId },
+        params: {
+          jobCardId,
+          from: 'employee',
+          fromUserId: route.params.userId,
+        },
         initial: false,
       }),
-    [navigation],
+    [navigation, route.params.userId],
   );
 
   const resetPassword = useCallback(

@@ -1,3 +1,4 @@
+import { act } from 'react-test-renderer';
 import { Alert } from 'react-native';
 import {
   allText,
@@ -10,6 +11,10 @@ import {
   renderAdmin,
   typeInto,
 } from '../../../shared/testing/testUtils';
+import { MOCK_ORDERS } from '../../orders/api/mockData';
+import type { WorkOrder } from '../../orders/types';
+import { jobCardsApi } from '../api/jobCardsApi';
+import { jobCardActions } from '../store/jobCardsSlice';
 import { MOCK_JOB_CARDS } from '../api/mockData';
 import type { JobCard, JobOperation } from '../types';
 import {
@@ -19,7 +24,13 @@ import {
   currentOperation,
   flowInput,
   initialFlowSteps,
+  jobCardFromOrder,
+  jobCardStage,
+  stageMeta,
+  startBlockedReason,
   jobProgress,
+  nextJobCardNumber,
+  redoOperation,
   optionsFrom,
   pauseOperation,
   progressTone,
@@ -164,10 +175,132 @@ describe('job card rules', () => {
   });
 });
 
+test('a new job card takes the order’s material source', () => {
+  const order = MOCK_ORDERS.find(o => o.id === '1042') as WorkOrder;
+  expect(
+    jobCardFromOrder({ ...order, materialSource: 'in_house' }),
+  ).toMatchObject({ materialSource: 'in_house' });
+  expect(
+    jobCardFromOrder({ ...order, materialSource: '' }).materialSource,
+  ).toBe('');
+});
+
+describe('job card stage', () => {
+  const step = (id: string, status: JobOperation['status']): JobOperation => ({
+    id,
+    name: id,
+    machine: '',
+    operator: '',
+    status,
+    startedAt: null,
+    completedAt: null,
+  });
+  const qc = (operationId: string, result: 'passed' | 'failed') => ({
+    id: `qc-${operationId}-${result}`,
+    stage: 'QC',
+    result,
+    remark: '',
+    at: '2026-09-25',
+    operationId,
+  });
+  const card = (changes: Partial<JobCard>): JobCard => ({
+    ...cardById('1042'),
+    materialQc: 'accepted',
+    billing: 'not_invoiced',
+    qcHistory: [],
+    operations: [],
+    ...changes,
+  });
+  const flow = (...ops: JobOperation[]) => ({ operations: ops });
+  const twoDone = flow(
+    step('Turning', 'completed'),
+    step('Drilling', 'completed'),
+  );
+  const firstDone = flow(
+    step('Turning', 'completed'),
+    step('Drilling', 'pending'),
+  );
+
+  test.each<[string, Partial<JobCard>]>([
+    ['RM received', { materialQc: 'pending' }],
+    ['RM QC failed', { materialQc: 'rejected' }],
+    ['RM QC passed', {}],
+    [
+      'Yet to start',
+      flow(step('Turning', 'pending'), step('Drilling', 'pending')),
+    ],
+    ['Turning', flow(step('Turning', 'running'), step('Drilling', 'pending'))],
+    ['Turning (paused)', flow(step('Turning', 'paused'))],
+    ['Turning QC', firstDone],
+    [
+      'Turning QC failed',
+      { ...firstDone, qcHistory: [qc('Turning', 'failed')] },
+    ],
+    [
+      'Drilling (up next)',
+      { ...firstDone, qcHistory: [qc('Turning', 'passed')] },
+    ],
+    ['Final QC', twoDone],
+    [
+      'Ready to dispatch',
+      { ...twoDone, qcHistory: [qc('Drilling', 'passed')] },
+    ],
+    ['Done', { ...twoDone, billing: 'invoiced' }],
+  ])('%s', (expected, changes) => {
+    expect(stageMeta(jobCardStage(card(changes))).label).toBe(expected);
+  });
+
+  test('the next step waits for RM QC and the last step’s QC', () => {
+    const waiting = card(firstDone);
+    expect(canStart(waiting)).toBe(false);
+    expect(startBlockedReason(waiting)).toBe('Waiting for Turning QC');
+    expect(canStart({ ...waiting, qcHistory: [qc('Turning', 'passed')] })).toBe(
+      true,
+    );
+    expect(
+      startBlockedReason(
+        card({ materialQc: 'pending', ...flow(step('Turning', 'pending')) }),
+      ),
+    ).toBe('Waiting for RM QC');
+    // A paused step can always resume.
+    expect(
+      canStart(
+        card(flow(step('Turning', 'completed'), step('Drilling', 'paused'))),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('job card numbers', () => {
+  test('seeded cards are JOB1, JOB2…; a new card gets the next number', async () => {
+    expect(MOCK_JOB_CARDS.map(c => c.code).slice(0, 3)).toEqual([
+      'JOB1',
+      'JOB2',
+      'JOB3',
+    ]);
+    expect(nextJobCardNumber([{ code: 'JOB2' }, { code: 'JOB9' }])).toBe(10);
+    expect(nextJobCardNumber([])).toBe(1);
+
+    jobCardsApi.reset();
+    const created = await jobCardsApi.create({
+      ...cardById('1042'),
+      id: '2001',
+      code: '',
+    });
+    expect(created.code).toBe(`JOB${MOCK_JOB_CARDS.length + 1}`);
+    jobCardsApi.reset();
+  });
+});
+
 describe('Job Cards list', () => {
-  test('table shows each card with its current operation and progress', async () => {
+  test('table shows each card with its status and progress', async () => {
     const { root } = await renderAdmin('JobCards');
     const text = allText(byTestId(root, 'job-cards-table'));
+    // Status, not the current operation, after the part name.
+    expect(text).toMatch(/Part name\|Status\|Assigned machine/);
+    expect(text).not.toContain('Current operation');
+    expect(allText(byTestId(root, 'job-card-stage-1036'))).toBe('RM received');
+    expect(allText(byTestId(root, 'job-card-stage-1035'))).toBe('Done');
     expect(text).toContain('WO #1042');
     expect(text).toContain('Bracket — Job A');
     expect(text).toContain('Turning (Lathe)');
@@ -213,7 +346,7 @@ describe('Job Cards list', () => {
     expect(text).toContain('WO #1039');
     await filter('Operator', []);
     await typeInto(
-      byLabel(root, 'Search by WO #, part or operator'),
+      byLabel(root, 'Search by job ID, WO #, part or operator'),
       'coupling',
     );
     expect(allText(byTestId(root, 'job-cards-table'))).toContain('WO #1036');
@@ -230,30 +363,30 @@ describe('Job Cards list', () => {
     expect(allText(table)).toContain('Job Cards');
   });
 
-  test('the diagram button explains drawings are not available yet', async () => {
-    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  test('the diagram button opens the full drawing', async () => {
     const { root } = await renderAdmin('JobCards');
     await press(byLabel(root, 'Open drawing for WO #1042'));
-    expect(alert).toHaveBeenCalledWith(
-      'Not available yet',
-      expect.stringContaining('Opening drawings'),
-    );
+    // Numbered by the order's drawing number.
+    expect(allText(root)).toContain('Drawing DRW-1187');
+    await press(byLabel(root, 'Close'));
+    expect(allText(root)).not.toContain('Drawing DRW-1187');
   });
 
-  test('plus opens Create flow', async () => {
+  test('plus opens the job card with Create flow open', async () => {
     const h = await renderAdmin('JobCards');
     await press(byLabel(h.root, 'Create flow for WO #1036'));
-    expect(h.currentRoute()).toBe('JobCardFlow');
-    expect(allText(byTestId(h.root, 'job-card-flow-screen'))).toContain(
-      'Create flow',
+    expect(h.currentRoute()).toBe('JobCardDetails');
+    expect(allText(byTestId(h.root, 'job-card-machining'))).toMatch(
+      /^Create flow/,
     );
   });
 
-  test('pencil opens Edit flow', async () => {
+  test('pencil opens the job card with Edit flow open', async () => {
     const h = await renderAdmin('JobCards');
     await press(byLabel(h.root, 'Edit flow for WO #1042'));
-    expect(allText(byTestId(h.root, 'job-card-flow-screen'))).toContain(
-      'Edit flow',
+    expect(h.currentRoute()).toBe('JobCardDetails');
+    expect(allText(byTestId(h.root, 'job-card-machining'))).toMatch(
+      /^Edit flow/,
     );
   });
 
@@ -306,26 +439,65 @@ describe('Job Cards list actions', () => {
 });
 
 describe('Job card details', () => {
-  test('shows the order, drawing, material, route card and QC history', async () => {
+  test('one card: back, title and actions on top; Machining, QC and Order details tabs', async () => {
     const h = await renderAdmin('JobCards');
     // Clicking anywhere on the row opens the job card.
     await press(byText(h.root, 'Bracket — Job A'));
     const screen = byTestId(h.root, 'job-card-details-screen');
     const text = allText(screen);
-    expect(text).toContain('WO #1042 · Acme Metalworks');
-    expect(text).toContain('In progress');
-    expect(text).toContain('High');
-    expect(text).toContain('02 Oct 2026');
-    expect(text).toContain('200 pcs');
-    expect(text).toContain('drawing.pdf');
-    expect(text).toContain('Design approval: Approved');
-    expect(text).toContain('Company purchased');
+    // The job card number leads; the work order sits small beneath it.
+    expect(text).toContain('#JOB1 · Acme Metalworks');
+    expect(allText(byTestId(screen, 'job-card-wo'))).toBe('WO #1042');
+    // Its status is the step under way.
+    expect(allText(byTestId(screen, 'job-card-stage-1042'))).toBe(
+      'Turning (Lathe)',
+    );
+    // Generate Dispatch is the only action; no Print Job Card.
+    expect(text).toContain('Generate Dispatch');
+    expect(text).not.toContain('Print Job Card');
+    // Machining, QC, then Order details; Machining opens first.
+    expect(text).toMatch(/\|Machining\|QC\|Order details\|/);
+    expect(
+      byTestId(screen, 'job-card-tab-machining').props.accessibilityState,
+    ).toMatchObject({ selected: true });
+    expect(hasTestId(screen, 'job-card-info')).toBe(false);
+
+    // Order details: the job's and the order's details.
+    await press(byTestId(screen, 'job-card-tab-order'));
+    expect(allText(byTestId(screen, 'job-card-info'))).toBe(
+      [
+        'Priority|High priority',
+        'Due date|02 Oct 2026',
+        'Quantity|200 pcs',
+        'Part|Bracket',
+        'Material source|Bought out',
+        'Material QC|Accepted',
+        'Quotation|Accepted',
+        'Billing|Not invoiced',
+      ].join('|'),
+    );
+    // The drawing is a thumbnail beside the details; it opens full size.
+    expect(allText(screen)).toContain('DRW-1187|drawing.pdf');
+    await press(byLabel(screen, 'View drawing DRW-1187'));
+    expect(allText(h.root)).toContain('Drawing DRW-1187');
+    await press(byLabel(h.root, 'Close'));
+
+    // The order is one card, not its full details.
+    expect(allText(byTestId(screen, 'job-card-order'))).toBe(
+      'WO #1042 · Bracket — Job A|Acme Metalworks · PO-8842 · Due 02 Oct 2026|In progress',
+    );
+    expect(text).not.toContain('DC-5561');
+    expect(hasTestId(screen, 'overall-progress')).toBe(false);
+    expect(hasTestId(screen, 'qc-history')).toBe(false);
+
+    await press(byTestId(screen, 'job-card-tab-machining'));
+    expect(hasTestId(screen, 'job-card-info')).toBe(false);
     expect(allText(byTestId(screen, 'overall-progress'))).toContain('42%');
 
     // Every step is listed; only the current one starts open (and highlighted).
     const step = (id: string) => byTestId(screen, `operation-1042-${id}`);
-    expect(allText(step('op1'))).toContain('Material QC');
-    expect(allText(step('op1'))).not.toContain('QC Bay 1');
+    expect(allText(step('op1'))).toContain('Cutting');
+    expect(allText(step('op1'))).not.toContain('Saw-01');
     expect(step('op1').props.accessibilityState).toMatchObject({
       selected: false,
       expanded: false,
@@ -349,7 +521,7 @@ describe('Job card details', () => {
     });
     await press(step('op3'));
     expect(allText(byTestId(screen, 'operation-1042-op1'))).toContain(
-      'QC Bay 1 · Suresh Babu',
+      'Saw-01 · Meena Lakshmi',
     );
     expect(allText(byTestId(screen, 'operation-1042-op1'))).toContain(
       'Completed at: 09:45 AM',
@@ -363,11 +535,51 @@ describe('Job card details', () => {
     expect(allText(byTestId(screen, 'operation-1042-op5'))).toContain(
       'Upcoming',
     );
+
+    await press(byTestId(screen, 'job-card-tab-qc'));
+    expect(hasTestId(screen, 'overall-progress')).toBe(false);
+    expect(allText(byTestId(screen, 'job-card-material-qc'))).toContain(
+      'Accepted',
+    );
     const qc = allText(byTestId(screen, 'qc-history'));
     expect(qc).toContain('Facing - QC');
     expect(qc).toContain('Passed');
     expect(qc).toContain('Voice + text note');
-    expect(text).toContain('Not invoiced');
+  });
+
+  test('QC history has a Report column: open an uploaded report, or upload one', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const h = await renderAdmin('JobCards');
+    await h.navigate('JobCardDetails', { jobCardId: '1042' });
+    const screen = () => byTestId(h.root, 'job-card-details-screen');
+    await press(byTestId(screen(), 'job-card-tab-qc'));
+    const table = () => allText(byTestId(screen(), 'qc-history'));
+    expect(table()).toMatch(/Stage\|Result\|Remark\|QC by\|Date\|Report/);
+    // Who did each check.
+    expect(table()).toContain(
+      'Material QC|Accepted|Voice + text note|Suresh Babu',
+    );
+    expect(table()).toContain('Facing - QC|Passed|—|Divya Rao');
+
+    // Material QC already has its report; it opens from the row.
+    expect(allText(byTestId(screen(), 'qc-report-qc1'))).toBe(
+      'material-qc-report.pdf',
+    );
+    await press(byTestId(screen(), 'qc-report-qc1'));
+    expect(alert).toHaveBeenCalledTimes(1);
+
+    // Facing - QC has none yet: Upload attaches the picked file.
+    expect(hasTestId(screen(), 'qc-report-qc2')).toBe(false);
+    await press(byLabel(screen(), 'Upload QC report for Facing - QC'));
+    const qc2 = h.store
+      .getState()
+      .jobCards.entities['1042'].qcHistory.find(e => e.id === 'qc2');
+    expect(qc2?.report).toMatchObject({
+      name: 'qc-report.pdf',
+      kind: 'QC report',
+    });
+    expect(allText(byTestId(screen(), 'qc-report-qc2'))).toBe('qc-report.pdf');
+    expect(hasTestId(screen(), 'qc-report-upload-qc2')).toBe(false);
   });
 
   test('quick actions pause, resume and complete the running step', async () => {
@@ -376,6 +588,7 @@ describe('Job card details', () => {
     const screen = () => byTestId(h.root, 'job-card-details-screen');
     const disabled = (id: string) =>
       byTestId(screen(), id).props.accessibilityState.disabled;
+    await press(byTestId(screen(), 'job-card-tab-machining'));
     // A step is already running, so only Pause and Complete apply.
     expect(disabled('start-operation')).toBe(true);
     expect(disabled('pause-operation')).toBe(false);
@@ -397,15 +610,62 @@ describe('Job card details', () => {
     expect(allText(byTestId(screen(), 'operation-1042-op4'))).toContain(
       'Next operation',
     );
+
+    // Deburring waits for Turning's QC check.
+    expect(allText(byTestId(screen(), 'job-card-stage-1042'))).toBe(
+      'Turning (Lathe) QC',
+    );
+    expect(disabled('start-operation')).toBe(true);
+    expect(allText(byTestId(screen(), 'start-blocked'))).toBe(
+      'Waiting for Turning (Lathe) QC',
+    );
   });
 
-  test('print explains it is not available yet', async () => {
-    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  test('a step that failed its QC can be redone, then started again', async () => {
     const h = await renderAdmin('JobCards');
     await h.navigate('JobCardDetails', { jobCardId: '1042' });
-    const screen = byTestId(h.root, 'job-card-details-screen');
-    await press(byLabel(screen, 'Print Job Card'));
-    expect(alert).toHaveBeenCalledTimes(1);
+    // Turning finished, then failed its QC check.
+    const card = h.store.getState().jobCards.entities['1042'];
+    await act(async () => {
+      h.store.dispatch(
+        jobCardActions.saveSuccess({
+          ...card,
+          ...completeOperation(card, '2026-09-25T11:00:00'),
+          qcHistory: [
+            ...card.qcHistory,
+            {
+              id: 'qc3',
+              stage: 'Turning - QC',
+              result: 'failed',
+              remark: 'Oversize',
+              at: '2026-09-25',
+              operationId: '1042-op3',
+            },
+          ],
+        }),
+      );
+    });
+    const screen = () => byTestId(h.root, 'job-card-details-screen');
+    expect(allText(byTestId(screen(), 'job-card-stage-1042'))).toBe(
+      'Turning (Lathe) QC failed',
+    );
+
+    await press(byTestId(screen(), 'redo-operation'));
+    const turning = h.store.getState().jobCards.entities['1042'].operations[2];
+    expect(turning).toMatchObject({
+      name: 'Turning (Lathe)',
+      status: 'pending',
+    });
+    expect(allText(byTestId(screen(), 'job-card-stage-1042'))).toBe(
+      'Turning (Lathe) (up next)',
+    );
+    expect(
+      byTestId(screen(), 'start-operation').props.accessibilityState.disabled,
+    ).toBe(false);
+    // Only the steps change: the failed check stays in the QC history.
+    expect(
+      Object.keys(redoOperation(card, '1042-op3', '2026-09-25T12:00:00')),
+    ).toEqual(['operations', 'status']);
   });
 
   test('dispatch against the customer’s quote adds an invoice', async () => {
@@ -427,6 +687,10 @@ describe('Job card details', () => {
     await press(byTestId(h.root, 'dispatch-submit'));
 
     expect(h.currentRoute()).toBe('InvoiceDetails');
+    // Dispatched: the job card is Done.
+    expect(h.store.getState().jobCards.entities['1042'].billing).toBe(
+      'invoiced',
+    );
     const invoice = Object.values(
       h.store.getState().billing.invoices.entities,
     ).find(i => i?.jobId === 'WO-01042');
@@ -457,7 +721,7 @@ describe('Job card details', () => {
     ).find(i => i?.jobId === 'WO-01039');
     expect(invoice).toMatchObject({ quoteId: null, gstRate: 18 });
     expect(invoice?.lineItems.map(l => l.operation)).toEqual([
-      'Material QC',
+      'Cutting',
       'CNC Milling',
       'Drilling',
       'Deburring',
@@ -476,16 +740,19 @@ describe('Job card details', () => {
     const h = await renderAdmin('JobCards');
     await h.navigate('JobCardDetails', { jobCardId: '1036' });
     const screen = byTestId(h.root, 'job-card-details-screen');
+    await press(byTestId(screen, 'job-card-tab-machining'));
     expect(allText(screen)).toContain('No process flow yet');
-    expect(allText(screen)).toContain('Not started');
+    expect(allText(screen)).toContain('RM received');
     await press(byTestId(screen, 'open-flow'));
-    expect(h.currentRoute()).toBe('JobCardFlow');
+    expect(h.currentRoute()).toBe('JobCardDetails');
+    expect(hasTestId(h.root, 'flow-editor')).toBe(true);
   });
 
   test('a rejected material shows what RM QC rejected; only supervisors re-initiate', async () => {
     const h = await renderAdmin('JobCards');
     await h.navigate('JobCardDetails', { jobCardId: '1041' });
     const screen = byTestId(h.root, 'job-card-details-screen');
+    await press(byTestId(screen, 'job-card-tab-qc'));
     const rejected = allText(byTestId(screen, 'rejected-material'));
     expect(rejected).toContain('Rejected material');
     expect(rejected).toContain('HT-99212');
@@ -506,18 +773,109 @@ describe('Job card details', () => {
     await press(byTestId(h.root, 'order-job-card-1042'));
     expect(h.currentRoute()).toBe('JobCardDetails');
     expect(allText(byTestId(h.root, 'job-card-details-screen'))).toContain(
-      'WO #1042 · Acme Metalworks',
+      '#JOB1 · Acme Metalworks',
     );
   });
 });
 
-describe('Create / Edit flow', () => {
-  test('create needs every step chosen, then saves the flow', async () => {
+describe('Back returns to where the job card was opened from', () => {
+  const back = (h: Awaited<ReturnType<typeof renderAdmin>>) =>
+    byTestId(h.root, 'job-card-details-back');
+
+  test('Job Cards list → Back to the list', async () => {
     const h = await renderAdmin('JobCards');
-    await h.navigate('JobCardFlow', { jobCardId: '1036' });
-    const screen = () => byTestId(h.root, 'job-card-flow-screen');
-    expect(allText(screen())).toContain('WO #1036 · Bright Steel Co.');
-    expect(allText(screen())).toContain('Medium priority');
+    await press(byText(h.root, 'Bracket — Job A'));
+    expect(allText(back(h))).toBe('Back');
+    await press(back(h));
+    expect(h.currentRoute()).toBe('JobCards');
+  });
+
+  test('Dashboard → Back to dashboard', async () => {
+    const h = await renderAdmin('Overview');
+    await press(byTestId(h.root, 'priority-job-1042'));
+    expect(h.currentRoute()).toBe('JobCardDetails');
+    expect(allText(back(h))).toBe('Back to dashboard');
+    await press(back(h));
+    expect(h.currentRoute()).toBe('Dashboard');
+    // The sidebar's Job Cards then opens on the list, not that card.
+    await press(byLabel(h.root, 'Job Cards'));
+    expect(h.currentRoute()).toBe('JobCards');
+  });
+
+  test('Orders list → Back to the Job Cards list, with or without a flow', async () => {
+    const h = await renderAdmin('Orders');
+    await press(byTestId(h.root, 'job-card-1042'));
+    expect(h.currentRoute()).toBe('JobCardDetails');
+    expect(allText(back(h))).toBe('Back');
+    await press(back(h));
+    expect(h.currentRoute()).toBe('JobCards');
+
+    // No flow yet: the job card opens with Create flow open; Back goes to
+    // the Job Cards list too.
+    await press(byLabel(h.root, 'Orders'));
+    await press(byLabel(h.root, 'Create job card for WO #1036'));
+    expect(h.currentRoute()).toBe('JobCardDetails');
+    expect(hasTestId(h.root, 'flow-editor')).toBe(true);
+    await press(back(h));
+    expect(h.currentRoute()).toBe('JobCards');
+  });
+
+  test('Order details → Back to that order', async () => {
+    const h = await renderAdmin('Orders');
+    await h.navigate('OrderDetails', { orderId: '1042' });
+    await press(byTestId(h.root, 'order-tab-jobCard'));
+    await press(byTestId(h.root, 'order-job-card-1042'));
+    expect(allText(back(h))).toBe('Back to order');
+    await press(back(h));
+    expect(h.currentRoute()).toBe('OrderDetails');
+    expect(allText(byTestId(h.root, 'order-details-screen'))).toContain(
+      'WO #1042',
+    );
+  });
+
+  test('the order card opens the order; its Back returns to the job card', async () => {
+    const h = await renderAdmin('JobCards');
+    await press(byText(h.root, 'Bracket — Job A'));
+    await press(byTestId(h.root, 'job-card-tab-order'));
+    await press(byLabel(h.root, 'Open order WO #1042'));
+    expect(h.currentRoute()).toBe('OrderDetails');
+    const orderBack = byTestId(h.root, 'order-details-back');
+    expect(allText(orderBack)).toBe('Back to job card');
+    await press(orderBack);
+    expect(h.currentRoute()).toBe('JobCardDetails');
+    expect(allText(byTestId(h.root, 'job-card-details-screen'))).toContain(
+      '#JOB1 · Acme Metalworks',
+    );
+  });
+
+  test('Employee work history → Back to that employee’s work history', async () => {
+    const h = await renderAdmin('Users');
+    await h.navigate('UserDetails', { userId: 'USR-6' });
+    await press(byTestId(h.root, 'user-section-work'));
+    await press(byTestId(h.root, 'user-work-1042'));
+    expect(allText(back(h))).toBe('Back to employee');
+    await press(back(h));
+    expect(h.currentRoute()).toBe('UserDetails');
+    expect(hasTestId(h.root, 'user-work-history')).toBe(true);
+  });
+});
+
+describe('Create / Edit flow, in place on the job card', () => {
+  // Opens the job card and its flow editor, the way the lists' + / pencil do.
+  const openEditor = async (jobCardId: string) => {
+    const h = await renderAdmin('JobCards');
+    await h.navigate('JobCardDetails', { jobCardId, editFlow: true });
+    const screen = () => byTestId(h.root, 'job-card-details-screen');
+    return { h, screen };
+  };
+
+  test('create needs every step chosen, then saves the flow', async () => {
+    const { h, screen } = await openEditor('1036');
+    // Same screen: the job card's header stays, Save sits at the top.
+    expect(allText(screen())).toContain('#JOB7 · Bright Steel Co.');
+    expect(allText(byTestId(screen(), 'job-card-machining'))).toMatch(
+      /^Create flow\|Cancel\|Create\|/,
+    );
     expect(hasTestId(screen(), 'flow-step-3')).toBe(true);
 
     await press(byTestId(screen(), 'flow-submit'));
@@ -526,7 +884,7 @@ describe('Create / Edit flow', () => {
     );
 
     await press(byLabel(screen(), 'Remove step 3'));
-    await choose(h.root, 'flow-step-1-operation', 'Material QC');
+    await choose(h.root, 'flow-step-1-operation', 'Cutting');
     await choose(h.root, 'flow-step-2-operation', 'CNC Turning');
     await press(byTestId(screen(), 'add-process'));
     await choose(h.root, 'flow-step-3-operation', 'Packing');
@@ -534,18 +892,19 @@ describe('Create / Edit flow', () => {
 
     const card = h.store.getState().jobCards.entities['1036'];
     expect(card.operations.map(o => o.name)).toEqual([
-      'Material QC',
+      'Cutting',
       'CNC Turning',
       'Packing',
     ]);
     expect(card.operations.every(o => o.status === 'pending')).toBe(true);
-    expect(h.currentRoute()).not.toBe('JobCardFlow');
+    // Saved: back to the route card, still on the job card.
+    expect(h.currentRoute()).toBe('JobCardDetails');
+    expect(hasTestId(screen(), 'flow-editor')).toBe(false);
+    expect(allText(screen())).toContain('Route card & progress');
   });
 
   test('removing every step asks for at least one', async () => {
-    const h = await renderAdmin('JobCards');
-    await h.navigate('JobCardFlow', { jobCardId: '1036' });
-    const screen = () => byTestId(h.root, 'job-card-flow-screen');
+    const { h, screen } = await openEditor('1036');
     for (let i = 3; i >= 1; i -= 1) {
       await press(byLabel(screen(), `Remove step ${i}`));
     }
@@ -554,11 +913,13 @@ describe('Create / Edit flow', () => {
     expect(h.store.getState().jobCards.entities['1036'].operations).toEqual([]);
   });
 
-  test('edit locks completed steps and saves changes to the rest', async () => {
+  test('Edit flow on the Machining tab locks completed steps and saves the rest', async () => {
     const h = await renderAdmin('JobCards');
-    await h.navigate('JobCardFlow', { jobCardId: '1042' });
-    const screen = () => byTestId(h.root, 'job-card-flow-screen');
+    await h.navigate('JobCardDetails', { jobCardId: '1042' });
+    const screen = () => byTestId(h.root, 'job-card-details-screen');
+    await press(byTestId(screen(), 'open-flow'));
     const text = allText(screen());
+    expect(text).toMatch(/Edit flow\|Cancel\|Save changes/);
     expect(text).toContain('Completed steps are locked.');
     expect(text).toContain('In progress');
     expect(text).toContain('Upcoming');
@@ -570,7 +931,7 @@ describe('Create / Edit flow', () => {
 
     const ops = h.store.getState().jobCards.entities['1042'].operations;
     expect(ops.map(o => o.name)).toEqual([
-      'Material QC',
+      'Cutting',
       'Facing (Lathe)',
       'Turning (Lathe)',
       'Deburring',
@@ -578,40 +939,88 @@ describe('Create / Edit flow', () => {
     ]);
     expect(ops[0].status).toBe('completed');
     expect(ops[2].status).toBe('running');
+    expect(hasTestId(screen(), 'flow-editor')).toBe(false);
   });
 
-  test('cancel leaves the flow unchanged', async () => {
-    const h = await renderAdmin('JobCards');
-    await h.navigate('JobCardFlow', { jobCardId: '1042' });
-    const screen = byTestId(h.root, 'job-card-flow-screen');
-    await press(byLabel(screen, 'Remove step 6'));
-    await press(byLabel(screen, 'Cancel'));
+  test('cancel leaves the flow unchanged and shows the route card again', async () => {
+    const { h, screen } = await openEditor('1042');
+    await press(byLabel(screen(), 'Remove step 6'));
+    await press(byTestId(screen(), 'flow-cancel'));
     expect(
       h.store.getState().jobCards.entities['1042'].operations,
     ).toHaveLength(6);
+    expect(hasTestId(screen(), 'flow-editor')).toBe(false);
+    expect(allText(byTestId(screen(), 'overall-progress'))).toContain('42%');
   });
 
-  test('phone pins the save button and uses a close icon', async () => {
+  test('the list’s + and pencil open the job card with the editor open', async () => {
+    const h = await renderAdmin('JobCards');
+    await press(byLabel(h.root, 'Create flow for WO #1036'));
+    expect(h.currentRoute()).toBe('JobCardDetails');
+    expect(hasTestId(h.root, 'flow-editor')).toBe(true);
+    await press(byTestId(h.root, 'job-card-details-back'));
+    await press(byLabel(h.root, 'Edit flow for WO #1042'));
+    expect(allText(byTestId(h.root, 'job-card-machining'))).toMatch(
+      /^Edit flow/,
+    );
+  });
+
+  test('wide screens: the title and buttons stay on top, Add process at the bottom; only the steps scroll', async () => {
+    const h = await renderAdmin('JobCards');
+    await h.navigate('JobCardDetails', { jobCardId: '1042' });
+    const pane = () => byTestId(h.root, 'job-card-machining');
+    const scroll = () => byTestId(h.root, 'job-card-machining-scroll');
+    // Route card: title and Edit flow above the scrolling steps.
+    expect(hasTestId(pane(), 'open-flow')).toBe(true);
+    expect(hasTestId(scroll(), 'open-flow')).toBe(false);
+    expect(hasTestId(scroll(), 'overall-progress')).toBe(true);
+    expect(allText(scroll())).not.toContain('Route card & progress');
+
+    // Editing: title, Cancel and Save above the scrolling steps.
+    await press(byTestId(pane(), 'open-flow'));
+    expect(hasTestId(pane(), 'flow-submit')).toBe(true);
+    expect(hasTestId(scroll(), 'flow-submit')).toBe(false);
+    expect(hasTestId(scroll(), 'flow-cancel')).toBe(false);
+    expect(hasTestId(scroll(), 'flow-step-1')).toBe(true);
+    // Add process stays pinned below the steps, and still adds one.
+    expect(hasTestId(pane(), 'add-process')).toBe(true);
+    expect(hasTestId(scroll(), 'add-process')).toBe(false);
+    await press(byTestId(pane(), 'add-process'));
+    expect(hasTestId(scroll(), 'flow-step-7')).toBe(true);
+  });
+
+  test('phone: Save stays at the top of the editor', async () => {
     mockWidth = 390;
-    const h = await renderAdmin('JobCards');
-    await h.navigate('JobCardFlow', { jobCardId: '1042' });
-    const screen = byTestId(h.root, 'job-card-flow-screen');
-    expect(allText(screen)).toContain('Save changes');
-    expect(allText(screen)).toContain('High');
-    expect(allText(screen)).not.toContain('High priority');
-  });
-
-  test('an unknown card says it no longer exists', async () => {
-    const h = await renderAdmin('JobCards');
-    await h.navigate('JobCardFlow', { jobCardId: 'nope' });
-    expect(allText(h.root)).toContain('This job card no longer exists.');
+    const { screen } = await openEditor('1042');
+    expect(allText(byTestId(screen(), 'job-card-machining'))).toMatch(
+      /^Edit flow\|Cancel\|Save changes\|/,
+    );
   });
 });
 
 test('search finds a job card by its work ID', async () => {
   const { root } = await renderAdmin('JobCards');
-  await typeInto(byLabel(root, 'Search by WO #, part or operator'), 'WO #1039');
+  await typeInto(
+    byLabel(root, 'Search by job ID, WO #, part or operator'),
+    'WO #1039',
+  );
   const text = allText(byTestId(root, 'job-cards-table'));
   expect(text).toContain('Showing 1 of 1');
   expect(text).toContain('WO #1039');
+});
+
+test('the first column is the job ID, with the work order small beneath', async () => {
+  const { root } = await renderAdmin('JobCards');
+  const table = allText(byTestId(root, 'job-cards-table'));
+  expect(table).toMatch(/^.*Job ID\|Part name/);
+  expect(table).toContain('#JOB1|WO #1042|Bracket — Job A');
+
+  // Search finds a card by its job ID too.
+  await typeInto(
+    byLabel(root, 'Search by job ID, WO #, part or operator'),
+    'JOB3',
+  );
+  const found = allText(byTestId(root, 'job-cards-table'));
+  expect(found).toContain('Showing 1 of 1');
+  expect(found).toContain('#JOB3|WO #1037');
 });

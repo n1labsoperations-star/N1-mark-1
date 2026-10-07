@@ -130,11 +130,17 @@ export function OrderDetailsScreen({
   const jobCards = useJobCards();
   const jobCard = jobCards.items.find(c => c.id === route.params.orderId);
 
-  // Back to where the order was opened from: the customer it was opened
-  // on (keeping that page's own Back), else the orders list.
-  const { fromCustomerId } = route.params;
+  // Back to where the order was opened from: the customer or job card it
+  // was opened on (keeping that page's own Back), else the orders list.
+  const { fromCustomerId, fromJobCardId } = route.params;
   const goBack = useCallback(() => {
-    if (fromCustomerId) {
+    if (fromJobCardId) {
+      navigation.navigate('JobCards', {
+        screen: 'JobCardDetails',
+        params: { jobCardId: fromJobCardId },
+        initial: false,
+      });
+    } else if (fromCustomerId) {
       navigation.navigate('Customers', {
         screen: 'CustomerDetails',
         params: { customerId: fromCustomerId },
@@ -143,8 +149,12 @@ export function OrderDetailsScreen({
     } else {
       navigation.popTo('OrdersList');
     }
-  }, [navigation, fromCustomerId]);
-  const backLabel = fromCustomerId ? D.backToCustomer : D.backToOrders;
+  }, [navigation, fromCustomerId, fromJobCardId]);
+  const backLabel = fromJobCardId
+    ? D.backToJobCard
+    : fromCustomerId
+    ? D.backToCustomer
+    : D.backToOrders;
   const edit = useCallback(
     () =>
       navigation.navigate('OrderForm', {
@@ -167,8 +177,8 @@ export function OrderDetailsScreen({
     (card: JobCard) =>
       navigation.navigate('JobCards', {
         screen: 'JobCardDetails',
-        params: { jobCardId: card.id },
-        // Keep the list underneath so Back returns to it.
+        // Back returns to this order.
+        params: { jobCardId: card.id, from: 'order' },
         initial: false,
       }),
     [navigation],

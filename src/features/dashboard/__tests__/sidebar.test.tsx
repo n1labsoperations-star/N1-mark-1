@@ -143,6 +143,10 @@ test('priority jobs are job card tiles, earliest due first, that open the job ca
   const first = allText(tiles[0]);
   // Route card number with the client in brackets.
   expect(first).toMatch(/^RC-\d+ \(.+\)/);
+  // Then the job card ID, work order and part.
+  expect(allText(byTestId(h.root, 'priority-job-ids-1042'))).toBe(
+    '#JOB1 · WO #1042 · Bracket',
+  );
   expect(first).toContain('%');
 
   await press(tiles[0]);

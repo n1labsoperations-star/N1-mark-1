@@ -54,7 +54,6 @@ export const ORGANIZATION_STRINGS = {
     taxRates: 'Tax rates',
     invoicePrefix: 'Invoice prefix',
     invoiceStartNumber: 'Starting number',
-    paymentTerms: 'Payment terms',
     invoiceFooter: 'Invoice footer',
     invoiceLogo: 'Invoice logo',
     termsAndConditions: 'Terms & conditions',
@@ -76,7 +75,6 @@ export const ORGANIZATION_STRINGS = {
     gstNumber: 'e.g. 33ABCDE1234F1Z5',
     invoicePrefix: 'e.g. INV-2026-',
     invoiceStartNumber: 'e.g. 1',
-    paymentTerms: 'Select payment terms',
     invoiceFooter: 'e.g. Thank you for your business.',
     termsAndConditions: 'Payment terms, returns, warranty…',
   },
@@ -99,14 +97,6 @@ export const BUSINESS_TYPE_OPTIONS: N1DropDownOption<string>[] = [
   { label: 'Private Limited', value: 'private-limited' },
   { label: 'Public Limited', value: 'public-limited' },
   { label: 'Other', value: 'other' },
-];
-
-export const PAYMENT_TERMS_OPTIONS: N1DropDownOption<string>[] = [
-  { label: 'Due on receipt', value: 'due-on-receipt' },
-  { label: 'Net 15', value: 'net-15' },
-  { label: 'Net 30', value: 'net-30' },
-  { label: 'Net 45', value: 'net-45' },
-  { label: 'Net 60', value: 'net-60' },
 ];
 
 export const STATE_OPTIONS: N1DropDownOption<string>[] = INDIAN_STATES.map(
@@ -177,12 +167,7 @@ export const SECTION_FIELDS: Record<
   general: ['name', 'phone', 'email', 'website'],
   business: ['businessType', 'industry', 'registrationDetails'],
   address: ['address', 'city', 'state', 'pinCode', 'country'],
-  invoice: [
-    'invoicePrefix',
-    'invoiceStartNumber',
-    'paymentTerms',
-    'invoiceFooter',
-  ],
+  invoice: ['invoicePrefix', 'invoiceStartNumber', 'invoiceFooter'],
   documents: ['invoiceLogo', 'termsAndConditions', 'signature'],
 };
 
@@ -259,7 +244,6 @@ export function sectionChanges(
       return {
         invoicePrefix: trimmed(v.invoicePrefix),
         invoiceStartNumber: Number(v.invoiceStartNumber),
-        paymentTerms: v.paymentTerms,
         invoiceFooter: trimmed(v.invoiceFooter),
       };
     case 'documents':
@@ -313,7 +297,6 @@ export function newOrganization(
     defaultTaxRate: 18,
     invoicePrefix: 'INV-',
     invoiceStartNumber: 1,
-    paymentTerms: 'net-30',
     invoiceFooter: '',
     invoiceLogo: null,
     termsAndConditions: '',
@@ -358,11 +341,7 @@ const COMPLETION_CHECKS: Record<
     o => !o.gstRegistered || filled(o.gstNumber),
     o => !o.gstRegistered || o.defaultTaxRate !== null,
   ],
-  invoice: [
-    o => filled(o.invoicePrefix),
-    o => filled(o.paymentTerms),
-    o => filled(o.invoiceFooter),
-  ],
+  invoice: [o => filled(o.invoicePrefix), o => filled(o.invoiceFooter)],
   documents: [
     o => o.invoiceLogo !== null,
     o => filled(o.termsAndConditions),

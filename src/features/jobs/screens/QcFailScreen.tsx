@@ -27,6 +27,7 @@ import {
   QC_STRINGS,
   REJECTED_MATERIAL_FIELDS,
 } from '../constants';
+import { useEmployeeProfile } from '../../profile/hooks/useEmployeeProfile';
 import { qcResult } from '../qc';
 import type { JobsScreenProps } from '../types';
 
@@ -56,6 +57,8 @@ export function QcFailScreen({ route, navigation }: JobsScreenProps<'QcFail'>) {
   const { jobCardId, kind } = route.params;
   const { jobCard, status, error, reload, update, saving, saveError } =
     useJobCard(jobCardId);
+  // Recorded on the check as who failed it.
+  const { profile } = useEmployeeProfile();
   const [remarks, setRemarks] = useState('');
   const [missing, setMissing] = useState(false);
   const [material, setMaterial] = useState(NO_MATERIAL);
@@ -107,6 +110,7 @@ export function QcFailScreen({ route, navigation }: JobsScreenProps<'QcFail'>) {
         false,
         remarks.trim(),
         new Date().toISOString(),
+        profile?.name,
         isRm
           ? {
               grade: material.grade.trim(),

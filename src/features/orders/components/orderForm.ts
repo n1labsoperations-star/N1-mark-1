@@ -149,12 +149,10 @@ export const ORDER_FORM_STEPS: (keyof OrderFormValues)[][] = [
  */
 export const REQUIRED_ORDER_FIELDS = [
   'customerName',
-  'poNumber',
   'partName',
   'drawingNumber',
   'routeCardNo',
   'deliveryDate',
-  'dcNo',
   'dcDate',
 ] as const satisfies (keyof OrderFormValues)[];
 

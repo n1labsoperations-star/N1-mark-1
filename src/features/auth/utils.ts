@@ -19,6 +19,9 @@ export function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
+/** Last 10 digits, so "+91 90000 00001" and "9000000001" match. */
+const phoneKey = (phone: string) => phone.replace(/\D/g, '').slice(-10);
+
 export type PasswordRules = {
   minLength: boolean;
   lettersAndNumbers: boolean;
@@ -62,13 +65,20 @@ export function isCompleteCode(code: string): boolean {
   return sanitizeCode(code).length === VERIFICATION_CODE_LENGTH;
 }
 
-/** The mock user matching these credentials, or undefined. Email ignores case and spaces. */
+/**
+ * The mock user matching these credentials, or undefined. The login ID is an
+ * email (case and spaces ignored) or a phone number (only digits count).
+ */
 export function findMockUser(
-  email: string,
+  loginId: string,
   password: string,
 ): MockUser | undefined {
-  const normalized = email.trim().toLowerCase();
+  const email = loginId.trim().toLowerCase();
+  const phone = isValidEmail(loginId) ? '' : phoneKey(loginId);
   return MOCK_USERS.find(
-    user => user.email === normalized && user.password === password,
+    user =>
+      (user.email === email ||
+        (phone !== '' && phoneKey(user.phone) === phone)) &&
+      user.password === password,
   );
 }

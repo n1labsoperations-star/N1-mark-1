@@ -8,6 +8,7 @@ import {
 } from '../../../shared/components';
 import { RowActions } from '../../../shared/components';
 import { USER_STRINGS } from '../constants';
+import { userContact } from '../utils';
 import type { AdminUser } from '../types';
 import { RoleBadge, UserStatusBadge } from './UserBadges';
 
@@ -46,7 +47,7 @@ export const UserCard = memo(function UserCardComponent({
             {user.name}
           </N1Text>
           <N1Text variant="small" color="secondary" numberOfLines={1}>
-            {user.email}
+            {userContact(user)}
           </N1Text>
         </View>
       </View>

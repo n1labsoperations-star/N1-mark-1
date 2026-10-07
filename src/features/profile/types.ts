@@ -57,8 +57,6 @@ export type Organization = {
   // Invoice settings
   invoicePrefix: string;
   invoiceStartNumber: number;
-  /** A PAYMENT_TERMS_OPTIONS value, e.g. "net-30". */
-  paymentTerms: string;
   invoiceFooter: string;
 
   // Document settings

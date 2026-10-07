@@ -1,50 +1,88 @@
-import { useCallback, type ReactNode } from 'react';
-import { View } from 'react-native';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref,
+} from 'react';
+import {
+  Pressable,
+  ScrollView,
+  View,
+  type ScrollViewInstance,
+} from 'react-native';
 import { StackActions } from '@react-navigation/native';
 import {
   AdminScreen,
   AsyncContent,
   ComingSoon,
-  DetailHeader,
   N1Button,
   N1Card,
-  N1Chip,
+  N1DetailGrid,
   N1Divider,
+  N1Icon,
   N1KeyValueList,
+  N1Tabs,
   N1Text,
   createN1Styles,
   useN1Breakpoint,
   useN1Styles,
+  type N1Tab,
 } from '../../../shared/components';
-import { useToggle } from '../../../shared/hooks';
+import { useOnSettled, useToggle } from '../../../shared/hooks';
+import type { Attachment } from '../../../shared/types';
+import { pickDocument } from '../../../services/files/pickDocument';
+import { openDocument } from '../../../services/files/viewDocument';
 import {
   formatLongDate,
   notify,
   notifyUnavailable,
 } from '../../../shared/utils';
 import { BILLING_STRINGS, GenerateDispatchModal } from '../../billing';
-import { PRIORITY_META } from '../../orders/constants';
+import { PriorityBadge } from '../../orders/components/OrderBadges';
+import { useOrder } from '../../orders/hooks/useOrders';
 import { useOptionalEmployeeRole } from '../../profile/context/EmployeeRoleContext';
-import { DashedTile } from '../components/DashedTile';
+import {
+  AddProcessButton,
+  FlowEditor,
+  useFlowEditor,
+} from '../components/FlowEditor';
 import { JobCardStatusBadge, MetaBadge } from '../components/JobCardBadges';
+import { LinkedOrderCard } from '../components/LinkedOrderCard';
+import {
+  DocumentViewer,
+  type ViewerTarget,
+} from '../../orders/components/DocumentViewer';
+import { DrawingPreview } from '../../orders/components/DrawingPreview';
+import { MATERIAL_SOURCE_OPTIONS, ORDER_STRINGS } from '../../orders/constants';
+import { COMMON_STRINGS } from '../../../shared/constants';
 import { QcHistory } from '../components/QcHistory';
 import { RouteCard } from '../components/RouteCard';
 import {
   BILLING_META,
-  DESIGN_APPROVAL_META,
-  DRAWING_TILE_WIDTH,
+  DRAWING_THUMB_WIDTH,
   JOB_CARD_STRINGS,
   MATERIAL_QC_META,
-  MATERIAL_SOURCE_LABELS,
   QUOTATION_META,
 } from '../constants';
+import { useJobCardBack } from '../hooks/useJobCardBack';
 import { useJobCard } from '../hooks/useJobCards';
-import type { JobCardsScreenProps } from '../types';
+import type {
+  JobCard,
+  JobCardInput,
+  JobCardsScreenProps,
+  QcEntry,
+} from '../types';
 import {
+  attachQcReport,
   canPauseOrComplete,
   canStart,
+  jobCardStage,
+  redoOperation,
+  startBlockedReason,
   completeOperation,
-  jobCustomerHeading,
+  jobCardHeading,
   jobProgress,
   materialRejection,
   pauseOperation,
@@ -54,51 +92,191 @@ import {
 
 const S = JOB_CARD_STRINGS;
 const D = S.details;
+const I = D.info;
+const R = D.report;
+
+type Tab = 'machining' | 'qc' | 'order';
+
+const TABS: N1Tab<Tab>[] = [
+  { key: 'machining', label: D.tabs.machining, icon: 'wrench' },
+  { key: 'qc', label: D.tabs.qc, icon: 'check-circle' },
+  { key: 'order', label: D.tabs.order, icon: 'file' },
+];
 
 const makeStyles = createN1Styles(t => ({
-  section: { gap: t.spacing.md },
-  actionsRow: {
+  top: { gap: t.spacing.lg },
+  backLink: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: t.spacing.md,
+    alignSelf: 'flex-start',
+    gap: t.spacing.xs,
   },
+  pressed: { opacity: t.opacity.pressed },
   titleRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: t.spacing.md,
+  },
+  title: { flexShrink: 1, gap: t.spacing.xxs },
+  spacer: { flex: 1 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm },
+  // Order details: the drawing thumbnail on the left, the rest beside it.
+  orderTab: { flexDirection: 'row', gap: t.spacing.xxl },
+  drawingColumn: { width: DRAWING_THUMB_WIDTH, gap: t.spacing.md },
+  detailsColumn: { flex: 1, minWidth: 0, gap: t.spacing.xl },
+  compactOrderTab: { gap: t.spacing.xl },
+  drawingCaption: { gap: t.spacing.xxs },
+  // Wide screens: the card fills the window. The header and tabs stay put;
+  // only the tab's content scrolls.
+  card: { gap: t.spacing.lg },
+  fullCard: { flex: 1, minHeight: 0 },
+  scroll: { flex: 1 },
+  scrollContent: { gap: t.spacing.xl, paddingBottom: t.spacing.xs },
+  compactContent: { gap: t.spacing.xl },
+  section: { gap: t.spacing.md },
+  stickyPane: { flex: 1, minHeight: 0, gap: t.spacing.md },
+  sectionHead: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: t.spacing.md,
   },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm },
-  drawingRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: t.spacing.lg,
-  },
-  drawingTile: { width: DRAWING_TILE_WIDTH },
-  inline: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: t.spacing.sm,
-  },
-  keyValue: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: t.spacing.md,
-  },
-  routePanel: {
-    gap: t.spacing.md,
-    padding: t.spacing.lg,
-    borderRadius: t.radius.lg,
-    backgroundColor: t.colors.background,
-  },
-  statusPair: { flexDirection: 'row', gap: t.spacing.xxxl },
-  statusItem: { gap: t.spacing.sm },
 }));
 
+/**
+ * A tab whose header row (and optional foot) stays put: on wide screens the
+ * head (title and its buttons) sits above the scrolling content and the foot
+ * below it; on phones the page scrolls as one, so they're first and last.
+ */
+function StickyHeadPane({
+  head,
+  foot,
+  sticky,
+  children,
+  testID,
+  scrollRef,
+}: {
+  head: ReactNode;
+  /** Pinned below the scrolling content on wide screens; last on phones. */
+  foot?: ReactNode;
+  sticky: boolean;
+  children: ReactNode;
+  testID?: string;
+  scrollRef?: Ref<ScrollViewInstance>;
+}) {
+  const styles = useN1Styles(makeStyles);
+  if (!sticky) {
+    return (
+      <View style={styles.section} testID={testID}>
+        {head}
+        {children}
+        {foot}
+      </View>
+    );
+  }
+  return (
+    <View style={styles.stickyPane} testID={testID}>
+      {head}
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scroll}
+        contentContainerStyle={styles.section}
+        testID={testID && `${testID}-scroll`}
+      >
+        {children}
+      </ScrollView>
+      {foot}
+    </View>
+  );
+}
+
+/**
+ * Create / Edit flow in place of the route card: title with Cancel and Save
+ * on top, then the steps.
+ */
+function InlineFlowEditor({
+  jobCard,
+  saving,
+  saveError,
+  onCancel,
+  onSave,
+  sticky,
+}: {
+  jobCard: JobCard;
+  saving: boolean;
+  saveError: string | null;
+  onCancel: () => void;
+  onSave: (input: JobCardInput) => void;
+  /** Keep the title, Cancel and Save on top while the steps scroll. */
+  sticky: boolean;
+}) {
+  const styles = useN1Styles(makeStyles);
+  const editor = useFlowEditor(jobCard);
+  const editing = jobCard.operations.length > 0;
+  // A step added with the pinned Add process scrolls into view.
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  const stepCount = useRef(editor.steps.length);
+  useEffect(() => {
+    if (editor.steps.length > stepCount.current) {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }
+    stepCount.current = editor.steps.length;
+  }, [editor.steps.length]);
+  const save = () => {
+    const input = editor.submit();
+    if (input) {
+      onSave(input);
+    }
+  };
+  return (
+    <StickyHeadPane
+      sticky={sticky}
+      testID="job-card-machining"
+      foot={<AddProcessButton onPress={editor.add} />}
+      scrollRef={scrollRef}
+      head={
+        <View style={styles.sectionHead}>
+          <N1Text variant="title" weight="bold">
+            {editing ? S.flow.editTitle : S.flow.createTitle}
+          </N1Text>
+          <View style={styles.actions}>
+            <N1Button
+              title={COMMON_STRINGS.cancel}
+              variant="secondary"
+              size="sm"
+              onPress={onCancel}
+              disabled={saving}
+              testID="flow-cancel"
+            />
+            <N1Button
+              title={editing ? S.flow.save : S.flow.create}
+              leftIcon="check"
+              size="sm"
+              onPress={save}
+              loading={saving}
+              testID="flow-submit"
+            />
+          </View>
+        </View>
+      }
+    >
+      {saveError && (
+        <N1Text variant="small" color="danger">
+          {saveError}
+        </N1Text>
+      )}
+      <FlowEditor editor={editor} editing={editing} showAdd={false} />
+    </StickyHeadPane>
+  );
+}
+
+/**
+ * One job card in a single card: back link, title, status, Print and
+ * Dispatch on top; then tabs for machining (route card and operation
+ * controls), QC (material QC and QC history) and the order's details.
+ */
 export function JobCardDetailsScreen({
   route,
   navigation,
@@ -106,15 +284,40 @@ export function JobCardDetailsScreen({
   const styles = useN1Styles(makeStyles);
   const { isCompact } = useN1Breakpoint();
   const { jobCardId } = route.params;
-  const { jobCard, status, error, reload, update, saving } =
+  const { jobCard, status, error, reload, update, saving, saveError } =
     useJobCard(jobCardId);
+  // The work order behind the card (same id), shown as a card that opens it.
+  const { order } = useOrder(jobCardId);
+  const [tab, setTab] = useState<Tab>('machining');
 
-  const goBack = useCallback(() => navigation.goBack(), [navigation]);
-  const openFlow = useCallback(
-    () => navigation.navigate('JobCardFlow', { jobCardId }),
-    [navigation, jobCardId],
+  const back = useJobCardBack({ route, navigation });
+  // Create / Edit flow happens here on the Machining tab, not on a screen of
+  // its own. Opened with `editFlow` (from the lists), it starts open.
+  const [editingFlow, setEditingFlow] = useState(
+    Boolean(route.params.editFlow),
   );
-  const print = useCallback(() => notifyUnavailable(D.print), []);
+  const openFlow = useCallback(() => {
+    setTab('machining');
+    setEditingFlow(true);
+  }, []);
+  const closeFlow = useCallback(() => {
+    setEditingFlow(false);
+    navigation.setParams({ editFlow: undefined });
+  }, [navigation]);
+  const savingFlow = useRef(false);
+  const saveFlow = useCallback(
+    (input: JobCardInput) => {
+      savingFlow.current = true;
+      update(jobCardId, input);
+    },
+    [update, jobCardId],
+  );
+  useOnSettled(saving, saveError, () => {
+    if (savingFlow.current) {
+      savingFlow.current = false;
+      closeFlow();
+    }
+  });
   const [dispatchOpen, openDispatch, closeDispatch] = useToggle(false);
   // Admin: open the invoice in Billing. Shop-floor roles have no Billing
   // screen, so they're told it was created.
@@ -137,7 +340,57 @@ export function JobCardDetailsScreen({
     },
     [closeDispatch, navigation],
   );
-  const openDrawing = useCallback(() => notifyUnavailable(S.openDrawing), []);
+  // The drawing thumbnail opens full size; printing and downloading files
+  // aren't available yet.
+  const [viewing, setViewing] = useState<ViewerTarget | null>(null);
+  const closeViewer = useCallback(() => setViewing(null), []);
+  const printDrawing = useCallback(
+    () => notifyUnavailable(ORDER_STRINGS.details.printAction),
+    [],
+  );
+  const download = useCallback(
+    () => notifyUnavailable(ORDER_STRINGS.details.downloadAction),
+    [],
+  );
+  // Admin: the order opens in Orders, and its Back returns here. Shop-floor
+  // roles have no Orders screen, so the card is just shown.
+  const canOpenOrder = Boolean(
+    navigation.getParent()?.getState()?.routeNames.includes('Orders'),
+  );
+  const openOrder = useCallback(
+    () =>
+      navigation.navigate('Orders', {
+        screen: 'OrderDetails',
+        params: { orderId: jobCardId, fromJobCardId: jobCardId },
+        initial: false,
+      }),
+    [navigation, jobCardId],
+  );
+  // QC reports: pick a file for a check, or open one (web opens files picked
+  // this session; the rest explain it isn't available yet).
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const uploadReport = useCallback(
+    async (entry: QcEntry) => {
+      if (!jobCard) {
+        return;
+      }
+      setUploadingId(entry.id);
+      try {
+        const file = await pickDocument(R.kind, R.sample, R.accept);
+        if (file) {
+          update(jobCard.id, attachQcReport(jobCard, entry.id, file));
+        }
+      } finally {
+        setUploadingId(null);
+      }
+    },
+    [jobCard, update],
+  );
+  const openReport = useCallback((report: Attachment) => {
+    if (!openDocument(report)) {
+      notifyUnavailable(R.open);
+    }
+  }, []);
   // Supervisor only: enter the replacement material so RM QC checks it again.
   // RawMaterial lives in the role's stack, not the admin Job Cards stack.
   const canReinitiate = useOptionalEmployeeRole() === 'supervisor';
@@ -149,17 +402,25 @@ export function JobCardDetailsScreen({
     [navigation, jobCardId],
   );
 
-  const header = (
-    <DetailHeader
-      title={D.title}
-      onBack={goBack}
-      backIcon={isCompact ? 'chevron-left' : 'arrow-left'}
-    />
+  const backLink = (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={back.label}
+      onPress={back.goBack}
+      style={({ pressed }) => [styles.backLink, pressed && styles.pressed]}
+      testID="job-card-details-back"
+    >
+      <N1Icon name="arrow-left" size="sm" color="textSecondary" />
+      <N1Text variant="label" color="secondary">
+        {back.label}
+      </N1Text>
+    </Pressable>
   );
 
   if (!jobCard) {
     return (
-      <AdminScreen header={header}>
+      <AdminScreen testID="job-card-details-screen">
+        {backLink}
         <AsyncContent status={status} error={error} onRetry={reload}>
           <ComingSoon icon="clipboard" title={D.title} message={D.notFound} />
         </AsyncContent>
@@ -173,39 +434,181 @@ export function JobCardDetailsScreen({
   const complete = () => update(jobCard.id, completeOperation(jobCard, now()));
   const running = canPauseOrComplete(jobCard);
   const hasFlow = jobCard.operations.length > 0;
+  // The next step waits for RM QC and for the last step's QC to pass.
+  const blocked = running ? undefined : startBlockedReason(jobCard);
+  // A step that failed its QC is sent back to be done again.
+  const stage = jobCardStage(jobCard);
+  const failedStep =
+    stage.key === 'operation_qc' && stage.failed ? stage.operation : null;
+  const redo = () =>
+    failedStep &&
+    update(jobCard.id, redoOperation(jobCard, failedStep.id, now()));
 
-  // Desktop uses small caps section labels; phones use bold titles.
-  const heading = (text: string) =>
-    isCompact ? (
-      <N1Text variant="title" weight="bold">
-        {text}
-      </N1Text>
-    ) : (
-      <N1Text variant="overline" color="secondary">
-        {text}
-      </N1Text>
-    );
-  const divider = !isCompact && <N1Divider spacing="sm" />;
-  const section = (children: ReactNode) => (
-    <View style={styles.section}>{children}</View>
+  const heading = (text: string) => (
+    <N1Text variant="title" weight="bold">
+      {text}
+    </N1Text>
   );
 
-  const quickActions = (
-    <N1Card>
-      <View style={isCompact ? styles.section : styles.actionsRow}>
-        {isCompact ? (
-          <N1Text variant="title" weight="bold">
-            {D.quickActions}
+  const top = (
+    <View style={styles.top}>
+      {backLink}
+      <View style={styles.titleRow}>
+        <View style={styles.title}>
+          <N1Text variant={isCompact ? 'h2' : 'h1'} accessibilityRole="header">
+            {jobCardHeading(jobCard)}
           </N1Text>
-        ) : (
-          <N1Text variant="overline" color="secondary">
-            {D.quickActions}
+          <N1Text variant="small" color="secondary" testID="job-card-wo">
+            {S.workOrder(jobCard.id)}
           </N1Text>
+        </View>
+        <JobCardStatusBadge jobCard={jobCard} />
+        <View style={styles.spacer} />
+        <View style={styles.actions}>
+          <N1Button
+            title={D.dispatch}
+            leftIcon="package"
+            size="sm"
+            onPress={openDispatch}
+            testID="generate-dispatch"
+          />
+        </View>
+      </View>
+    </View>
+  );
+
+  const drawingNumber =
+    order?.drawingNumber || jobCard.designFile?.name || D.noDrawing;
+  const drawing = (
+    <View style={isCompact ? styles.section : styles.drawingColumn}>
+      {heading(I.drawing)}
+      {jobCard.designFile ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={D.viewDrawing(drawingNumber)}
+          onPress={() => setViewing({ type: 'drawing', drawingNumber })}
+          style={({ pressed }) => pressed && styles.pressed}
+          testID="job-card-drawing"
+        >
+          <DrawingPreview drawingNumber={drawingNumber} />
+        </Pressable>
+      ) : (
+        <N1Text color="secondary">{D.noDrawing}</N1Text>
+      )}
+      {jobCard.designFile && (
+        <View style={styles.drawingCaption}>
+          <N1Text weight="bold" numberOfLines={1}>
+            {drawingNumber}
+          </N1Text>
+          <N1Text variant="small" color="secondary" numberOfLines={1}>
+            {jobCard.designFile.name}
+          </N1Text>
+        </View>
+      )}
+    </View>
+  );
+
+  const orderTab = (
+    <View style={isCompact ? styles.compactOrderTab : styles.orderTab}>
+      {drawing}
+      <View style={isCompact ? styles.compactOrderTab : styles.detailsColumn}>
+        <View style={styles.section}>
+          {heading(D.jobSection)}
+          <N1DetailGrid
+            columns={isCompact ? 2 : 3}
+            items={[
+              {
+                label: I.priority,
+                value: (
+                  <PriorityBadge
+                    priority={jobCard.priority}
+                    suffix="priority"
+                  />
+                ),
+              },
+              { label: I.due, value: formatLongDate(jobCard.dueDate) },
+              { label: I.qty, value: S.quantity(jobCard.quantity) },
+              { label: I.part, value: jobCard.partName },
+              {
+                label: I.source,
+                value:
+                  MATERIAL_SOURCE_OPTIONS.find(
+                    o => o.value === jobCard.materialSource,
+                  )?.label ?? COMMON_STRINGS.dash,
+              },
+              {
+                label: I.materialQc,
+                value: (
+                  <MetaBadge meta={MATERIAL_QC_META[jobCard.materialQc]} />
+                ),
+              },
+              {
+                label: I.quotation,
+                value: <MetaBadge meta={QUOTATION_META[jobCard.quotation]} />,
+              },
+              {
+                label: I.billing,
+                value: <MetaBadge meta={BILLING_META[jobCard.billing]} />,
+              },
+            ]}
+            testID="job-card-info"
+          />
+        </View>
+        {order && (
+          <>
+            <N1Divider />
+            <View style={styles.section}>
+              {heading(D.orderSection)}
+              <LinkedOrderCard
+                order={order}
+                onPress={canOpenOrder ? openOrder : undefined}
+              />
+            </View>
+          </>
         )}
-        <View style={styles.actionsRow}>
+      </View>
+    </View>
+  );
+
+  const machiningTab = editingFlow ? (
+    <InlineFlowEditor
+      jobCard={jobCard}
+      saving={saving}
+      saveError={saveError}
+      onCancel={closeFlow}
+      onSave={saveFlow}
+      sticky={!isCompact}
+    />
+  ) : (
+    <StickyHeadPane
+      sticky={!isCompact}
+      testID="job-card-machining"
+      head={
+        <View style={styles.sectionHead}>
+          {heading(D.routeCard)}
+          <N1Button
+            title={
+              hasFlow
+                ? isCompact
+                  ? D.editFlowShort
+                  : D.editFlow
+                : D.createFlow
+            }
+            leftIcon={hasFlow ? 'edit' : 'plus'}
+            variant="secondary"
+            size="sm"
+            onPress={openFlow}
+            testID="open-flow"
+          />
+        </View>
+      }
+    >
+      {hasFlow && (
+        <View style={styles.actions}>
           <N1Button
             title={D.start}
             leftIcon="play"
+            size="sm"
             onPress={start}
             disabled={saving || !canStart(jobCard)}
             testID="start-operation"
@@ -214,6 +617,7 @@ export function JobCardDetailsScreen({
             title={D.pause}
             leftIcon="pause"
             variant="secondary"
+            size="sm"
             onPress={pause}
             disabled={saving || !running}
             testID="pause-operation"
@@ -222,199 +626,148 @@ export function JobCardDetailsScreen({
             title={D.complete}
             leftIcon="check-circle"
             variant="secondary"
+            size="sm"
             onPress={complete}
             disabled={saving || !running}
             testID="complete-operation"
           />
-          <N1Button
-            title={D.print}
-            leftIcon="printer"
-            variant="secondary"
-            onPress={print}
-          />
-          <N1Button
-            title={D.dispatch}
-            leftIcon="package"
-            variant="secondary"
-            onPress={openDispatch}
-            testID="generate-dispatch"
-          />
+          {failedStep && (
+            <N1Button
+              title={S.stages.redo(failedStep.name)}
+              leftIcon="refresh"
+              variant="danger"
+              size="sm"
+              onPress={redo}
+              disabled={saving}
+              testID="redo-operation"
+            />
+          )}
         </View>
-      </View>
-    </N1Card>
-  );
-
-  const summary = section(
-    <>
-      <View style={isCompact ? styles.section : styles.titleRow}>
-        <N1Text variant={isCompact ? 'h2' : 'h1'}>
-          {jobCustomerHeading(jobCard)}
+      )}
+      {hasFlow && blocked && !failedStep && (
+        <N1Text variant="small" color="secondary" testID="start-blocked">
+          {blocked}
         </N1Text>
-        <JobCardStatusBadge status={jobCard.status} />
-      </View>
-      <View style={styles.chips}>
-        <N1Chip
-          label={D.priority}
-          value={PRIORITY_META[jobCard.priority].label}
-        />
-        <N1Chip label={D.due} value={formatLongDate(jobCard.dueDate)} />
-        <N1Chip label={D.qty} value={S.quantity(jobCard.quantity)} />
-      </View>
-    </>,
-  );
-
-  const approval = DESIGN_APPROVAL_META[jobCard.designApproval];
-  const drawing = section(
-    <>
-      {heading(D.drawing)}
-      <View style={isCompact ? styles.section : styles.drawingRow}>
-        <View style={!isCompact && styles.drawingTile}>
-          <DashedTile
-            icon="file"
-            label={jobCard.designFile?.name ?? D.noDrawing}
-            onPress={openDrawing}
-            testID="drawing-file"
-          />
-        </View>
-        <MetaBadge meta={approval} label={D.designApproval(approval.label)} />
-      </View>
-    </>,
-  );
-
-  const materialQc = <MetaBadge meta={MATERIAL_QC_META[jobCard.materialQc]} />;
-  const rejection = materialRejection(jobCard);
-  const rejected = jobCard.materialQc === 'rejected' && (
-    <>
-      {rejection?.rejectedMaterial && (
-        <N1KeyValueList
-          title={D.rejectedMaterial}
-          items={[
-            ...rejectedMaterialItems(rejection.rejectedMaterial),
-            { label: D.reason, value: rejection.remark },
-          ]}
-          testID="rejected-material"
-        />
       )}
-      {canReinitiate && (
-        <View style={styles.actionsRow}>
-          <N1Button
-            title={D.reinitiate}
-            leftIcon="refresh"
-            onPress={reinitiate}
-            testID="reinitiate-rm-qc"
-          />
-        </View>
-      )}
-    </>
-  );
-  const material = section(
-    <>
-      {heading(D.material)}
-      {isCompact ? (
-        <>
-          <View style={styles.keyValue}>
-            <N1Text color="secondary">{D.source}</N1Text>
-            <N1Text weight="semiBold">
-              {MATERIAL_SOURCE_LABELS[jobCard.materialSource]}
-            </N1Text>
-          </View>
-          <View style={styles.keyValue}>
-            <N1Text color="secondary">{D.materialQc}</N1Text>
-            {materialQc}
-          </View>
-        </>
-      ) : (
-        <View style={styles.inline}>
-          <N1Text color="secondary">{`${D.source}: `}</N1Text>
-          <N1Text weight="semiBold">
-            {MATERIAL_SOURCE_LABELS[jobCard.materialSource]}
-          </N1Text>
-          <N1Text color="tertiary">|</N1Text>
-          <N1Text color="secondary">{`${D.materialQc}:`}</N1Text>
-          {materialQc}
-        </View>
-      )}
-      {rejected}
-    </>,
-  );
-
-  const flowButton = (
-    <N1Button
-      title={
-        hasFlow ? (isCompact ? D.editFlowShort : D.editFlow) : D.createFlow
-      }
-      leftIcon={hasFlow ? 'edit' : 'plus'}
-      variant="secondary"
-      size="sm"
-      onPress={openFlow}
-      testID="open-flow"
-    />
-  );
-  const routeCard = (
-    <View style={isCompact ? styles.routePanel : styles.section}>
-      <View style={styles.titleRow}>
-        {heading(D.routeCard)}
-        {flowButton}
-      </View>
       <RouteCard
         operations={jobCard.operations}
         progress={jobProgress(jobCard)}
       />
-    </View>
+    </StickyHeadPane>
   );
 
-  const qc = section(
+  const rejection = materialRejection(jobCard);
+  const qcTab = (
     <>
-      {heading(D.qcHistory)}
-      <QcHistory entries={jobCard.qcHistory} />
-    </>,
-  );
-
-  const commercial = (
-    <View style={styles.statusPair}>
-      <View style={styles.statusItem}>
-        {heading(D.quotation)}
-        <MetaBadge meta={QUOTATION_META[jobCard.quotation]} />
+      <View style={styles.section} testID="job-card-material-qc">
+        <View style={styles.sectionHead}>
+          {heading(D.materialQc)}
+          <MetaBadge meta={MATERIAL_QC_META[jobCard.materialQc]} />
+        </View>
+        {jobCard.materialQc === 'rejected' && rejection?.rejectedMaterial && (
+          <N1KeyValueList
+            title={D.rejectedMaterial}
+            items={[
+              ...rejectedMaterialItems(rejection.rejectedMaterial),
+              { label: D.reason, value: rejection.remark },
+            ]}
+            testID="rejected-material"
+          />
+        )}
+        {jobCard.materialQc === 'rejected' && canReinitiate && (
+          <View style={styles.actions}>
+            <N1Button
+              title={D.reinitiate}
+              leftIcon="refresh"
+              onPress={reinitiate}
+              testID="reinitiate-rm-qc"
+            />
+          </View>
+        )}
       </View>
-      <View style={styles.statusItem}>
-        {heading(D.billing)}
-        <MetaBadge meta={BILLING_META[jobCard.billing]} />
+      <N1Divider />
+      <View style={styles.section}>
+        {heading(D.qcHistory)}
+        <QcHistory
+          entries={jobCard.qcHistory}
+          onUpload={uploadReport}
+          onOpenReport={openReport}
+          uploadingId={uploadingId}
+        />
       </View>
-    </View>
-  );
-
-  const body = (
-    <>
-      {summary}
-      {divider}
-      {drawing}
-      {divider}
-      {material}
-      {divider}
-      {routeCard}
-      {divider}
-      {qc}
-      {divider}
-      {commercial}
     </>
   );
 
-  return (
-    <AdminScreen header={header} testID="job-card-details-screen">
-      {quickActions}
-      {isCompact ? (
-        <View style={styles.section}>{body}</View>
-      ) : (
-        <N1Card padding="xxl">
-          <View style={styles.section}>{body}</View>
+  const content = { order: orderTab, machining: machiningTab, qc: qcTab }[tab];
+
+  const tabs = (
+    <N1Tabs
+      tabs={TABS}
+      value={tab}
+      onChange={setTab}
+      variant={isCompact ? 'segmented' : 'underline'}
+      testID="job-card-tab"
+    />
+  );
+
+  const dispatchModal = (
+    <GenerateDispatchModal
+      visible={dispatchOpen}
+      jobCard={jobCard}
+      onClose={closeDispatch}
+      onInvoice={showInvoice}
+    />
+  );
+
+  const viewer = (
+    <DocumentViewer
+      target={viewing}
+      onClose={closeViewer}
+      onPrint={printDrawing}
+      onDownload={download}
+      onOpen={null}
+    />
+  );
+
+  // Phones: the page scrolls as one.
+  if (isCompact) {
+    return (
+      <AdminScreen testID="job-card-details-screen">
+        <N1Card padding="lg" radius="sm" style={styles.card}>
+          {top}
+          {tabs}
+          <View style={styles.compactContent}>{content}</View>
         </N1Card>
-      )}
-      <GenerateDispatchModal
-        visible={dispatchOpen}
-        jobCard={jobCard}
-        onClose={closeDispatch}
-        onInvoice={showInvoice}
-      />
+        {dispatchModal}
+        {viewer}
+      </AdminScreen>
+    );
+  }
+
+  return (
+    <AdminScreen fixed testID="job-card-details-screen">
+      <N1Card padding="xxl" radius="sm" style={[styles.card, styles.fullCard]}>
+        {top}
+        {tabs}
+        {/* A new tab starts at the top. Machining keeps its header row on
+            top and scrolls its own steps. */}
+        {tab === 'machining' ? (
+          <View key={tab} style={styles.scroll}>
+            {content}
+          </View>
+        ) : (
+          <ScrollView
+            key={tab}
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            testID="job-card-details-scroll"
+          >
+            {content}
+          </ScrollView>
+        )}
+      </N1Card>
+      {dispatchModal}
+      {viewer}
     </AdminScreen>
   );
 }

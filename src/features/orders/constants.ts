@@ -68,6 +68,7 @@ export const ORDER_STRINGS = {
     drawingA11y: (no: string) => `Drawing ${no}`,
     backToOrders: 'Back to orders',
     backToCustomer: 'Back to customer',
+    backToJobCard: 'Back to job card',
     tabs: {
       details: 'Order details',
       material: 'Raw material',
@@ -190,8 +191,10 @@ export const PRIORITY_META: Record<
 
 export const ORDER_STATUS_META: Record<OrderStatus, StatusMeta> = {
   new: { label: 'New', tone: 'neutral' },
+  yet_to_start: { label: 'Yet to start', tone: 'neutral' },
   in_progress: { label: 'In progress', tone: 'info' },
-  qc_pending: { label: 'QC pending', tone: 'warning' },
+  paused: { label: 'Paused', tone: 'danger' },
+  payment_due: { label: 'Payment due', tone: 'warning' },
   completed: { label: 'Completed', tone: 'success' },
 };
 

@@ -40,6 +40,7 @@ import type { AdminUser, UserFilters } from '../types';
 import {
   INITIAL_USER_FILTERS,
   matchesUserFilters,
+  userContact,
   userSearchText,
 } from '../utils';
 
@@ -119,7 +120,12 @@ export function UsersListScreen() {
           </View>
         ),
       },
-      { key: 'email', title: USER_STRINGS.columns.email, flex: 2.2 },
+      {
+        key: 'email',
+        title: USER_STRINGS.columns.email,
+        flex: 2.2,
+        render: u => <N1Text numberOfLines={1}>{userContact(u)}</N1Text>,
+      },
       {
         key: 'role',
         title: USER_STRINGS.columns.role,

@@ -222,7 +222,6 @@ describe('organization sections', () => {
       '33ABCDE1234F1Z5',
       '18%',
       'INV-2026-',
-      'Net 30',
       'Thank you for your business.',
     ]) {
       expect(text).toContain(value);
@@ -279,8 +278,8 @@ describe('organization sections', () => {
       allText(byTestId(h.root, 'organization-completion'));
     const badge = (key: string) =>
       allText(byTestId(h.root, `organization-tab-${key}`));
-    // Logo, invoice logo and signature are missing: 18 of 21.
-    expect(completion()).toContain('86%');
+    // Logo, invoice logo and signature are missing: 17 of 20.
+    expect(completion()).toContain('85%');
     expect(completion()).toContain('3 details to add');
     expect(badge('general')).toBe('General|1');
     expect(badge('documents')).toBe('Document settings|2');
@@ -509,12 +508,9 @@ describe('organization sections', () => {
       byTestId(h.root, 'organization-form-invoiceStartNumber'),
       '250',
     );
-    await choose(h.root, 'organization-form-paymentTerms', 'Net 45');
     await press(byTestId(h.root, 'organization-form-submit'));
-    expect(org(h)).toMatchObject({
-      invoiceStartNumber: 250,
-      paymentTerms: 'net-45',
-    });
+    expect(org(h)).toMatchObject({ invoiceStartNumber: 250 });
+    expect(org(h)).not.toHaveProperty('paymentTerms');
 
     await editSection(h.root, 'documents');
     await press(byTestId(h.root, 'organization-form-signature'));

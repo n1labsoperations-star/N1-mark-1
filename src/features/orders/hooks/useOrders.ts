@@ -1,5 +1,7 @@
 import { useCrudResource } from '../../../shared/store';
 import { useAppSelector } from '../../../app/store/hooks';
+import { useInvoices } from '../../billing/hooks/useBilling';
+import { useJobCards } from '../../jobCards/hooks/useJobCards';
 import { orderActions } from '../store/ordersSlice';
 import {
   selectAllOrders,
@@ -10,8 +12,13 @@ import {
   selectOrdersState,
 } from '../store/selectors';
 
-/** Work orders, load state and create / update. Loads on first use. */
+/**
+ * Work orders, load state and create / update. Loads on first use, with the
+ * job cards and invoices each order's status is worked out from.
+ */
 export function useOrders() {
+  useJobCards();
+  useInvoices();
   return useCrudResource(orderActions, selectOrdersState, selectAllOrders);
 }
 

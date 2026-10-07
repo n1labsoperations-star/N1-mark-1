@@ -19,7 +19,6 @@ import {
   INDUSTRY_OPTIONS,
   ORGANIZATION_SECTIONS,
   ORGANIZATION_STRINGS as S,
-  PAYMENT_TERMS_OPTIONS,
   STATE_OPTIONS,
   sectionChanges,
   toFormValues,
@@ -36,13 +35,12 @@ const F = S.fields;
 const P = S.placeholders;
 
 type FileField = 'invoiceLogo' | 'signature';
-type DropDownField = 'businessType' | 'industry' | 'state' | 'paymentTerms';
+type DropDownField = 'businessType' | 'industry' | 'state';
 
 const DROPDOWN_OPTIONS: Record<DropDownField, typeof STATE_OPTIONS> = {
   businessType: BUSINESS_TYPE_OPTIONS,
   industry: INDUSTRY_OPTIONS,
   state: STATE_OPTIONS,
-  paymentTerms: PAYMENT_TERMS_OPTIONS,
 };
 
 const makeStyles = createN1Styles(t => ({
@@ -225,7 +223,6 @@ export function OrganizationSectionForm({
                 helperText: editing ? S.help.invoiceStartNumber : undefined,
               })}
             </FormRow>
-            {dropDown('paymentTerms')}
             {text('invoiceFooter', { multiline: true })}
           </>
         );

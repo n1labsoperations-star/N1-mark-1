@@ -147,7 +147,7 @@ export const MOCK_ORDERS: WorkOrder[] = [
     material: 'MS Round Bar',
     quantity: 120,
     priority: 'high',
-    status: 'qc_pending',
+    status: 'in_progress',
     dueDate: '2026-10-03',
     createdAt: isoAgo(4 * DAY_MS),
   }),
@@ -160,7 +160,7 @@ export const MOCK_ORDERS: WorkOrder[] = [
     material: 'MS Round Bar',
     quantity: 200,
     priority: 'high',
-    status: 'qc_pending',
+    status: 'in_progress',
     dueDate: '2026-10-10',
   }),
   order({
@@ -172,7 +172,7 @@ export const MOCK_ORDERS: WorkOrder[] = [
     material: 'EN8 Round Bar',
     quantity: 35,
     priority: 'high',
-    status: 'qc_pending',
+    status: 'in_progress',
     dueDate: '2026-10-18',
   }),
   order({

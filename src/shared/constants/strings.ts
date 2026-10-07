@@ -43,7 +43,7 @@ export const NAV_STRINGS = {
   expandSidebar: 'Expand sidebar',
   openProfile: 'Open my profile',
   dashboard: 'Dashboard',
-  users: 'Users',
+  users: 'Employees',
   customers: 'Customers',
   orders: 'Orders',
   jobCards: 'Job Cards',

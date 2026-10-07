@@ -161,14 +161,14 @@ export function OrdersListScreen() {
     [navigation],
   );
 
-  // Opens the order's job card in Job Cards (Back returns here): its details
-  // once it has a route, else Create flow. Orders without one get theirs from
-  // Create order (raw material arrived) or the shop floor.
+  // Opens the order's job card in Job Cards (Back goes to its list), with
+  // Create flow open when it has no route yet. Orders without a job card get
+  // theirs from Create order (raw material arrived) or the shop floor.
   const openJobCard = useCallback(
-    (orderId: string, screen: 'JobCardDetails' | 'JobCardFlow') =>
+    (orderId: string, createFlow: boolean) =>
       navigation.navigate('JobCards', {
-        screen,
-        params: { jobCardId: orderId },
+        screen: 'JobCardDetails',
+        params: { jobCardId: orderId, editFlow: createFlow || undefined },
         initial: false,
       }),
     [navigation],
@@ -201,12 +201,7 @@ export function OrdersListScreen() {
                       ? S.a11y.openJobCard(o.id)
                       : S.a11y.createJobCard(o.id)
                   }
-                  onPress={() =>
-                    openJobCard(
-                      o.id,
-                      card.operations.length ? 'JobCardDetails' : 'JobCardFlow',
-                    )
-                  }
+                  onPress={() => openJobCard(o.id, !card.operations.length)}
                   testID={`job-card-${o.id}`}
                 />
               )}

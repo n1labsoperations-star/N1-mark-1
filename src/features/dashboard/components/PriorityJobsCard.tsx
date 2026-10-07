@@ -11,7 +11,12 @@ import {
   useN1Theme,
 } from '../../../shared/components';
 import { formatDayMonth } from '../../../shared/utils';
-import { currentOperation, jobProgress, progressTone } from '../../jobCards';
+import {
+  JOB_CARD_STRINGS,
+  currentOperation,
+  jobProgress,
+  progressTone,
+} from '../../jobCards';
 import { DASHBOARD_STRINGS } from '../constants';
 import type { PriorityJob } from '../types';
 import { isDueSoon } from '../utils';
@@ -121,8 +126,19 @@ export const PriorityJobsCard = memo(function PriorityJobsCardComponent({
               <N1Text variant="label" weight="bold" numberOfLines={1}>
                 {heading}
               </N1Text>
-              <N1Text variant="caption" color="secondary" numberOfLines={1}>
-                {job.partName}
+              <N1Text
+                variant="caption"
+                color="secondary"
+                numberOfLines={1}
+                testID={`priority-job-ids-${job.id}`}
+              >
+                {[
+                  JOB_CARD_STRINGS.jobCardNumber(job.code),
+                  JOB_CARD_STRINGS.workOrder(job.id),
+                  job.partName,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </N1Text>
             </View>
 
