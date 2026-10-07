@@ -1,9 +1,6 @@
 import type React from 'react';
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
-import {
-  JobCardDetailsScreen,
-  JobCardFlowScreen,
-} from '../../features/jobCards';
+import { JobCardDetailsScreen } from '../../features/jobCards';
 import {
   AssignMachineScreen,
   EnterJobCodeScreen,
@@ -46,7 +43,6 @@ export const SUPERVISOR_SCREENS: RoleScreen[] = [
   { name: 'ImportOrder', component: ImportOrderScreen },
   { name: 'RawMaterial', component: RawMaterialScreen, options: MODAL },
   { name: 'JobCardDetails', component: JobCardDetailsScreen },
-  { name: 'JobCardFlow', component: JobCardFlowScreen },
 ];
 
 // Operator: import a job (scan / code) straight to its Job Detail,

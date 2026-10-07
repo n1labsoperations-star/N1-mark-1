@@ -18,6 +18,7 @@ import {
   currentOperation,
   jobHeading,
   pauseOperation,
+  startBlockedReason,
   startOperation,
   useJobCard,
 } from '../../jobCards';
@@ -106,12 +107,15 @@ export function OperatorJobScreen({
       />
     );
   } else if (opStatus === 'pending') {
+    // Waits for RM QC and for the last step's QC check to pass.
+    const blocked = startBlockedReason(jobCard);
     footer = (
       <N1Button
-        title={S.start}
-        leftIcon="play"
+        title={blocked ?? S.start}
+        leftIcon={blocked ? 'clock' : 'play'}
         size="lg"
         fullWidth
+        disabled={!!blocked}
         onPress={() => navigation.navigate('AssignMachine', { jobCardId })}
         testID="start-operation"
       />
@@ -123,7 +127,7 @@ export function OperatorJobScreen({
       <View style={styles.summary}>
         <View style={styles.row}>
           {op && <N1Badge label={op.name} tone="info" />}
-          <JobCardStatusBadge status={jobCard.status} />
+          <JobCardStatusBadge jobCard={jobCard} />
         </View>
         <N1Text variant="h2">{jobHeading(jobCard)}</N1Text>
         <N1Text weight="semiBold" color="secondary">

@@ -23,7 +23,12 @@ import {
   hasStepErrors,
   validateOrderForm,
 } from '../components/orderForm';
-import { compareOrders, materialLine, orderTitle } from '../utils';
+import { MOCK_JOB_CARDS } from '../../jobCards/api/mockData';
+import type { JobCard, JobOperation } from '../../jobCards/types';
+import { statusFor } from '../../jobCards/utils';
+import { selectOrderById } from '../store/selectors';
+import type { WorkOrder } from '../types';
+import { compareOrders, materialLine, orderStatus, orderTitle } from '../utils';
 
 let mockWidth = 1280;
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
@@ -129,18 +134,137 @@ test('only orders with a job card show the job card button', async () => {
   // Edit is there either way.
   expect(hasTestId(h.root, 'edit-order-1043')).toBe(true);
   expect(allText(byTestId(h.root, 'orders-table'))).not.toContain('Job card');
-  // A job card with its route opens; one without steps opens Create flow.
+  // A job card with its route opens; one without steps opens with Create flow.
   await press(byLabel(h.root, 'Open job card for WO #1042'));
   expect(h.currentRoute()).toBe('JobCardDetails');
   await h.navigate('Orders');
   await press(byLabel(h.root, 'Create job card for WO #1036'));
-  expect(h.currentRoute()).toBe('JobCardFlow');
+  expect(h.currentRoute()).toBe('JobCardDetails');
+  expect(hasTestId(h.root, 'flow-editor')).toBe(true);
 });
 
 test('search finds an order by its RC number', async () => {
   const { root } = await renderAdmin('Orders');
   await typeInto(byLabel(root, 'Search by WO #, part or customer'), 'RC-2210');
   expect(allText(byTestId(root, 'orders-table'))).toContain('Showing 1 of 1');
+});
+
+describe('order status', () => {
+  const order = MOCK_ORDERS.find(o => o.id === '1042') as WorkOrder;
+  // A two-step job card: steps by status, the first one's QC check if any.
+  const card = (
+    steps: JobOperation['status'][] = [],
+    changes: Partial<JobCard> = {},
+  ): JobCard => {
+    const operations = steps.map(
+      (status, i): JobOperation => ({
+        id: `op${i + 1}`,
+        name: `Step ${i + 1}`,
+        machine: '',
+        operator: '',
+        status,
+        startedAt: null,
+        completedAt: null,
+      }),
+    );
+    return {
+      ...(MOCK_JOB_CARDS[0] as JobCard),
+      materialQc: 'accepted',
+      billing: 'not_invoiced',
+      qcHistory: [],
+      operations,
+      status: statusFor(operations),
+      ...changes,
+    };
+  };
+  const passed = (operationId: string) => ({
+    qcHistory: [
+      {
+        id: 'q',
+        stage: 'QC',
+        result: 'passed' as const,
+        remark: '',
+        at: '2026-09-25',
+        operationId,
+      },
+    ],
+  });
+  const noMaterial = { ...order, heatNumber: '' };
+
+  test.each([
+    ['no job card', 'new', order, undefined, false],
+    [
+      'job card, raw material not in',
+      'new',
+      noMaterial,
+      card([], { materialQc: 'pending' }),
+      false,
+    ],
+    [
+      'job card and raw material in, RM QC to do',
+      'yet_to_start',
+      order,
+      card([], { materialQc: 'pending' }),
+      false,
+    ],
+    ['RM QC passed, no flow yet', 'in_progress', order, card(), false],
+    [
+      'a step started',
+      'in_progress',
+      order,
+      card(['running', 'pending']),
+      false,
+    ],
+    ['a step paused', 'paused', order, card(['paused', 'pending']), false],
+    [
+      'RM QC rejected the material',
+      'paused',
+      order,
+      card([], { materialQc: 'rejected' }),
+      false,
+    ],
+    [
+      'last step done, final QC to do',
+      'in_progress',
+      order,
+      card(['completed', 'completed']),
+      false,
+    ],
+    [
+      'ready to dispatch, not paid',
+      'payment_due',
+      order,
+      card(['completed', 'completed'], passed('op2')),
+      false,
+    ],
+    [
+      'dispatched, not paid',
+      'payment_due',
+      order,
+      card(['completed', 'completed'], { billing: 'invoiced' }),
+      false,
+    ],
+    [
+      'invoice paid',
+      'completed',
+      order,
+      card(['completed', 'completed'], { billing: 'invoiced' }),
+      true,
+    ],
+  ] as const)('%s → %s', (_, expected, o, c, paid) => {
+    expect(orderStatus(o, c, paid)).toBe(expected);
+  });
+
+  test('the list shows each order’s worked-out status', async () => {
+    const { store } = await renderAdmin('Orders');
+    const status = (id: string) =>
+      selectOrderById(store.getState(), id)?.status;
+    expect(status('1042')).toBe('in_progress');
+    expect(status('1034')).toBe('paused');
+    expect(status('1041')).toBe('paused');
+    expect(status('1035')).toBe('completed');
+    expect(status('1043')).toBe('new');
+  });
 });
 
 test('filters by priority and status, and searches', async () => {
@@ -166,11 +290,12 @@ test('filters by priority and status, and searches', async () => {
   await applyFilters('Priority', ['Low']);
   expect(allText(byTestId(root, 'orders-table'))).toContain('WO #1038');
   expect(allText(byTestId(root, 'orders-table'))).not.toContain('WO #1042');
-  await applyFilters('Status', ['QC pending']);
+  // Paused: 1034 has a paused step; 1041's material was rejected.
+  await applyFilters('Status', ['Paused']);
+  expect(allText(root)).toContain('Showing 2 of 2 orders');
+  // Multi-select: Paused or Completed (1035, its invoice paid).
+  await applyFilters('Status', ['Paused', 'Completed']);
   expect(allText(root)).toContain('Showing 3 of 3 orders');
-  // Multi-select: QC pending or Completed.
-  await applyFilters('Status', ['QC pending', 'Completed']);
-  expect(allText(root)).toContain('Showing 5 of 5 orders');
   await applyFilters('Status', []);
   await typeInto(byLabel(root, 'Search by WO #, part or customer'), 'coupling');
   expect(allText(root)).toContain('Showing 1 of 1 orders');
@@ -316,7 +441,7 @@ test('an order with a job card lists it; pressing it opens the job card', async 
   await press(byTestId(screen, 'order-job-card-1042'));
   expect(h.currentRoute()).toBe('JobCardDetails');
   expect(allText(byTestId(h.root, 'job-card-details-screen'))).toContain(
-    'WO #1042 · Acme Metalworks',
+    '#JOB1 · Acme Metalworks',
   );
 });
 
@@ -446,14 +571,15 @@ test('creates an order over three steps', async () => {
   await press(byTestId(form, 'order-form-next'));
   expect(allText(form)).toContain('Enter a number');
 
-  // Required fields come first.
+  // Required fields come first; PO number and DC no sit at the bottom.
   expect(allText(byTestId(form, 'order-form-step-2'))).toMatch(
-    /PO number.*Part name.*Drawing number.*Route card no.*DC no.*DC date.*Delivery date.*Priority.*Quantity/,
+    /Part name.*Drawing number.*Route card no.*DC date.*Delivery date.*Priority.*Quantity.*PO number.*DC no.*Part \/ job description/,
   );
   // Priority starts at Low.
   expect(allText(byTestId(form, 'order-form-priority'))).toBe('Low');
-  // The required fields stop Next until they're filled.
-  expect(allText(form).split('This field is required').length - 1).toBe(7);
+  // The required fields stop Next until they're filled (PO and DC no are
+  // optional).
+  expect(allText(form).split('This field is required').length - 1).toBe(5);
 
   await typeInto(byTestId(form, 'order-form-quantity'), '25');
   await fillOrderDetails(form);
@@ -730,8 +856,8 @@ test('phone: stat tiles, cards and step footer', async () => {
   mockWidth = 390;
   const h = await renderAdmin('Orders');
   expect(allText(h.root)).toContain('Open orders');
-  // 10 open (the two new example orders included); 5 of them high.
-  expect(allText(byTestId(h.root, 'stat-open'))).toContain('10');
+  // 11 open: all but 1035, whose invoice is paid; 5 of them high.
+  expect(allText(byTestId(h.root, 'stat-open'))).toContain('11');
   expect(allText(byTestId(h.root, 'stat-high'))).toContain('5');
   expect(hasTestId(h.root, 'order-card-1042')).toBe(true);
   await press(byTestId(h.root, 'order-card-1042'));
@@ -775,6 +901,8 @@ test('order helpers', () => {
   expect(validateOrderForm({ ...values, customerName: ' ' })).toEqual({
     customerName: 'This field is required',
   });
+  // PO number and DC no are optional.
+  expect(validateOrderForm({ ...values, poNumber: '', dcNo: '' })).toEqual({});
   expect(hasStepErrors(1, bad)).toBe(true);
   expect(hasStepErrors(3, bad)).toBe(false);
   expect(firstStepWithErrors(bad)).toBe(1);
@@ -801,17 +929,19 @@ describe('Orders list actions', () => {
     expect(h.currentRoute()).toBe('OrderForm');
   });
 
-  test('the job card button opens the job card, or Create flow', async () => {
+  test('the job card button opens the job card, with Create flow when it has none', async () => {
     const h = await renderAdmin('Orders');
     // 1042 has a route card: open its job card.
     await press(byLabel(h.root, 'Open job card for WO #1042'));
     expect(h.currentRoute()).toBe('JobCardDetails');
 
-    // 1036 has no route card yet: straight to Create flow.
+    // 1036 has no route card yet: its job card, with Create flow open.
     await h.navigate('Orders');
     await press(byLabel(h.root, 'Create job card for WO #1036'));
-    expect(h.currentRoute()).toBe('JobCardFlow');
-    expect(allText(h.root)).toContain('Create flow');
+    expect(h.currentRoute()).toBe('JobCardDetails');
+    expect(allText(byTestId(h.root, 'job-card-machining'))).toMatch(
+      /^Create flow/,
+    );
   });
 
   test('a new order shows the job card button once it has one', async () => {

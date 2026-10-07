@@ -39,12 +39,12 @@ const validate = (v: Values): FormErrors<Values> => {
   if (isBlank(v.name)) {
     errors.name = COMMON_STRINGS.required;
   }
-  if (isBlank(v.email)) {
-    errors.email = COMMON_STRINGS.required;
-  } else if (!isEmail(v.email)) {
+  if (!isBlank(v.email) && !isEmail(v.email)) {
     errors.email = COMMON_STRINGS.invalidEmail;
   }
-  if (!isBlank(v.phone) && !isPhone(v.phone)) {
+  if (isBlank(v.phone)) {
+    errors.phone = COMMON_STRINGS.required;
+  } else if (!isPhone(v.phone)) {
     errors.phone = COMMON_STRINGS.invalidPhone;
   }
   return errors;
@@ -146,7 +146,6 @@ export function UserDetailsForm({
         </FormRow>
         <FormRow>
           {text('email', F.email, {
-            required: editing,
             placeholder: editing ? F.emailPlaceholder : undefined,
             keyboardType: 'email-address',
             autoCapitalize: 'none',
@@ -154,7 +153,11 @@ export function UserDetailsForm({
             // Another person's email: don't offer the admin's saved login.
             autoComplete: 'off',
           })}
-          {text('phone', D.phone, { keyboardType: 'phone-pad' })}
+          {text('phone', D.phone, {
+            required: editing,
+            placeholder: editing ? F.phonePlaceholder : undefined,
+            keyboardType: 'phone-pad',
+          })}
         </FormRow>
         {text('department', D.department)}
 

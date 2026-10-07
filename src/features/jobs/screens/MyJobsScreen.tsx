@@ -67,7 +67,11 @@ export function MyJobsScreen() {
     [navigation],
   );
   const openFlow = useCallback(
-    (c: JobCard) => navigation.navigate('JobCardFlow', { jobCardId: c.id }),
+    (c: JobCard) =>
+      navigation.navigate('JobCardDetails', {
+        jobCardId: c.id,
+        editFlow: true,
+      }),
     [navigation],
   );
 
@@ -127,7 +131,7 @@ export function MyJobsScreen() {
                 key={c.id}
                 title={jobHeading(c)}
                 subtitle={whereNow(c) || COMMON_STRINGS.dash}
-                right={<JobCardStatusBadge status={c.status} />}
+                right={<JobCardStatusBadge jobCard={c} />}
                 onPress={() => openJob(c)}
                 divider={i < filtered.length - 1}
                 testID={`job-row-${c.id}`}

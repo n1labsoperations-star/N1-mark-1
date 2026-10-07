@@ -59,7 +59,6 @@ export const linking: LinkingOptions<RootStackParamList> = {
                 screens: {
                   JobCardsList: '',
                   JobCardDetails: ':jobCardId',
-                  JobCardFlow: ':jobCardId/flow',
                 },
               },
               Machines: {
@@ -99,7 +98,6 @@ export const linking: LinkingOptions<RootStackParamList> = {
               ImportOrder: 'orders/:orderId',
               RawMaterial: 'orders/:orderId/raw-material',
               JobCardDetails: 'job-cards/:jobCardId',
-              JobCardFlow: 'job-cards/:jobCardId/flow',
             },
           },
           // /dashboard/operator/jobs/1042, …/jobs/1042/machine

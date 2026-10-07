@@ -9,7 +9,7 @@ import type {
 
 export const MENU_ITEMS: MenuItem[] = [
   { route: 'Overview', label: 'Dashboard', icon: 'dashboard', onCompact: true },
-  { route: 'Users', label: 'Users', icon: 'users', onCompact: true },
+  { route: 'Users', label: 'Employees', icon: 'users', onCompact: true },
   {
     route: 'Customers',
     label: 'Customers',

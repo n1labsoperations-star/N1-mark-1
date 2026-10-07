@@ -113,7 +113,7 @@ const DRAWER_STACKS: Record<DrawerRoute, string[]> = {
   Users: ['UsersList', 'UserDetails'],
   Customers: ['CustomersList', 'CustomerDetails'],
   Orders: ['OrdersList', 'OrderDetails', 'OrderForm'],
-  JobCards: ['JobCardsList', 'JobCardDetails', 'JobCardFlow'],
+  JobCards: ['JobCardsList', 'JobCardDetails'],
   Machines: ['MachinesList', 'MachineDetails'],
   Profile: ['MyProfile'],
   Organization: ['Organization'],

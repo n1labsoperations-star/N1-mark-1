@@ -82,7 +82,14 @@ export function QcCheckScreen({
             onPress={() =>
               update(
                 jobCard.id,
-                qcResult(jobCard, kind, true, '', new Date().toISOString()),
+                qcResult(
+                  jobCard,
+                  kind,
+                  true,
+                  '',
+                  new Date().toISOString(),
+                  profile?.name,
+                ),
               )
             }
             testID="qc-pass"

@@ -45,6 +45,8 @@ beforeEach(() => {
   mockNavigation.canGoBack.mockReturnValue(true);
 });
 
+const LOGIN_ID = 'you@company.com or 98765 43210';
+
 describe('LoginScreen', () => {
   test('wide layout shows the hero panel, remember me and footer', async () => {
     const text = allText(await render(<LoginScreen />, WIDE));
@@ -74,11 +76,13 @@ describe('LoginScreen', () => {
     ['supervisor@n1.com', 'Supervisor@123', 'supervisor'],
     ['  OPERATOR@n1.com ', 'Operator@123', 'operator'],
     ['qc@n1.com', 'Qc@12345', 'qc'],
+    ['9000000001', 'Admin@123', 'admin'],
+    ['+91 90000 00003', 'Operator@123', 'operator'],
   ])('%s signs in as %s', async (email, password, role) => {
     const store = createStore();
     const root = await render(<LoginScreen />, PHONE, store);
 
-    await type(root, 'you@company.com', email);
+    await type(root, LOGIN_ID, email);
     await type(root, 'Enter your password', password);
     await press(findText(root, 'Log in'));
 
@@ -91,30 +95,33 @@ describe('LoginScreen', () => {
     const store = createStore();
     const root = await render(<LoginScreen />, PHONE, store);
 
-    await type(root, 'you@company.com', 'admin@n1.com');
+    await type(root, LOGIN_ID, 'admin@n1.com');
     await type(root, 'Enter your password', 'wrong');
     await press(findText(root, 'Log in'));
 
     expect(store.getState().session.role).toBeNull();
-    expect(allText(root)).toContain('Invalid email or password.');
+    expect(allText(root)).toContain('Invalid email, phone number or password.');
   });
 
-  test('empty fields flag both email and password', async () => {
+  test('empty fields flag both the login ID and password', async () => {
     const store = createStore();
     const root = await render(<LoginScreen />, PHONE, store);
 
     await press(findText(root, 'Log in'));
-    expect(allText(root)).toContain('Email ID is required');
+    expect(allText(root)).toContain('Email or phone number is required');
     expect(allText(root)).toContain('Password is required');
-    expect(allText(root)).not.toContain('Invalid email or password.');
+    expect(allText(root)).not.toContain(
+      'Invalid email, phone number or password.',
+    );
     expect(store.getState().session.role).toBeNull();
 
-    // A badly formed email is flagged too; typing clears the password error.
-    await type(root, 'you@company.com', 'admin');
+    // A login ID that is neither an email nor a phone is flagged too; typing
+    // clears the password error.
+    await type(root, LOGIN_ID, 'admin');
     await type(root, 'Enter your password', 'Admin@123');
     await press(findText(root, 'Log in'));
     const text = allText(root);
-    expect(text).toContain('Enter a valid email address');
+    expect(text).toContain('Enter a valid email or phone number');
     expect(text).not.toContain('Password is required');
   });
 

@@ -1,5 +1,5 @@
 import { useNavigation } from '@react-navigation/native';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import {
   AdminScreen,
@@ -26,7 +26,14 @@ import {
   usePagination,
 } from '../../../shared/hooks';
 import { notifyUnavailable } from '../../../shared/utils';
+import {
+  DocumentViewer,
+  type ViewerTarget,
+} from '../../orders/components/DocumentViewer';
+import { ORDER_STRINGS } from '../../orders/constants';
+import { useOrders } from '../../orders/hooks/useOrders';
 import { FlowActionButton } from '../components/FlowActionButton';
+import { JobCardStatusBadge } from '../components/JobCardBadges';
 import { JobCardCard } from '../components/JobCardCard';
 import { JobProgress } from '../components/JobProgress';
 import { INITIAL_JOB_CARD_FILTERS, JOB_CARD_STRINGS as S } from '../constants';
@@ -46,7 +53,8 @@ const makeStyles = createN1Styles(t => ({
 }));
 
 const dash = (value?: string) => value || COMMON_STRINGS.dash;
-const openDrawing = () => notifyUnavailable(S.openDrawing);
+const printDrawing = () => notifyUnavailable(ORDER_STRINGS.details.printAction);
+const download = () => notifyUnavailable(ORDER_STRINGS.details.downloadAction);
 
 export function JobCardsListScreen() {
   const styles = useN1Styles(makeStyles);
@@ -114,8 +122,27 @@ export function JobCardsListScreen() {
     [navigation],
   );
   const openFlow = useCallback(
-    (c: JobCard) => navigation.navigate('JobCardFlow', { jobCardId: c.id }),
+    (c: JobCard) =>
+      navigation.navigate('JobCardDetails', {
+        jobCardId: c.id,
+        editFlow: true,
+      }),
     [navigation],
+  );
+  // The diagram opens full size, numbered by its order's drawing number.
+  const { items: orders } = useOrders();
+  const [viewing, setViewing] = useState<ViewerTarget | null>(null);
+  const closeViewer = useCallback(() => setViewing(null), []);
+  const openDrawing = useCallback(
+    (c: JobCard) =>
+      setViewing({
+        type: 'drawing',
+        drawingNumber:
+          orders.find(o => o.id === c.id)?.drawingNumber ||
+          c.designFile?.name ||
+          S.details.noDrawing,
+      }),
+    [orders],
   );
 
   const columns = useMemo<N1TableColumn<JobCard>[]>(
@@ -124,7 +151,17 @@ export function JobCardsListScreen() {
         key: 'order',
         title: S.columns.order,
         flex: 0.8,
-        render: c => <N1Text weight="bold">{S.workOrder(c.id)}</N1Text>,
+        // Job ID, with its work order small beneath it.
+        render: c => (
+          <View>
+            <N1Text weight="bold" numberOfLines={1}>
+              {S.jobCardNumber(c.code)}
+            </N1Text>
+            <N1Text variant="caption" color="secondary" numberOfLines={1}>
+              {S.workOrder(c.id)}
+            </N1Text>
+          </View>
+        ),
       },
       {
         key: 'part',
@@ -133,9 +170,9 @@ export function JobCardsListScreen() {
         render: c => <N1Text>{dash(jobTitle(c))}</N1Text>,
       },
       {
-        key: 'operation',
-        title: S.columns.operation,
-        render: c => <N1Text>{dash(currentOperation(c)?.name)}</N1Text>,
+        key: 'status',
+        title: S.columns.status,
+        render: c => <JobCardStatusBadge jobCard={c} />,
       },
       {
         key: 'machine',
@@ -158,7 +195,9 @@ export function JobCardsListScreen() {
             variant="soft"
             size="sm"
             accessibilityLabel={S.a11y.diagram(c.id)}
-            onPress={openDrawing}
+            onPress={() => openDrawing(c)}
+            disabled={!c.designFile}
+            testID={`diagram-${c.id}`}
           />
         ),
       },
@@ -190,7 +229,7 @@ export function JobCardsListScreen() {
         ),
       },
     ],
-    [styles, openFlow, requestDelete],
+    [styles, openFlow, requestDelete, openDrawing],
   );
 
   const renderCompactItem = useCallback(
@@ -288,6 +327,13 @@ export function JobCardsListScreen() {
         onConfirm={deletion.confirm}
         onCancel={deletion.cancel}
         testID="delete-job-card-dialog"
+      />
+      <DocumentViewer
+        target={viewing}
+        onClose={closeViewer}
+        onPrint={printDrawing}
+        onDownload={download}
+        onOpen={null}
       />
     </AdminScreen>
   );

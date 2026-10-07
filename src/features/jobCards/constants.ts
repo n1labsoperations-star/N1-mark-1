@@ -2,11 +2,8 @@ import type { N1DropDownOption } from '../../shared/components';
 import type { StatusMeta } from '../../shared/types';
 import type {
   BillingState,
-  DesignApproval,
   JobCardFilters,
-  JobCardStatus,
   MaterialQc,
-  MaterialSource,
   QcResult,
   QuotationStatus,
 } from './types';
@@ -17,15 +14,15 @@ export const JOB_CARD_STRINGS = {
   title: 'Job Cards',
   subtitle:
     'Shop-floor operations in progress, with the machine and operator assigned to each.',
-  search: 'Search by WO #, part or operator',
+  search: 'Search by job ID, WO #, part or operator',
   noun: 'job cards',
   operationFilter: 'Operation',
   operatorFilter: 'Operator',
   machineFilter: 'Assigned machine',
   columns: {
-    order: 'Order ID',
+    order: 'Job ID',
     part: 'Part name',
-    operation: 'Current operation',
+    status: 'Status',
     machine: 'Assigned machine',
     operator: 'Operator',
     diagram: 'Diagram',
@@ -34,6 +31,25 @@ export const JOB_CARD_STRINGS = {
   },
   stats: { active: 'Active jobs', completed: 'Completed' },
   workOrder: (id: string) => `WO #${id}`,
+  /** The job card's status (jobCardStage): RM, each operation and its QC, dispatch. */
+  stages: {
+    rmReceived: 'RM received',
+    rmQcFailed: 'RM QC failed',
+    rmQcPassed: 'RM QC passed',
+    yetToStart: 'Yet to start',
+    paused: (operation: string) => `${operation} (paused)`,
+    next: (operation: string) => `${operation} (up next)`,
+    operationQc: (operation: string) => `${operation} QC`,
+    finalQc: 'Final QC',
+    failed: (stage: string) => `${stage} failed`,
+    readyToDispatch: 'Ready to dispatch',
+    done: 'Done',
+    waitingForRmQc: 'Waiting for RM QC',
+    waitingForQc: (operation: string) => `Waiting for ${operation} QC`,
+    redo: (operation: string) => `Redo ${operation}`,
+  },
+  /** Blank until the card is saved. */
+  jobCardNumber: (code: string) => (code ? `#${code}` : ''),
   operator: (name: string) => `Operator: ${name}`,
   quantity: (n: number) => `${n} pcs`,
   view: 'View',
@@ -53,17 +69,42 @@ export const JOB_CARD_STRINGS = {
   openDrawing: 'Opening drawings',
   details: {
     title: 'Job card',
-    quickActions: 'Quick actions',
+    back: 'Back',
+    backTo: {
+      dashboard: 'Back to dashboard',
+      order: 'Back to order',
+      employee: 'Back to employee',
+    },
+    tabs: { order: 'Order details', machining: 'Machining', qc: 'QC' },
+    jobSection: 'Job',
+    orderSection: 'Order',
+    order: {
+      due: (date: string) => `Due ${date}`,
+      open: (id: string) => `Open order WO #${id}`,
+    },
+    /** The job's details on the Order details tab. */
+    info: {
+      material: 'Material',
+      priority: 'Priority',
+      due: 'Due date',
+      qty: 'Quantity',
+      part: 'Part',
+      drawing: 'Drawing',
+      source: 'Material source',
+      materialQc: 'Material QC',
+      quotation: 'Quotation',
+      billing: 'Billing',
+    },
     start: 'Start Operation',
     pause: 'Pause',
     complete: 'Complete',
-    print: 'Print Job Card',
     dispatch: 'Generate Dispatch',
     priority: 'Priority:',
     due: 'Due:',
     qty: 'Qty:',
     drawing: 'Drawing / design',
     noDrawing: 'No drawing attached',
+    viewDrawing: (no: string) => `View drawing ${no}`,
     designApproval: (label: string) => `Design approval: ${label}`,
     material: 'Material',
     source: 'Source',
@@ -93,6 +134,19 @@ export const JOB_CARD_STRINGS = {
       result: 'Result',
       remark: 'Remark',
       date: 'Date',
+      inspector: 'QC by',
+      report: 'Report',
+    },
+    report: {
+      upload: 'Upload',
+      kind: 'QC report',
+      sample: 'qc-report.pdf',
+      accept: '.pdf,.doc,.docx,.xls,.xlsx,image/*',
+      open: 'Opening QC reports',
+      a11y: {
+        upload: (stage: string) => `Upload QC report for ${stage}`,
+        open: (name: string) => `Open ${name}`,
+      },
     },
     quotation: 'Quotation',
     billing: 'Billing',
@@ -101,15 +155,10 @@ export const JOB_CARD_STRINGS = {
   flow: {
     createTitle: 'Create flow',
     editTitle: 'Edit flow',
-    section: 'Process flow',
     createHelp:
       'Add each operation the material will go through, in the order it should happen.',
     editHelp:
       'Completed steps are locked. Reorder, swap or add the steps still to come.',
-    priority: (label: string) => `${label} priority`,
-    material: 'Material:',
-    qty: 'Qty:',
-    due: 'Due:',
     stepPlaceholder: 'Select operation',
     stepLabel: (n: number) => `Operation ${n}`,
     addProcess: 'Add process',
@@ -121,7 +170,7 @@ export const JOB_CARD_STRINGS = {
 
 /** Operations a route card can include, in the order they usually run. */
 export const JOB_OPERATIONS = [
-  'Material QC',
+  'Cutting',
   'Facing (Lathe)',
   'Turning (Lathe)',
   'CNC Turning',
@@ -139,29 +188,23 @@ export const OPERATION_OPTIONS: N1DropDownOption<string>[] = JOB_OPERATIONS.map(
   value => ({ value, label: value }),
 );
 
-/** Width of the drawing file tile on wide screens. */
-export const DRAWING_TILE_WIDTH = 220;
+/** Width of the drawing thumbnail on a job card's Order details tab. */
+export const DRAWING_THUMB_WIDTH = 280;
 
 /** Steps a new flow starts with (the Create flow design shows three). */
 export const NEW_FLOW_STEPS = 3;
 
-export const JOB_CARD_STATUS_META: Record<JobCardStatus, StatusMeta> = {
-  not_started: { label: 'Not started', tone: 'neutral' },
-  in_progress: { label: 'In progress', tone: 'info' },
-  paused: { label: 'Paused', tone: 'warning' },
-  completed: { label: 'Completed', tone: 'success' },
-};
+const ST = JOB_CARD_STRINGS.stages;
 
-export const DESIGN_APPROVAL_META: Record<DesignApproval, StatusMeta> = {
-  approved: { label: 'Approved', tone: 'success' },
-  pending: { label: 'Pending', tone: 'warning' },
-  rejected: { label: 'Rejected', tone: 'danger' },
-};
-
-export const MATERIAL_SOURCE_LABELS: Record<MaterialSource, string> = {
-  company: 'Company purchased',
-  customer: 'Customer supplied',
-};
+/** Badges for the stages that don't name an operation. */
+export const STAGE_META = {
+  rm_received: { label: ST.rmReceived, tone: 'neutral' },
+  rm_qc_failed: { label: ST.rmQcFailed, tone: 'danger' },
+  rm_qc_passed: { label: ST.rmQcPassed, tone: 'info' },
+  yet_to_start: { label: ST.yetToStart, tone: 'neutral' },
+  ready_to_dispatch: { label: ST.readyToDispatch, tone: 'success' },
+  done: { label: ST.done, tone: 'success' },
+} as const satisfies Record<string, StatusMeta>;
 
 export const MATERIAL_QC_META: Record<MaterialQc, StatusMeta> = {
   accepted: { label: 'Accepted', tone: 'success' },

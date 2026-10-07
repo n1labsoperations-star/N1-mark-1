@@ -8,7 +8,7 @@ import {
   N1TextInput,
   useN1Styles,
 } from '../../../shared/components';
-import { COMMON_STRINGS } from '../../../shared/constants';
+import { isPhone } from '../../../shared/utils';
 import { makeLoginFormStyles } from '../styles';
 import { isValidEmail } from '../utils';
 
@@ -17,17 +17,18 @@ const BRAND_LOGO = require('../../../../assets/images/n1-logo.png');
 
 type FieldErrors = { email?: string; password?: string };
 
-const EMAIL_REQUIRED = 'Email ID is required';
+const LOGIN_ID_REQUIRED = 'Email or phone number is required';
+const LOGIN_ID_INVALID = 'Enter a valid email or phone number';
 const PASSWORD_REQUIRED = 'Password is required';
 
-/** Both fields are required; the email must also look like one. */
+/** Both fields are required; the login ID must be an email or a phone number. */
 function validate(email: string, password: string): FieldErrors {
   return {
     email: !email.trim()
-      ? EMAIL_REQUIRED
-      : isValidEmail(email)
+      ? LOGIN_ID_REQUIRED
+      : isValidEmail(email) || isPhone(email)
       ? undefined
-      : COMMON_STRINGS.invalidEmail,
+      : LOGIN_ID_INVALID,
     password: password ? undefined : PASSWORD_REQUIRED,
   };
 }
@@ -94,18 +95,18 @@ function LoginForm({
         {subtitle ? <N1Text color="secondary">{subtitle}</N1Text> : null}
       </View>
       <N1TextInput
-        label="Email"
+        label="Email or phone number"
         value={email}
         onChangeText={value => {
           setEmail(value);
           setFieldErrors(prev => ({ ...prev, email: undefined }));
         }}
         errorText={fieldErrors.email}
-        placeholder="you@company.com"
+        placeholder="you@company.com or 98765 43210"
         keyboardType="email-address"
         autoCapitalize="none"
-        autoComplete="email"
-        textContentType="emailAddress"
+        autoComplete="username"
+        textContentType="username"
       />
       <N1TextInput
         label="Password"

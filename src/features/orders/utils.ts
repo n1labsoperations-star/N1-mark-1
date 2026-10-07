@@ -1,7 +1,10 @@
 import { workOrderSearchTerms } from '../../shared/utils';
 import { matchesAny } from '../../shared/hooks';
 import { ORDER_STRINGS, PRIORITY_META } from './constants';
-import type { OrderFilters, WorkOrder } from './types';
+import type { JobCard } from '../jobCards/types';
+import { jobCardStage } from '../jobCards/utils';
+import { RAW_MATERIAL_FIELDS } from './components/orderForm';
+import type { OrderFilters, OrderStatus, WorkOrder } from './types';
 
 /** "Bracket — Job A"; falls back to the description for new orders. */
 export function orderTitle(
@@ -51,3 +54,43 @@ export const INITIAL_ORDER_FILTERS: OrderFilters = {
 };
 
 export const isOpen = (o: WorkOrder) => o.status !== 'completed';
+
+/** Every raw material detail is filled in: the material is in. */
+export const rawMaterialArrived = (o: WorkOrder) =>
+  RAW_MATERIAL_FIELDS.every(key => o[key] !== '');
+
+/**
+ * The order's status from its job card's stage and its invoice:
+ * - Completed: the invoice is paid.
+ * - Payment due: ready to dispatch or dispatched; not paid yet.
+ * - Paused: an operation is paused, or RM QC rejected the material.
+ * - In progress: RM QC passed, or machining / QC is under way.
+ * - Yet to start: job card made and raw material in, RM QC still to do.
+ * - New: no job card yet, or its raw material isn't in.
+ */
+export function orderStatus(
+  o: WorkOrder,
+  jobCard: JobCard | undefined,
+  paid: boolean,
+): OrderStatus {
+  if (paid) {
+    return 'completed';
+  }
+  if (!jobCard) {
+    return 'new';
+  }
+  const stage = jobCardStage(jobCard);
+  switch (stage.key) {
+    case 'ready_to_dispatch':
+    case 'done':
+      return 'payment_due';
+    case 'rm_qc_failed':
+      return 'paused';
+    case 'operation':
+      return stage.state === 'paused' ? 'paused' : 'in_progress';
+    case 'rm_received':
+      return rawMaterialArrived(o) ? 'yet_to_start' : 'new';
+    default:
+      return 'in_progress';
+  }
+}

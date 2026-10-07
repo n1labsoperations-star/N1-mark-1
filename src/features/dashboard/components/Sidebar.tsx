@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Image, Pressable, ScrollView, View } from 'react-native';
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
+import { StackActions } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   N1Avatar,
@@ -58,7 +59,14 @@ function Sidebar({
   const activeRoute = state.routes[state.index]?.name;
   const items = visibleMenuItems(MENU_ITEMS, { compact, query });
 
+  // A menu item always opens its module's list: if the module is showing a
+  // details or form screen (e.g. it's open already, or a job card was opened
+  // from the dashboard), its stack goes back to the first screen.
   const handlePress = (item: MenuItem) => {
+    const stack = state.routes.find(r => r.name === item.route)?.state;
+    if (stack?.key && stack.index) {
+      navigation.dispatch({ ...StackActions.popToTop(), target: stack.key });
+    }
     navigation.navigate(item.route);
     if (compact) {
       navigation.closeDrawer();

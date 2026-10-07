@@ -4,6 +4,7 @@ import type {
   QcEntry,
   RejectedMaterial,
 } from '../jobCards/types';
+import { operationQc } from '../jobCards/utils';
 import { QC_STRINGS } from './constants';
 
 /** Raw Material QC (incoming inspection) or Machine QC (after an operation). */
@@ -59,7 +60,7 @@ export function machineQc(c: JobCard): QcItem {
       operation: running,
     };
   }
-  const entry = c.qcHistory.find(e => e.operationId === last.id);
+  const entry = operationQc(c, last);
   const final = done.length === c.operations.length;
   return {
     status: entry
@@ -96,6 +97,8 @@ export function qcResult(
   passed: boolean,
   remark: string,
   now: string,
+  /** The QC user doing the check. */
+  inspector = '',
   rejectedMaterial?: RejectedMaterial,
 ): Partial<JobCard> {
   const op = machineQc(c).operation;
@@ -112,6 +115,7 @@ export function qcResult(
         : 'failed',
     remark,
     at: now,
+    ...(inspector && { inspector }),
     operationId: kind === 'machine' ? op?.id : undefined,
     ...(kind === 'rm' && !passed && rejectedMaterial && { rejectedMaterial }),
   };

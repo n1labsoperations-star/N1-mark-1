@@ -62,8 +62,8 @@ export function DashboardScreen() {
     (jobCardId: string) =>
       navigation.navigate('JobCards', {
         screen: 'JobCardDetails',
-        params: { jobCardId },
-        // Keep the list underneath so Back returns to it.
+        // Back returns to the dashboard.
+        params: { jobCardId, from: 'dashboard' },
         initial: false,
       }),
     [navigation],

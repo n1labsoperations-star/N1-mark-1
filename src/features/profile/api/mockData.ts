@@ -32,7 +32,6 @@ export const MOCK_SESSION: Session = {
     defaultTaxRate: 18,
     invoicePrefix: 'INV-2026-',
     invoiceStartNumber: 101,
-    paymentTerms: 'net-30',
     invoiceFooter: 'Thank you for your business.',
     invoiceLogo: null,
     termsAndConditions:

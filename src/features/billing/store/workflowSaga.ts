@@ -4,6 +4,7 @@ import { errorMessage } from '../../../shared/store';
 import { customersApi } from '../../customers/api/customersApi';
 import type { Customer } from '../../customers/types';
 import { jobCardsApi } from '../../jobCards/api/jobCardsApi';
+import { jobCardActions } from '../../jobCards/store/jobCardsSlice';
 import type { JobCard } from '../../jobCards/types';
 import { ordersApi } from '../../orders/api/ordersApi';
 import { orderActions } from '../../orders/store/ordersSlice';
@@ -88,6 +89,11 @@ export function* generateInvoice(
       yield put(quoteActions.saveSuccess(linked));
     }
     yield put(workflowActions.generateInvoiceSuccess(created.id));
+    // Dispatched: the job card is Done.
+    const dispatched: JobCard = yield call(jobCardsApi.update, jobCardId, {
+      billing: 'invoiced',
+    });
+    yield put(jobCardActions.saveSuccess(dispatched));
   } catch (error) {
     yield put(
       workflowActions.failure(

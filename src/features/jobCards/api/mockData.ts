@@ -1,5 +1,5 @@
 import type { JobCard, JobOperation, OperationStatus } from '../types';
-import { statusFor } from '../utils';
+import { jobCardCode, statusFor } from '../utils';
 
 type Seed = Pick<
   JobCard,
@@ -52,7 +52,7 @@ const pendingOp = (id: string, name: string): JobOperation => ({
   completedAt: null,
 });
 
-function card(seed: Seed): JobCard {
+function card(seed: Seed): Omit<JobCard, 'code'> {
   const operations = seed.operations ?? [];
   return {
     designFile: {
@@ -62,7 +62,7 @@ function card(seed: Seed): JobCard {
       sizeBytes: 480 * 1024,
     },
     designApproval: 'approved',
-    materialSource: 'company',
+    materialSource: 'bought_out',
     materialQc: 'accepted',
     qcHistory: [],
     quotation: 'accepted',
@@ -73,7 +73,7 @@ function card(seed: Seed): JobCard {
   };
 }
 
-export const MOCK_JOB_CARDS: JobCard[] = [
+const CARDS = [
   card({
     id: '1042',
     customerId: 'CUS-1',
@@ -87,9 +87,9 @@ export const MOCK_JOB_CARDS: JobCard[] = [
     operations: [
       {
         id: '1042-op1',
-        name: 'Material QC',
-        machine: 'QC Bay 1',
-        operator: 'Suresh Babu',
+        name: 'Cutting',
+        machine: 'Saw-01',
+        operator: 'Meena Lakshmi',
         status: 'completed',
         startedAt: `${DAY}T09:10:00`,
         completedAt: `${DAY}T09:45:00`,
@@ -123,6 +123,13 @@ export const MOCK_JOB_CARDS: JobCard[] = [
         result: 'accepted',
         remark: 'Voice + text note',
         at: '2026-09-24',
+        inspector: 'Suresh Babu',
+        report: {
+          id: 'qc1-report',
+          name: 'material-qc-report.pdf',
+          kind: 'QC report',
+          sizeBytes: 220 * 1024,
+        },
       },
       {
         id: 'qc2',
@@ -130,6 +137,7 @@ export const MOCK_JOB_CARDS: JobCard[] = [
         result: 'passed',
         remark: '',
         at: '2026-09-25',
+        inspector: 'Divya Rao',
         operationId: '1042-op2',
       },
     ],
@@ -147,7 +155,7 @@ export const MOCK_JOB_CARDS: JobCard[] = [
     operations: route(
       '1040',
       [
-        ['Material QC', 'QC Bay 1', 'Suresh Babu'],
+        ['Cutting', 'Saw-01', 'Meena Lakshmi'],
         ['CNC Turning', 'CNC-04', 'Arun Prakash'],
         ['Deburring', 'Bench 2', 'Ravi Kumar'],
         ['Marking', 'Bench 1', 'Ravi Kumar'],
@@ -162,6 +170,7 @@ export const MOCK_JOB_CARDS: JobCard[] = [
         result: 'accepted',
         remark: '',
         at: '2026-09-22',
+        inspector: 'Suresh Babu',
       },
     ],
   }),
@@ -178,7 +187,7 @@ export const MOCK_JOB_CARDS: JobCard[] = [
     operations: route(
       '1037',
       [
-        ['Material QC', 'QC Bay 2', 'Meena Lakshmi'],
+        ['Cutting', 'Saw-01', 'Meena Lakshmi'],
         ['Welding', 'Weld Station 1', 'Arun Prakash'],
         ['QC Inspection', 'QC Bay 2', 'Meena Lakshmi'],
         ['Packing', 'Pack Station 1', 'Suresh Babu'],
@@ -197,11 +206,11 @@ export const MOCK_JOB_CARDS: JobCard[] = [
     quantity: 35,
     priority: 'high',
     dueDate: '2026-10-18',
-    materialSource: 'customer',
+    materialSource: 'in_house',
     operations: route(
       '1033',
       [
-        ['Material QC', 'QC Bay 2', 'Meena Lakshmi'],
+        ['Cutting', 'Saw-01', 'Meena Lakshmi'],
         ['CNC Turning', 'CNC-01', 'Divya Ramesh'],
         ['Drilling', 'Drill-01', 'Karthik Iyer'],
         ['QC Inspection', 'QC Bay 2', 'Meena Lakshmi'],
@@ -224,7 +233,7 @@ export const MOCK_JOB_CARDS: JobCard[] = [
     operations: route(
       '1039',
       [
-        ['Material QC', 'QC Bay 1', 'Suresh Babu'],
+        ['Cutting', 'Saw-01', 'Meena Lakshmi'],
         ['CNC Milling', 'CNC-02', 'Karthik Iyer'],
         ['Drilling', 'Drill-01', 'Karthik Iyer'],
         ['Deburring', 'Bench 2', 'Ravi Kumar'],
@@ -251,6 +260,7 @@ export const MOCK_JOB_CARDS: JobCard[] = [
         result: 'rejected',
         remark: 'Billet diameter under tolerance; supplier to replace.',
         at: '2026-09-26',
+        inspector: 'Divya Rao',
         rejectedMaterial: {
           grade: 'AL6061',
           heatNumber: 'HT-99212',
@@ -261,7 +271,7 @@ export const MOCK_JOB_CARDS: JobCard[] = [
     operations: route(
       '1041',
       [
-        ['Material QC', 'QC Bay 1', 'Suresh Babu'],
+        ['Cutting', 'Saw-01', 'Meena Lakshmi'],
         ['CNC Milling', 'CNC-03', 'Karthik Iyer'],
         ['Welding', 'Weld Station 2', 'Divya Ramesh'],
         ['QC Inspection', 'QC Bay 1', 'Suresh Babu'],
@@ -297,7 +307,7 @@ export const MOCK_JOB_CARDS: JobCard[] = [
     operations: route(
       '1034',
       [
-        ['Material QC', 'QC Bay 1', 'Suresh Babu'],
+        ['Cutting', 'Saw-01', 'Meena Lakshmi'],
         ['CNC Milling', 'CNC-03', 'Karthik Iyer'],
         ['Drilling', 'Drill-01', 'Karthik Iyer'],
         ['Deburring', 'Bench 2', 'Ravi Kumar'],
@@ -320,7 +330,7 @@ export const MOCK_JOB_CARDS: JobCard[] = [
     operations: route(
       '1038',
       [
-        ['Material QC', 'QC Bay 2', 'Meena Lakshmi'],
+        ['Cutting', 'Saw-01', 'Meena Lakshmi'],
         ['CNC Turning', 'CNC-01', 'Divya Ramesh'],
         ['Marking', 'Bench 1', 'Ravi Kumar'],
         ['QC Inspection', 'QC Bay 2', 'Meena Lakshmi'],
@@ -328,7 +338,6 @@ export const MOCK_JOB_CARDS: JobCard[] = [
       ],
       4,
     ),
-    billing: 'invoiced',
   }),
   card({
     id: '1035',
@@ -343,7 +352,7 @@ export const MOCK_JOB_CARDS: JobCard[] = [
     operations: route(
       '1035',
       [
-        ['Material QC', 'QC Bay 1', 'Suresh Babu'],
+        ['Cutting', 'Saw-01', 'Meena Lakshmi'],
         ['CNC Milling', 'CNC-02', 'Karthik Iyer'],
         ['QC Inspection', 'QC Bay 1', 'Suresh Babu'],
         ['Packing', 'Pack Station 2', 'Suresh Babu'],
@@ -353,3 +362,9 @@ export const MOCK_JOB_CARDS: JobCard[] = [
     billing: 'invoiced',
   }),
 ];
+
+/** Numbered JOB1, JOB2… in list order. */
+export const MOCK_JOB_CARDS: JobCard[] = CARDS.map((c, i) => ({
+  ...c,
+  code: jobCardCode(i + 1),
+}));

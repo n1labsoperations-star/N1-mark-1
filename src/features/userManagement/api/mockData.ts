@@ -33,7 +33,7 @@ export const MOCK_USERS: AdminUser[] = [
       },
       {
         id: 'a2',
-        label: 'Created user Priya Sharma',
+        label: 'Created employee Priya Sharma',
         at: isoAgo(2 * DAY_MS),
         tone: 'info',
       },

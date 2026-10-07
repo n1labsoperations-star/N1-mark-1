@@ -31,7 +31,6 @@ const ADMIN_URLS: [path: string, screen: string, params?: object][] = [
   ['/dashboard/orders/form/1042', 'OrderForm', { orderId: '1042' }],
   ['/dashboard/job-cards', 'JobCardsList'],
   ['/dashboard/job-cards/1042', 'JobCardDetails', { jobCardId: '1042' }],
-  ['/dashboard/job-cards/1042/flow', 'JobCardFlow', { jobCardId: '1042' }],
   ['/dashboard/machines', 'MachinesList'],
   ['/dashboard/machines/MCH-1', 'MachineDetails', { machineId: 'MCH-1' }],
   ['/dashboard/profile', 'MyProfile'],
@@ -82,11 +81,6 @@ const SUPERVISOR_URLS: [path: string, screen: string, params?: object][] = [
   [
     '/dashboard/supervisor/job-cards/1042',
     'JobCardDetails',
-    { jobCardId: '1042' },
-  ],
-  [
-    '/dashboard/supervisor/job-cards/1042/flow',
-    'JobCardFlow',
     { jobCardId: '1042' },
   ],
 ];

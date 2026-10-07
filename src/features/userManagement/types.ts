@@ -46,6 +46,7 @@ export type AdminUser = {
 export type UserInput = {
   name: string;
   designation: string;
+  /** Optional; the phone number is required instead. */
   email: string;
   role: UserRole;
   status: UserStatus;
@@ -71,8 +72,19 @@ export type UserFilters = {
 // Stack nested inside the admin drawer's "Users" item.
 export type UserManagementStackParamList = {
   UsersList: undefined;
-  UserDetails: { userId: string };
+  UserDetails: {
+    userId: string;
+    /** Section to open on; defaults to the profile. */
+    section?: UserDetailsSection;
+  };
 };
+
+export type UserDetailsSection =
+  | 'profile'
+  | 'address'
+  | 'work'
+  | 'security'
+  | 'documents';
 
 export type UserManagementNavigation =
   NativeStackNavigationProp<UserManagementStackParamList>;

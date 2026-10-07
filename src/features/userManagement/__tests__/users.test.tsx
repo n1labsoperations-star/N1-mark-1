@@ -36,25 +36,25 @@ describe('Users list (desktop)', () => {
     ].forEach(name => expect(text).toContain(name));
     expect(text).toContain('Suspended');
     expect(text).toContain('Sep 18, 2026');
-    expect(text).toContain('Showing 10 of 22 users');
+    expect(text).toContain('Showing 10 of 22 employees');
   });
 
   test('leaving Users and coming back clears the search', async () => {
     const h = await renderAdmin('Users');
-    await typeInto(byLabel(h.root, 'Search users'), 'nobody');
+    await typeInto(byLabel(h.root, 'Search employees'), 'nobody');
     expect(allText(h.root)).toContain('No results match your search.');
     await h.navigate('Customers');
     await h.navigate('Users');
-    expect(byLabel(h.root, 'Search users').props.value).toBe('');
+    expect(byLabel(h.root, 'Search employees').props.value).toBe('');
     expect(allText(h.root)).not.toContain('No results match your search.');
   });
 
   test('search and the multi-select filter narrow the list', async () => {
     const { root } = await renderAdmin('Users');
-    await typeInto(byLabel(root, 'Search users'), 'priya');
+    await typeInto(byLabel(root, 'Search employees'), 'priya');
     expect(allText(root)).toContain('Priya Sharma');
     expect(allText(root)).not.toContain('Arjun Mehta');
-    await typeInto(byLabel(root, 'Search users'), '');
+    await typeInto(byLabel(root, 'Search employees'), '');
 
     const panel = () => byTestId(root, 'users-filter-panel');
     const tab = (label: string) =>
@@ -91,10 +91,10 @@ describe('Users list (desktop)', () => {
     await press(byLabel(panel(), 'Admin'));
     await press(byTestId(root, 'users-filter-apply'));
     text = allText(root);
-    expect(text).toContain('Showing 1 of 1 users');
+    expect(text).toContain('Showing 1 of 1 employees');
     expect(text).toContain('Koushik Dasarathan');
 
-    await typeInto(byLabel(root, 'Search users'), 'nobody');
+    await typeInto(byLabel(root, 'Search employees'), 'nobody');
     expect(allText(root)).toContain('No results match your search.');
   });
 
@@ -117,6 +117,7 @@ describe('Users list (desktop)', () => {
       byTestId(root, 'user-form-email'),
       'meena@abcengineering.com',
     );
+    await typeInto(byTestId(root, 'user-form-phone'), '9876512345');
     await typeInto(byTestId(root, 'user-form-password'), 'welcome123');
     await press(byTestId(root, 'user-form-submit'));
 
@@ -127,10 +128,35 @@ describe('Users list (desktop)', () => {
     expect(allText(root)).toContain('Meena Lakshmi');
   });
 
+  test('phone is required; email is optional', async () => {
+    const { root, store } = await renderAdmin('Users');
+    await press(byTestId(root, 'create-user'));
+    await typeInto(byTestId(root, 'user-form-name'), 'Meena Lakshmi');
+    await typeInto(byTestId(root, 'user-form-password'), 'welcome123');
+    await press(byTestId(root, 'user-form-submit'));
+    expect(allText(root)).toContain('This field is required');
+
+    await typeInto(byTestId(root, 'user-form-phone'), '98765');
+    await press(byTestId(root, 'user-form-submit'));
+    expect(allText(root)).toContain('Enter a valid phone number');
+
+    await typeInto(byTestId(root, 'user-form-phone'), '+91 98765 22233');
+    await press(byTestId(root, 'user-form-submit'));
+    const ids = store.getState().userManagement.ids;
+    expect(ids).toHaveLength(23);
+    const created =
+      store.getState().userManagement.entities[ids[ids.length - 1]];
+    expect(created).toMatchObject({ email: '', phone: '+91 98765 22233' });
+
+    // The list shows the phone where the email would be.
+    await press(byLabel(root, 'Page 3'));
+    expect(allText(root)).toContain('+91 98765 22233');
+  });
+
   test('edits a user without changing the password', async () => {
     const { root, store } = await renderAdmin('Users');
     await press(byLabel(root, 'Edit Priya Sharma'));
-    expect(allText(root)).toContain('Edit user');
+    expect(allText(root)).toContain('Edit employee');
     await typeInto(byTestId(root, 'user-form-name'), 'Priya S');
     await press(byTestId(root, 'user-form-submit'));
     expect(store.getState().userManagement.entities['USR-2'].name).toBe(
@@ -156,7 +182,7 @@ describe('Users list (desktop)', () => {
     await typeInto(byTestId(root, 'user-form-confirm-password'), 'welcome12');
     await press(byTestId(root, 'user-form-submit'));
     expect(allText(root)).toContain('Passwords don’t match');
-    expect(allText(root)).toContain('Edit user');
+    expect(allText(root)).toContain('Edit employee');
 
     const spy = jest.spyOn(userManagementApi, 'update');
     await typeInto(byTestId(root, 'user-form-confirm-password'), 'welcome123');
@@ -179,8 +205,8 @@ describe('Users list (desktop)', () => {
   test('deletes a user after confirming', async () => {
     const { root, store } = await renderAdmin('Users');
     await press(byLabel(root, 'Delete Karthik Iyer'));
-    expect(allText(root)).toContain('Delete user?');
-    await press(byText(root, 'Delete user'));
+    expect(allText(root)).toContain('Delete employee?');
+    await press(byText(root, 'Delete employee'));
     expect(store.getState().userManagement.entities['USR-5']).toBeUndefined();
     expect(allText(root)).not.toContain('Karthik Iyer');
   });
@@ -327,7 +353,9 @@ describe('User details', () => {
     const screen = byTestId(h.root, 'user-details-screen');
     // The red Delete user at the foot of the menu, then the dialog's button.
     await press(byLabel(screen, 'Delete Divya Rao'));
-    await press(byText(byTestId(screen, 'delete-user-dialog'), 'Delete user'));
+    await press(
+      byText(byTestId(screen, 'delete-user-dialog'), 'Delete employee'),
+    );
     expect(h.currentRoute()).toBe('Users');
     expect(h.store.getState().userManagement.entities['USR-4']).toBeUndefined();
   });
@@ -376,11 +404,13 @@ describe('User details', () => {
     expect(hasTestId(history, 'user-work-1039')).toBe(false);
     expect(hasTestId(history, 'user-work-1037')).toBe(false);
     const row = allText(byTestId(history, 'user-work-1042'));
-    expect(row).toContain('WO #1042');
+    // The job card number leads; the work order sits small beneath it.
+    expect(row).toMatch(/^#JOB1 · Bracket — Job A\|WO #1042\|/);
     expect(row).toContain('RC #1042');
     expect(row).toContain('Facing (Lathe)');
     expect(row).toContain('Started Sep 25, 2026');
-    expect(row).toContain('In progress');
+    // Its status is the step under way.
+    expect(row).toContain('Turning (Lathe)');
 
     await press(byTestId(history, 'user-work-1042'));
     expect(h.currentRoute()).toBe('JobCardDetails');
@@ -408,7 +438,7 @@ describe('User details', () => {
   test('unknown user shows a not-found message', async () => {
     const h = await renderAdmin('Users');
     await h.navigate('UserDetails', { userId: 'USR-404' });
-    expect(allText(h.root)).toContain('This user no longer exists.');
+    expect(allText(h.root)).toContain('This employee no longer exists.');
   });
 
   test('phone layout: section tabs on top, Delete user under the profile', async () => {
@@ -419,7 +449,7 @@ describe('User details', () => {
     expect(allText(byTestId(h.root, 'user-identity'))).toContain(
       'ABC Engineering Pvt Ltd',
     );
-    expect(allText(byTestId(h.root, 'delete-user'))).toBe('Delete user');
+    expect(allText(byTestId(h.root, 'delete-user'))).toBe('Delete employee');
   });
 });
 
@@ -429,7 +459,7 @@ test('phone list uses cards and a pinned Create User button', async () => {
   expect(hasTestId(root, 'user-card-USR-2')).toBe(true);
   expect(hasTestId(root, 'users-filter')).toBe(false);
   await press(byTestId(root, 'create-user'));
-  expect(allText(root)).toContain('Create user');
+  expect(allText(root)).toContain('Create employee');
 });
 
 describe('roles', () => {
@@ -464,17 +494,17 @@ test('wide screens: the page stays put; only the user rows scroll', async () => 
   const scroll = byTestId(table, 'users-table-scroll');
   expect(allText(scroll)).toContain('Koushik Dasarathan');
   // Pagination sits below the scrolling rows, always visible.
-  expect(allText(scroll)).not.toContain('Showing 10 of 22 users');
-  expect(allText(table)).toContain('Showing 10 of 22 users');
+  expect(allText(scroll)).not.toContain('Showing 10 of 22 employees');
+  expect(allText(table)).toContain('Showing 10 of 22 employees');
 });
 
 test('a search with no matches keeps the pagination under the message', async () => {
   const { root } = await renderAdmin('Users');
-  await typeInto(byLabel(root, 'Search users'), 'zzz-nobody');
+  await typeInto(byLabel(root, 'Search employees'), 'zzz-nobody');
   const table = byTestId(root, 'users-table');
   const text = allText(table);
   expect(text).toContain('No results match your search.');
-  expect(text).toContain('Showing 0 of 0 users');
+  expect(text).toContain('Showing 0 of 0 employees');
   expect(byLabel(table, 'Next').props.accessibilityState.disabled).toBe(true);
 });
 
@@ -484,7 +514,7 @@ test('the toolbar has a filled search and one Filter button', async () => {
   const search = table.find(
     n =>
       n.props.variant === 'filled' &&
-      n.props.placeholder === 'Search users' &&
+      n.props.placeholder === 'Search employees' &&
       typeof n.type !== 'string',
   );
   expect(search).toBeTruthy();
@@ -493,7 +523,7 @@ test('the toolbar has a filled search and one Filter button', async () => {
 
 test('with no matches the column headings stay above the message', async () => {
   const { root } = await renderAdmin('Users');
-  await typeInto(byLabel(root, 'Search users'), 'zzz-nobody');
+  await typeInto(byLabel(root, 'Search employees'), 'zzz-nobody');
   const text = allText(byTestId(root, 'users-table'));
   for (const column of ['Name', 'Email', 'Role', 'Status', 'Joined']) {
     expect(text).toContain(column);
@@ -503,7 +533,7 @@ test('with no matches the column headings stay above the message', async () => {
 
 test('browser autofill stays out of the search and the new-user form', async () => {
   const { root } = await renderAdmin('Users');
-  const search = byLabel(root, 'Search users');
+  const search = byLabel(root, 'Search employees');
   expect(search.props.autoComplete).toBe('off');
   expect(search.props.keyboardType).toBe('web-search');
 

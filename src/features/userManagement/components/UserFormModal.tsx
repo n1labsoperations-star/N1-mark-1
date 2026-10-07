@@ -23,6 +23,7 @@ import {
   checkPassword,
   isBlank,
   isEmail,
+  isPhone,
   isStrongPassword,
 } from '../../../shared/utils';
 import { ROLE_OPTIONS, STATUS_OPTIONS, USER_STRINGS } from '../constants';
@@ -33,6 +34,7 @@ type FormValues = {
   name: string;
   designation: string;
   email: string;
+  phone: string;
   password: string;
   /** Edit only: the new password typed again. */
   confirmPassword: string;
@@ -44,6 +46,7 @@ const EMPTY: FormValues = {
   name: '',
   designation: '',
   email: '',
+  phone: '',
   password: '',
   confirmPassword: '',
   role: 'operator',
@@ -56,6 +59,7 @@ const toValues = (user?: AdminUser | null): FormValues =>
         name: user.name,
         designation: user.designation,
         email: user.email,
+        phone: user.phone,
         password: '',
         confirmPassword: '',
         role: user.role,
@@ -71,10 +75,13 @@ function makeValidator(isEdit: boolean) {
     if (isBlank(v.name)) {
       errors.name = COMMON_STRINGS.required;
     }
-    if (isBlank(v.email)) {
-      errors.email = COMMON_STRINGS.required;
-    } else if (!isEmail(v.email)) {
+    if (!isBlank(v.email) && !isEmail(v.email)) {
       errors.email = COMMON_STRINGS.invalidEmail;
+    }
+    if (isBlank(v.phone)) {
+      errors.phone = COMMON_STRINGS.required;
+    } else if (!isPhone(v.phone)) {
+      errors.phone = COMMON_STRINGS.invalidPhone;
     }
     if (isEdit) {
       // Both blank keeps the current password.
@@ -139,6 +146,7 @@ export function UserFormModal({
         ...values,
         name: values.name.trim(),
         email: values.email.trim(),
+        phone: values.phone.trim(),
         designation: values.designation.trim(),
         ...(isBlank(password) ? {} : { password }),
       };
@@ -199,7 +207,6 @@ export function UserFormModal({
       />
       <N1TextInput
         label={F.email}
-        required
         placeholder={F.emailPlaceholder}
         value={values.email}
         onChangeText={bind('email')}
@@ -210,6 +217,17 @@ export function UserFormModal({
         // Another person's email: don't offer the admin's saved login.
         autoComplete="off"
         testID="user-form-email"
+      />
+      <N1TextInput
+        label={F.phone}
+        required
+        placeholder={F.phonePlaceholder}
+        value={values.phone}
+        onChangeText={bind('phone')}
+        errorText={errors.phone}
+        keyboardType="phone-pad"
+        autoComplete="off"
+        testID="user-form-phone"
       />
       {isEdit ? (
         <>

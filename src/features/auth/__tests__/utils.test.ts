@@ -99,4 +99,11 @@ describe('findMockUser', () => {
     expect(findMockUser('admin@n1.com', 'Qc@12345')).toBeUndefined();
     expect(findMockUser('nobody@n1.com', 'Admin@123')).toBeUndefined();
   });
+
+  test('matches a phone number, ignoring spaces and the country code', () => {
+    expect(findMockUser('9000000001', 'Admin@123')?.role).toBe('admin');
+    expect(findMockUser('+91 90000 00004', 'Qc@12345')?.role).toBe('qc');
+    expect(findMockUser('9000000001', 'Qc@12345')).toBeUndefined();
+    expect(findMockUser('9999999999', 'Admin@123')).toBeUndefined();
+  });
 });

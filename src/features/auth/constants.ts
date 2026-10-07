@@ -51,24 +51,39 @@ export const ROLE_HOME = {
 
 export type MockUser = {
   email: string;
+  /** 10-digit mobile number; logging in with it works like the email. */
+  phone: string;
   password: string;
   role: UserRole;
 };
 
 /** Hardcoded logins until the auth API exists. */
 export const MOCK_USERS: MockUser[] = [
-  { email: 'admin@n1.com', password: 'Admin@123', role: USER_ROLES.ADMIN },
+  {
+    email: 'admin@n1.com',
+    phone: '9000000001',
+    password: 'Admin@123',
+    role: USER_ROLES.ADMIN,
+  },
   {
     email: 'supervisor@n1.com',
+    phone: '9000000002',
     password: 'Supervisor@123',
     role: USER_ROLES.SUPERVISOR,
   },
   {
     email: 'operator@n1.com',
+    phone: '9000000003',
     password: 'Operator@123',
     role: USER_ROLES.OPERATOR,
   },
-  { email: 'qc@n1.com', password: 'Qc@12345', role: USER_ROLES.QC },
+  {
+    email: 'qc@n1.com',
+    phone: '9000000004',
+    password: 'Qc@12345',
+    role: USER_ROLES.QC,
+  },
 ];
 
-export const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password.';
+export const INVALID_CREDENTIALS_MESSAGE =
+  'Invalid email, phone number or password.';

@@ -182,8 +182,9 @@ test('order → raw material modal → job added to My Jobs → job card', async
   // Straight to the new job's job card.
   text = allText(root);
   expect(text).toContain('Job card');
-  expect(text).toContain('WO #1036 · Bright Steel Co.');
-  expect(text).toContain('Route card & progress');
+  expect(text).toMatch(/#JOB\d+ · Bright Steel Co\./);
+  expect(allText(byTestId(root, 'job-card-wo'))).toBe('WO #1036');
+  expect(hasTestId(root, 'job-card-tab-machining')).toBe(true);
   expect(text).not.toContain('Raw Material Details');
   const order = (await ordersApi.list()).find(o => o.id === '1036');
   expect(order).toMatchObject({
@@ -217,6 +218,7 @@ test('a job already on My Jobs opens its job card from the order', async () => {
   expect(allText(root)).toContain('View Job Card');
   await press(byTestId(root, 'create-job-card'));
 
+  await press(byTestId(root, 'job-card-tab-machining'));
   expect(allText(root)).toContain('Route card & progress');
   await press(byText(root, 'Edit'));
   expect(allText(root)).toContain('Edit flow');
@@ -237,7 +239,7 @@ test('an order without a job card gets one created', async () => {
   expect(allText(root)).toContain('Check the raw material details');
   await press(byTestId(root, 'raw-material-submit'));
 
-  expect(allText(root)).toContain('Route card & progress');
+  expect(hasTestId(root, 'job-card-details-screen')).toBe(true);
   const created = (await jobCardsApi.list()).find(c => c.id === '1045');
   expect(created).toMatchObject({ status: 'not_started', operations: [] });
 });
@@ -251,7 +253,8 @@ test('supervisor re-initiates RM QC with new material after a rejection', async 
   expect(hasTestId(root, 'rm-qc-failed-1042')).toBe(false);
   await press(byLabel(root, 'View job card WO #1041'));
 
-  // The job card shows what RM QC rejected, and offers Re-initiate.
+  // The job card's QC tab shows what RM QC rejected, and offers Re-initiate.
+  await press(byTestId(root, 'job-card-tab-qc'));
   const rejected = allText(byTestId(root, 'rejected-material'));
   expect(rejected).toContain('AL6061');
   expect(rejected).toContain('HT-99212');
@@ -269,7 +272,7 @@ test('supervisor re-initiates RM QC with new material after a rejection', async 
   await press(byTestId(root, 'raw-material-submit'));
 
   // Back on the job card: RM QC is pending again, nothing left to re-initiate.
-  expect(allText(root)).toContain('Route card & progress');
+  expect(hasTestId(root, 'job-card-details-screen')).toBe(true);
   expect(hasTestId(root, 'reinitiate-rm-qc')).toBe(false);
   expect(hasTestId(root, 'rejected-material')).toBe(false);
   expect((await jobCardsApi.get('1041')).materialQc).toBe('pending');

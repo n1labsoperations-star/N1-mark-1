@@ -405,24 +405,16 @@ export function OrderFormScreen({
     <View style={styles.section} testID="order-form-step-2">
       {heading(F.orderSection)}
       <FormRow>
-        {text('poNumber', F.poNumber, F.poNumberPlaceholder, {
-          testID: 'order-form-po-number',
-        })}
         {text('partName', F.partName, F.partNamePlaceholder, {
           testID: 'order-form-part-name',
         })}
-      </FormRow>
-      <FormRow>
         {text('drawingNumber', F.drawingNumber, F.drawingNumberPlaceholder, {
           testID: 'order-form-drawing-number',
         })}
-        {text('routeCardNo', F.routeCardNo, F.routeCardPlaceholder, {
-          testID: 'order-form-route-card',
-        })}
       </FormRow>
       <FormRow>
-        {text('dcNo', F.dcNo, F.dcNoPlaceholder, {
-          testID: 'order-form-dc-no',
+        {text('routeCardNo', F.routeCardNo, F.routeCardPlaceholder, {
+          testID: 'order-form-route-card',
         })}
         {date('dcDate', F.dcDate, 'order-form-dc-date')}
       </FormRow>
@@ -449,6 +441,14 @@ export function OrderFormScreen({
       <FormRow>
         {text('projectId', F.projectId, F.projectIdPlaceholder)}
         {text('shopOrderNumber', F.shopOrderNumber, F.shopOrderPlaceholder)}
+      </FormRow>
+      <FormRow>
+        {text('poNumber', F.poNumber, F.poNumberPlaceholder, {
+          testID: 'order-form-po-number',
+        })}
+        {text('dcNo', F.dcNo, F.dcNoPlaceholder, {
+          testID: 'order-form-dc-no',
+        })}
       </FormRow>
       {text('description', F.description, F.descriptionPlaceholder, {
         multiline: true,

@@ -109,7 +109,7 @@ test('invoices tab: totals, table, filter and search', async () => {
   expect(text).toContain('INV-2026-0125');
   expect(text).toContain('₹42,000');
   expect(text).toContain('RC-2225');
-  expect(text).toContain('Showing 10 of 12 invoices · 7 paid · 3 pending');
+  expect(text).toContain('Showing 10 of 13 invoices · 8 paid · 3 pending');
   await filterStatuses(root, 'invoices-filter', ['Overdue']);
   expect(allText(root)).toContain('Showing 2 of 2 invoices');
   await filterStatuses(root, 'invoices-filter', []);
@@ -144,9 +144,9 @@ test('wide screens: only the invoice rows scroll; totals stay in view', async ()
   const table = byTestId(root, 'invoices-table');
   const scroll = byTestId(table, 'invoices-table-scroll');
   expect(allText(scroll)).toContain('INV-2026-0125');
-  expect(allText(scroll)).not.toContain('Showing 10 of 12 invoices');
+  expect(allText(scroll)).not.toContain('Showing 10 of 13 invoices');
   expect(allText(table)).toContain('Invoices');
-  expect(allText(table)).toContain('Showing 10 of 12 invoices');
+  expect(allText(table)).toContain('Showing 10 of 13 invoices');
 });
 
 test('export explains it is not available yet', async () => {

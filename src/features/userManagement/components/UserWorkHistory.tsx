@@ -9,6 +9,7 @@ import {
 } from '../../../shared/components';
 import { formatDate } from '../../../shared/utils';
 import {
+  JOB_CARD_STRINGS,
   JobCardStatusBadge,
   jobCardsWorkedBy,
   jobTitle,
@@ -127,13 +128,19 @@ function WorkRow({
         </View>
         <View style={styles.text}>
           <N1Text variant="label" weight="semiBold" numberOfLines={1}>
-            {W.title(jobCard.id, jobTitle(jobCard))}
+            {W.title(
+              JOB_CARD_STRINGS.jobCardNumber(jobCard.code),
+              jobTitle(jobCard),
+            )}
+          </N1Text>
+          <N1Text variant="caption" color="secondary" numberOfLines={1}>
+            {W.workOrder(jobCard.id)}
           </N1Text>
           <N1Text variant="caption" color="secondary" numberOfLines={1}>
             {details}
           </N1Text>
         </View>
-        <JobCardStatusBadge status={jobCard.status} />
+        <JobCardStatusBadge jobCard={jobCard} />
       </Pressable>
     </View>
   );

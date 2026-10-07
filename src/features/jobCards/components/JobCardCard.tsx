@@ -10,7 +10,7 @@ import {
 import { COMMON_STRINGS } from '../../../shared/constants';
 import { JOB_CARD_STRINGS as S } from '../constants';
 import type { JobCard } from '../types';
-import { currentOperation, jobHeading, jobProgress } from '../utils';
+import { currentOperation, jobCardTitle, jobProgress } from '../utils';
 import { FlowActionButton } from './FlowActionButton';
 import { JobCardStatusBadge } from './JobCardBadges';
 import { JobProgress } from './JobProgress';
@@ -59,11 +59,16 @@ export const JobCardCard = memo(function JobCardCardComponent({
   return (
     <View style={[styles.card, style]} testID={`job-card-${jobCard.id}`}>
       <View style={styles.titleRow}>
-        <N1Text variant="title" weight="bold" style={styles.title}>
-          {jobHeading(jobCard)}
-        </N1Text>
+        <View style={styles.title}>
+          <N1Text variant="title" weight="bold">
+            {jobCardTitle(jobCard)}
+          </N1Text>
+          <N1Text variant="caption" color="secondary">
+            {S.workOrder(jobCard.id)}
+          </N1Text>
+        </View>
         <View style={styles.badges}>
-          <JobCardStatusBadge status={jobCard.status} />
+          <JobCardStatusBadge jobCard={jobCard} />
           {jobCard.materialQc === 'rejected' && (
             <N1Badge
               label={S.rmQcFailed}

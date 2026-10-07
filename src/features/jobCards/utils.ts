@@ -1,15 +1,17 @@
 import { workOrderSearchTerms } from '../../shared/utils';
 import type { N1DropDownOption, N1StepStatus } from '../../shared/components';
+import type { Attachment, StatusMeta } from '../../shared/types';
 import type { WorkOrder } from '../orders/types';
 import { ALL, matchesAny } from '../../shared/hooks';
 import { percentOf } from '../../shared/utils';
-import { JOB_CARD_STRINGS } from './constants';
+import { JOB_CARD_STRINGS, STAGE_META } from './constants';
 import type {
   JobCard,
   JobCardFilters,
   JobCardInput,
   JobCardStatus,
   JobOperation,
+  QcEntry,
   RejectedMaterial,
 } from './types';
 
@@ -24,6 +26,28 @@ export const jobTitle = (c: Pick<JobCard, 'partName' | 'jobName'>) =>
 /** "WO #1042 · Bracket — Job A" */
 export const jobHeading = (c: JobCard) =>
   [JOB_CARD_STRINGS.workOrder(c.id), jobTitle(c)].filter(Boolean).join(' · ');
+
+/** "JOB12" */
+export const jobCardCode = (n: number) => `JOB${n}`;
+
+/** One past the highest job card number in use. */
+export const nextJobCardNumber = (cards: readonly Pick<JobCard, 'code'>[]) =>
+  cards.reduce((max, c) => {
+    const n = Number(c.code.replace(/^JOB/, ''));
+    return Number.isFinite(n) && n > max ? n : max;
+  }, 0) + 1;
+
+/** "#JOB1 · Bracket — Job A" */
+export const jobCardTitle = (c: JobCard) =>
+  [JOB_CARD_STRINGS.jobCardNumber(c.code), jobTitle(c)]
+    .filter(Boolean)
+    .join(' · ');
+
+/** "#JOB1 · Acme Metalworks" */
+export const jobCardHeading = (c: JobCard) =>
+  [JOB_CARD_STRINGS.jobCardNumber(c.code), c.customerName]
+    .filter(Boolean)
+    .join(' · ');
 
 /** "WO #1042 · Acme Metalworks" */
 export const jobCustomerHeading = (c: JobCard) =>
@@ -70,9 +94,160 @@ const withOperations = (operations: JobOperation[]): JobCardInput => ({
   status: statusFor(operations),
 });
 
+// ---- Stage: where the job is ----
+
+/** The latest QC check logged against an operation. */
+export const operationQc = (c: JobCard, op: JobOperation) =>
+  [...c.qcHistory].reverse().find(e => e.operationId === op.id);
+
+const qcPassed = (e: QcEntry | undefined) =>
+  e?.result === 'passed' || e?.result === 'accepted';
+
+/** The job card's status, worked out by jobCardStage. */
+export type JobCardStage =
+  | {
+      key:
+        | 'rm_received'
+        | 'rm_qc_failed'
+        | 'rm_qc_passed'
+        | 'yet_to_start'
+        | 'ready_to_dispatch'
+        | 'done';
+    }
+  /** On an operation: running, paused, or next once the last QC passed. */
+  | {
+      key: 'operation';
+      operation: JobOperation;
+      state: 'running' | 'paused' | 'next';
+    }
+  /** An operation is finished and waiting for (or failed) its QC check. */
+  | {
+      key: 'operation_qc';
+      operation: JobOperation;
+      final: boolean;
+      failed: boolean;
+    };
+
+/**
+ * Where the job is, first match wins: dispatched (Done), RM QC failed, an
+ * operation running or paused, the last finished operation's QC (Final QC
+ * for the last step), Ready to dispatch, the next operation, then before any
+ * work: RM received (RM QC pending), RM QC passed (no flow yet), Yet to start.
+ */
+export function jobCardStage(c: JobCard): JobCardStage {
+  if (c.billing === 'invoiced') {
+    return { key: 'done' };
+  }
+  if (c.materialQc === 'rejected') {
+    return { key: 'rm_qc_failed' };
+  }
+  const started = c.operations.find(isStarted);
+  if (started) {
+    return {
+      key: 'operation',
+      operation: started,
+      state: started.status === 'paused' ? 'paused' : 'running',
+    };
+  }
+  const done = c.operations.filter(isDone);
+  const last = done[done.length - 1];
+  if (last) {
+    const qc = operationQc(c, last);
+    const final = done.length === c.operations.length;
+    if (!qcPassed(qc)) {
+      return { key: 'operation_qc', operation: last, final, failed: !!qc };
+    }
+    const next = c.operations.find(op => !isDone(op));
+    return next
+      ? { key: 'operation', operation: next, state: 'next' }
+      : { key: 'ready_to_dispatch' };
+  }
+  if (c.materialQc === 'pending') {
+    return { key: 'rm_received' };
+  }
+  return { key: c.operations.length ? 'yet_to_start' : 'rm_qc_passed' };
+}
+
+const ST = JOB_CARD_STRINGS.stages;
+
+/** Label and tone for a stage's badge, e.g. "Turning QC". */
+export function stageMeta(stage: JobCardStage): StatusMeta {
+  switch (stage.key) {
+    case 'operation': {
+      const name = stage.operation.name;
+      return stage.state === 'running'
+        ? { label: name, tone: 'info' }
+        : stage.state === 'paused'
+        ? { label: ST.paused(name), tone: 'warning' }
+        : { label: ST.next(name), tone: 'neutral' };
+    }
+    case 'operation_qc': {
+      const label = stage.final
+        ? ST.finalQc
+        : ST.operationQc(stage.operation.name);
+      return stage.failed
+        ? { label: ST.failed(label), tone: 'danger' }
+        : { label, tone: 'warning' };
+    }
+    default:
+      return STAGE_META[stage.key];
+  }
+}
+
+/**
+ * Why the next operation can't start yet: RM QC hasn't passed, or the last
+ * finished operation is still waiting for (or failed) its QC check.
+ */
+export function startBlockedReason(c: JobCard): string | undefined {
+  if (c.materialQc !== 'accepted') {
+    return ST.waitingForRmQc;
+  }
+  const next = c.operations.findIndex(op => !isDone(op));
+  const previous = next > 0 ? c.operations[next - 1] : undefined;
+  if (
+    previous &&
+    c.operations[next].status === 'pending' &&
+    !qcPassed(operationQc(c, previous))
+  ) {
+    return ST.waitingForQc(previous.name);
+  }
+  return undefined;
+}
+
+/**
+ * Start (or resume) is allowed when nothing is running, a step is left, RM
+ * QC passed and the last finished step passed its QC.
+ */
 export const canStart = (c: JobCard) =>
   !c.operations.some(op => op.status === 'running') &&
-  c.operations.some(op => !isDone(op));
+  c.operations.some(op => !isDone(op)) &&
+  !startBlockedReason(c);
+
+/**
+ * Sends a step that failed its QC back to be done again: a fresh, pending
+ * copy (new id, so its earlier QC checks stay in the history).
+ */
+export function redoOperation(
+  c: JobCard,
+  operationId: string,
+  now: string,
+): JobCardInput {
+  return withOperations(
+    c.operations.map(op =>
+      op.id === operationId
+        ? {
+            ...op,
+            id: `${op.id}-redo-${Date.parse(now)}`,
+            machine: '',
+            operator: '',
+            status: 'pending',
+            startedAt: null,
+            completedAt: null,
+          }
+        : op,
+    ),
+  );
+}
 
 export const canPauseOrComplete = (c: JobCard) =>
   c.operations.some(op => op.status === 'running');
@@ -179,9 +354,9 @@ function flowToOperations(steps: FlowStep[]): JobOperation[] {
 
 export const jobCardSearchText = (c: JobCard) => {
   const op = currentOperation(c);
-  return `${workOrderSearchTerms(c.id)} ${jobTitle(c)} ${c.customerName} ${
-    op?.name ?? ''
-  } ${op?.machine ?? ''} ${op?.operator ?? ''}`;
+  return `${c.code} ${workOrderSearchTerms(c.id)} ${jobTitle(c)} ${
+    c.customerName
+  } ${op?.name ?? ''} ${op?.machine ?? ''} ${op?.operator ?? ''}`;
 };
 
 export const matchesJobCardFilters = (c: JobCard, f: JobCardFilters) => {
@@ -211,6 +386,8 @@ export function optionsFrom(
 export function jobCardFromOrder(order: WorkOrder): JobCard {
   return {
     id: order.id,
+    // The backend numbers it on create.
+    code: '',
     customerId: order.customerId,
     customerName: order.customerName,
     partName: order.partName,
@@ -222,7 +399,7 @@ export function jobCardFromOrder(order: WorkOrder): JobCard {
     status: 'not_started',
     designFile: order.designFile,
     designApproval: 'pending',
-    materialSource: 'company',
+    materialSource: order.materialSource,
     materialQc: 'pending',
     operations: [],
     qcHistory: [],
@@ -230,6 +407,15 @@ export function jobCardFromOrder(order: WorkOrder): JobCard {
     billing: 'not_invoiced',
   };
 }
+
+/** Attaches an uploaded report to one QC check. */
+export const attachQcReport = (
+  c: JobCard,
+  entryId: string,
+  report: Attachment,
+): Pick<JobCard, 'qcHistory'> => ({
+  qcHistory: c.qcHistory.map(e => (e.id === entryId ? { ...e, report } : e)),
+});
 
 /** The rejected material's grade, heat number and size, as label / value rows. */
 export const rejectedMaterialItems = (m: RejectedMaterial) => [

@@ -1,16 +1,24 @@
 import { memo } from 'react';
 import { N1Badge } from '../../../shared/components';
 import type { StatusMeta } from '../../../shared/types';
-import { JOB_CARD_STATUS_META } from '../constants';
-import type { JobCardStatus } from '../types';
+import type { JobCard } from '../types';
+import { jobCardStage, stageMeta } from '../utils';
 
+/** The job card's stage, e.g. "RM received", "Turning QC", "Done". */
 export const JobCardStatusBadge = memo(function JobCardStatusBadgeComponent({
-  status,
+  jobCard,
 }: {
-  status: JobCardStatus;
+  jobCard: JobCard;
 }) {
-  const meta = JOB_CARD_STATUS_META[status];
-  return <N1Badge label={meta.label} tone={meta.tone} dot />;
+  const meta = stageMeta(jobCardStage(jobCard));
+  return (
+    <N1Badge
+      label={meta.label}
+      tone={meta.tone}
+      dot
+      testID={`job-card-stage-${jobCard.id}`}
+    />
+  );
 });
 
 /** Badge for any status that has a label and tone (QC, quotation, billing…). */

@@ -224,6 +224,18 @@ export const MOCK_INVOICES: Invoice[] = [
     lineItems: BRACKET_OPERATIONS,
     issuedAt: isoAgo(52 * DAY_MS),
   }),
+  invoice({
+    id: 'INV-2026-0113',
+    customerName: 'Nova Fabrication',
+    // Paid: work order WO #1035 is complete.
+    jobId: 'WO-01035',
+    routeCard: 'RC-2203',
+    partName: 'Flange',
+    quantity: 90,
+    status: 'paid',
+    lineItems: FLANGE_OPERATIONS,
+    issuedAt: isoAgo(60 * DAY_MS),
+  }),
 ];
 
 type QuoteSeed = Omit<

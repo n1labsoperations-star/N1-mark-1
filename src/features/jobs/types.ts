@@ -18,8 +18,7 @@ export type JobsStackParamList = {
   /** Operator / QC: the job's work order, read only (full screen modal). */
   OrderDetails: { orderId: string };
   // Reused from the Job Cards feature, under the same names.
-  JobCardDetails: { jobCardId: string };
-  JobCardFlow: { jobCardId: string };
+  JobCardDetails: { jobCardId: string; editFlow?: boolean };
   /** Operator: the job they run (start, pause, complete). */
   OperatorJob: { jobCardId: string };
   /** Operator: pick a machine, then start the operation. */
