@@ -341,6 +341,10 @@ test('details show the full work order', async () => {
     /PO number.*PO-8842.*Delivery date.*02 Oct 2026/,
   );
   expect(text()).toContain('RC-2210');
+  // Quotation and billing come from the order's job card.
+  expect(allText(byTestId(screen, 'order-billing'))).toBe(
+    'Quotation|Accepted|Billing|Not invoiced',
+  );
   expect(text()).toContain('Rework batch');
   expect(text()).not.toContain('HT-99213');
 
@@ -419,11 +423,30 @@ test('documents and the drawing open in a viewer with Print', async () => {
   await press(byLabel(screen, 'Print drawing.pdf'));
   expect(alert).toHaveBeenCalledTimes(2);
 
-  // The drawing opens in the viewer too.
-  await press(byTestId(screen, 'order-drawing'));
+  // The order QR is a document of its own: view it, then download it.
+  await press(byTestId(screen, 'document-order-qr'));
+  viewer = byTestId(h.root, 'document-viewer');
+  expect(allText(viewer)).toContain('WO-1042-QR.png');
+  expect(hasTestId(viewer, 'document-viewer-qr')).toBe(true);
+  await press(byTestId(viewer, 'document-viewer-download'));
+  expect(alert).toHaveBeenCalledWith(
+    expect.stringContaining('Downloading documents will work once'),
+  );
+
+  // The drawing is listed with the documents and opens in the viewer.
+  await press(byTestId(screen, 'document-order-drawing'));
   viewer = byTestId(h.root, 'document-viewer');
   expect(allText(viewer)).toContain('Drawing DRW-1187');
   expect(allText(viewer)).toContain('Print drawing with QR');
+
+  // On the Order details tab, the drawing preview opens it too, with the
+  // Order QR beside it.
+  await press(byTestId(screen, 'order-tab-details'));
+  expect(allText(byTestId(screen, 'order-qr'))).toContain('Order QR');
+  expect(byLabel(screen, 'QR code for WO #1042')).toBeTruthy();
+  await press(byTestId(screen, 'order-drawing'));
+  viewer = byTestId(h.root, 'document-viewer');
+  expect(allText(viewer)).toContain('Drawing DRW-1187');
   Platform.OS = os;
 });
 
@@ -514,13 +537,15 @@ test('documents: print and download explain they are not wired yet', async () =>
   const h = await renderAdmin('Orders');
   await h.navigate('OrderDetails', { orderId: '1042' });
   const screen = byTestId(h.root, 'order-details-screen');
-  await press(byTestId(screen, 'order-tab-documents'));
+  // Print drawing sits with the drawing on the Order details tab.
   await press(byText(screen, 'Print drawing with QR'));
   expect(alert).toHaveBeenCalledWith(
     expect.stringContaining(
       'Print drawing with QR will work once the backend is connected.',
     ),
   );
+  await press(byTestId(screen, 'order-tab-documents'));
+  expect(hasTestId(screen, 'order-drawing')).toBe(false);
   await press(byLabel(screen, 'Download PO-8842_project-docs.pdf'));
   expect(alert).toHaveBeenCalledTimes(2);
   Platform.OS = os;

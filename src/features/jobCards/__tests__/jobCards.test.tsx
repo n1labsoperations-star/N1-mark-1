@@ -20,6 +20,8 @@ import type { JobCard, JobOperation } from '../types';
 import {
   canPauseOrComplete,
   canStart,
+  canCompleteFlow,
+  completeFlow,
   completeOperation,
   currentOperation,
   flowInput,
@@ -460,29 +462,34 @@ describe('Job card details', () => {
     expect(
       byTestId(screen, 'job-card-tab-machining').props.accessibilityState,
     ).toMatchObject({ selected: true });
-    expect(hasTestId(screen, 'job-card-info')).toBe(false);
+    // The priority sits by the title.
+    expect(allText(byTestId(screen, 'job-card-wo'))).toBe('WO #1042');
+    expect(text).toMatch(/WO #1042\|High priority\|Turning \(Lathe\)/);
 
-    // Order details: the job's and the order's details.
-    await press(byTestId(screen, 'job-card-tab-order'));
-    expect(allText(byTestId(screen, 'job-card-info'))).toBe(
+    // Machining: the drawing and Order QR, then all the job's details, above
+    // the route card.
+    const overview = byTestId(screen, 'job-card-overview');
+    expect(allText(overview)).toMatch(/Drawing\|.*DRW-1187.*\|Order QR/);
+    expect(byLabel(overview, 'QR code for WO #1042')).toBeTruthy();
+    expect(allText(byTestId(screen, 'job-card-facts'))).toBe(
       [
-        'Priority|High priority',
+        'Part|Bracket',
         'Due date|02 Oct 2026',
         'Quantity|200 pcs',
-        'Part|Bracket',
-        'Material source|Bought out',
         'Material QC|Accepted',
-        'Quotation|Accepted',
-        'Billing|Not invoiced',
       ].join('|'),
     );
-    // The drawing is a thumbnail beside the details; it opens full size.
-    expect(allText(screen)).toContain('DRW-1187|drawing.pdf');
+    // The drawing opens full size.
     await press(byLabel(screen, 'View drawing DRW-1187'));
     expect(allText(h.root)).toContain('Drawing DRW-1187');
     await press(byLabel(h.root, 'Close'));
 
-    // The order is one card, not its full details.
+    // Order details: only the order, as one card.
+    await press(byTestId(screen, 'job-card-tab-order'));
+    expect(hasTestId(screen, 'job-card-overview')).toBe(false);
+    expect(allText(byTestId(screen, 'job-card-order-tab'))).toMatch(
+      /^Order\|WO #1042/,
+    );
     expect(allText(byTestId(screen, 'job-card-order'))).toBe(
       'WO #1042 · Bracket — Job A|Acme Metalworks · PO-8842 · Due 02 Oct 2026|In progress',
     );
@@ -491,7 +498,6 @@ describe('Job card details', () => {
     expect(hasTestId(screen, 'qc-history')).toBe(false);
 
     await press(byTestId(screen, 'job-card-tab-machining'));
-    expect(hasTestId(screen, 'job-card-info')).toBe(false);
     expect(allText(byTestId(screen, 'overall-progress'))).toContain('42%');
 
     // Every step is listed; only the current one starts open (and highlighted).
@@ -582,7 +588,7 @@ describe('Job card details', () => {
     expect(hasTestId(screen(), 'qc-report-upload-qc2')).toBe(false);
   });
 
-  test('quick actions pause, resume and complete the running step', async () => {
+  test('quick actions pause and resume the running step; Complete finishes the whole flow', async () => {
     const h = await renderAdmin('JobCards');
     await h.navigate('JobCardDetails', { jobCardId: '1042' });
     const screen = () => byTestId(h.root, 'job-card-details-screen');
@@ -592,33 +598,64 @@ describe('Job card details', () => {
     // A step is already running, so only Pause and Complete apply.
     expect(disabled('start-operation')).toBe(true);
     expect(disabled('pause-operation')).toBe(false);
+    expect(disabled('complete-operation')).toBe(false);
 
     await press(byTestId(screen(), 'pause-operation'));
     expect(h.store.getState().jobCards.entities['1042'].status).toBe('paused');
     expect(allText(byTestId(screen(), 'operation-1042-op3'))).toContain(
       'Paused',
     );
-
     expect(disabled('start-operation')).toBe(false);
-    expect(disabled('complete-operation')).toBe(true);
+    // The flow can still be finished while a step is paused.
+    expect(disabled('complete-operation')).toBe(false);
 
-    await press(byTestId(screen(), 'start-operation'));
+    // Complete asks first; cancelling changes nothing.
     await press(byTestId(screen(), 'complete-operation'));
-    const ops = h.store.getState().jobCards.entities['1042'].operations;
-    expect(ops[2].status).toBe('completed');
-    expect(allText(byTestId(screen(), 'overall-progress'))).toContain('50%');
-    expect(allText(byTestId(screen(), 'operation-1042-op4'))).toContain(
-      'Next operation',
-    );
+    const dialog = () => byTestId(h.root, 'complete-flow-dialog');
+    expect(allText(dialog())).toContain('the 4 remaining steps');
+    await press(byText(dialog(), 'Cancel'));
+    expect(
+      h.store.getState().jobCards.entities['1042'].operations[3].status,
+    ).toBe('pending');
 
-    // Deburring waits for Turning's QC check.
-    expect(allText(byTestId(screen(), 'job-card-stage-1042'))).toBe(
-      'Turning (Lathe) QC',
-    );
+    // Confirming completes every step left, not just the current one.
+    await press(byTestId(screen(), 'complete-operation'));
+    await press(byText(dialog(), 'Complete all'));
+    const ops = h.store.getState().jobCards.entities['1042'].operations;
+    expect(ops.every(o => o.status === 'completed')).toBe(true);
+    expect(allText(byTestId(screen(), 'overall-progress'))).toContain('100%');
+    expect(allText(byTestId(screen(), 'job-card-stage-1042'))).toBe('Final QC');
     expect(disabled('start-operation')).toBe(true);
-    expect(allText(byTestId(screen(), 'start-blocked'))).toBe(
-      'Waiting for Turning (Lathe) QC',
-    );
+    expect(disabled('complete-operation')).toBe(true);
+  });
+
+  test('completeFlow finishes every step left; canCompleteFlow needs RM QC', () => {
+    const card = {
+      materialQc: 'accepted',
+      operations: [
+        { id: 'a', status: 'completed', startedAt: 's', completedAt: 'c' },
+        { id: 'b', status: 'running', startedAt: 's2', completedAt: null },
+        { id: 'c', status: 'pending', startedAt: null, completedAt: null },
+      ],
+    } as unknown as JobCard;
+    expect(canCompleteFlow(card)).toBe(true);
+    expect(canCompleteFlow({ ...card, materialQc: 'pending' })).toBe(false);
+    const done = completeFlow(card, 'now');
+    expect(done.status).toBe('completed');
+    expect(done.operations).toEqual([
+      card.operations[0],
+      expect.objectContaining({
+        status: 'completed',
+        startedAt: 's2',
+        completedAt: 'now',
+      }),
+      expect.objectContaining({
+        status: 'completed',
+        startedAt: 'now',
+        completedAt: 'now',
+      }),
+    ]);
+    expect(canCompleteFlow({ ...card, ...done })).toBe(false);
   });
 
   test('a step that failed its QC can be redone, then started again', async () => {
@@ -965,16 +1002,17 @@ describe('Create / Edit flow, in place on the job card', () => {
     );
   });
 
-  test('wide screens: the title and buttons stay on top, Add process at the bottom; only the steps scroll', async () => {
+  test('wide screens: the Machining tab scrolls as one; the flow editor keeps Save on top and Add process at the bottom', async () => {
     const h = await renderAdmin('JobCards');
     await h.navigate('JobCardDetails', { jobCardId: '1042' });
     const pane = () => byTestId(h.root, 'job-card-machining');
     const scroll = () => byTestId(h.root, 'job-card-machining-scroll');
-    // Route card: title and Edit flow above the scrolling steps.
-    expect(hasTestId(pane(), 'open-flow')).toBe(true);
-    expect(hasTestId(scroll(), 'open-flow')).toBe(false);
-    expect(hasTestId(scroll(), 'overall-progress')).toBe(true);
-    expect(allText(scroll())).not.toContain('Route card & progress');
+    // Drawing, QR, facts and route card all scroll together in the tab.
+    const tabScroll = byTestId(h.root, 'job-card-details-scroll');
+    expect(hasTestId(tabScroll, 'job-card-overview')).toBe(true);
+    expect(hasTestId(tabScroll, 'open-flow')).toBe(true);
+    expect(hasTestId(tabScroll, 'overall-progress')).toBe(true);
+    expect(hasTestId(h.root, 'job-card-machining-scroll')).toBe(false);
 
     // Editing: title, Cancel and Save above the scrolling steps.
     await press(byTestId(pane(), 'open-flow'));

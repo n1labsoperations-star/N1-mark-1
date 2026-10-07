@@ -77,7 +77,7 @@ export const DocumentList = memo(function DocumentListComponent({
               {doc.name}
             </N1Text>
             <N1Text variant="caption" color="secondary">
-              {[doc.kind, formatFileSize(doc.sizeBytes)]
+              {[doc.kind, doc.sizeBytes > 0 && formatFileSize(doc.sizeBytes)]
                 .filter(Boolean)
                 .join(' · ')}
             </N1Text>

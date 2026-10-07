@@ -294,6 +294,29 @@ export function completeOperation(c: JobCard, now: string): JobCardInput {
   );
 }
 
+/**
+ * Finishes the whole flow at once: every step not yet done is marked
+ * completed, and the job moves on to its final QC.
+ */
+export function completeFlow(c: JobCard, now: string): JobCardInput {
+  return withOperations(
+    c.operations.map(op =>
+      isDone(op)
+        ? op
+        : {
+            ...op,
+            status: 'completed',
+            startedAt: op.startedAt ?? now,
+            completedAt: now,
+          },
+    ),
+  );
+}
+
+/** The flow can be finished once RM QC passed and a step is left. */
+export const canCompleteFlow = (c: JobCard) =>
+  c.materialQc === 'accepted' && c.operations.some(op => !isDone(op));
+
 // ---- Create / Edit flow ----
 
 /** One row of the flow editor. `operation` is set for saved steps. */
