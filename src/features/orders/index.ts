@@ -10,6 +10,7 @@ export {
   PriorityMarker,
 } from './components/OrderBadges';
 export { DrawingPreview } from './components/DrawingPreview';
+export { DrawingQrSection } from './components/DrawingQrSection';
 export { MATERIAL_SOURCE_OPTIONS, ORDER_STRINGS } from './constants';
 export { orderHeading, orderTitle } from './utils';
 export type {

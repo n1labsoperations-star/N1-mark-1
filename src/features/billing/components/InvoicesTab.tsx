@@ -3,7 +3,6 @@ import { useCallback, useMemo, type ReactNode } from 'react';
 import { View } from 'react-native';
 import {
   FilterMenu,
-  N1Button,
   N1IconButton,
   N1Pagination,
   N1Table,
@@ -22,11 +21,7 @@ import {
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
 import { useListFilter, usePagination } from '../../../shared/hooks';
-import {
-  formatCompactCurrency,
-  formatCurrency,
-  notifyUnavailable,
-} from '../../../shared/utils';
+import { formatCompactCurrency, formatCurrency } from '../../../shared/utils';
 import { BILLING_STRINGS, INVOICE_STATUS_OPTIONS } from '../constants';
 import { useInvoiceStats, useInvoices } from '../hooks/useBilling';
 import type { Invoice, InvoiceFilters } from '../types';
@@ -93,10 +88,6 @@ export function InvoicesTab({ toolbarStart }: Props) {
   const viewQuote = useCallback(
     (quoteId: string) => navigation.navigate('QuoteDetails', { quoteId }),
     [navigation],
-  );
-  const exportList = useCallback(
-    () => notifyUnavailable(BILLING_STRINGS.exportAction),
-    [],
   );
 
   const statItems = useMemo(
@@ -206,15 +197,6 @@ export function InvoicesTab({ toolbarStart }: Props) {
         onApply={applyFilters}
         testID="invoices-filter"
       />
-      {!isCompact && (
-        <N1Button
-          title={BILLING_STRINGS.export}
-          leftIcon="download"
-          variant="secondary"
-          size="sm"
-          onPress={exportList}
-        />
-      )}
     </ListToolbar>
   );
 

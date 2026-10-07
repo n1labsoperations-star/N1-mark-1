@@ -26,5 +26,17 @@ export const TOOLBAR_FILTER_MIN_WIDTH = 150;
 export const DONUT_SIZE = { xs: 64, sm: 96, md: 150 } as const;
 export const DONUT_THICKNESS = { xs: 8, sm: 14, md: 22 } as const;
 
+/** Detail grid columns on wide screens (order and job card details). */
+export const DETAIL_COLUMNS = 3;
+
 /** Drawing preview box on the order screen. */
 export const DRAWING_PREVIEW_HEIGHT = 150;
+
+/** Small drawing thumbnail beside its number and QR (5:3, like the drawing). */
+export const DRAWING_THUMB = { width: 260, height: 156 } as const;
+
+/**
+ * The order's QR code beside its drawing: 4px per module for a 21-module
+ * code plus its quiet zone, so edges stay crisp.
+ */
+export const ORDER_QR_SIZE = 100;

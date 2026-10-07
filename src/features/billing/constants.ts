@@ -6,8 +6,6 @@ export const BILLING_STRINGS = {
   title: 'Billing',
   tabs: { invoices: 'Invoices', quotes: 'Quotes' },
   statusFilter: 'Status',
-  export: 'Export',
-  exportAction: 'Exporting',
   view: 'View',
   edit: 'Edit',
   a11y: {

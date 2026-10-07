@@ -1,4 +1,4 @@
-import { Alert, Platform } from 'react-native';
+import { Alert } from 'react-native';
 import {
   allText,
   byLabel,
@@ -149,15 +149,9 @@ test('wide screens: only the invoice rows scroll; totals stay in view', async ()
   expect(allText(table)).toContain('Showing 10 of 13 invoices');
 });
 
-test('export explains it is not available yet', async () => {
-  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
-  expect(Platform.OS).not.toBe('web');
+test('billing has no Export button', async () => {
   const { root } = await renderAdmin('Billing');
-  await press(byText(root, 'Export'));
-  expect(alert).toHaveBeenCalledWith(
-    'Not available yet',
-    'Exporting will work once the backend is connected.',
-  );
+  expect(allText(root)).not.toContain('Export');
 });
 
 test('invoice details: operations, totals, send and mark as paid', async () => {

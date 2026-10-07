@@ -22,7 +22,6 @@ import {
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
 import { useListFilter, usePagination } from '../../../shared/hooks';
-import { notifyUnavailable } from '../../../shared/utils';
 import { BILLING_STRINGS, QUOTE_STATUS_OPTIONS } from '../constants';
 import { useInvoices, useQuoteStats, useQuotes } from '../hooks/useBilling';
 import { isQuoteMapped } from '../workflow';
@@ -88,10 +87,6 @@ export function QuotesTab({ toolbarStart }: Props) {
   const view = useCallback(
     (q: Quote) => navigation.navigate('QuoteDetails', { quoteId: q.id }),
     [navigation],
-  );
-  const exportList = useCallback(
-    () => notifyUnavailable(BILLING_STRINGS.exportAction),
-    [],
   );
 
   const statItems = useMemo(
@@ -184,24 +179,15 @@ export function QuotesTab({ toolbarStart }: Props) {
         onApply={applyFilters}
         testID="quotes-filter"
       />
+      {/* Phones keep Create in the page header. */}
       {!isCompact && (
-        <>
-          <N1Button
-            title={BILLING_STRINGS.export}
-            leftIcon="download"
-            variant="secondary"
-            size="sm"
-            onPress={exportList}
-          />
-          {/* Phones keep Create in the page header. */}
-          <N1Button
-            title={S.create}
-            leftIcon="plus"
-            size="sm"
-            onPress={createQuote}
-            testID="create-quote"
-          />
-        </>
+        <N1Button
+          title={S.create}
+          leftIcon="plus"
+          size="sm"
+          onPress={createQuote}
+          testID="create-quote"
+        />
       )}
     </ListToolbar>
   );

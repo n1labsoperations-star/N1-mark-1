@@ -7,12 +7,16 @@ import {
   createN1Styles,
   useN1Styles,
 } from '../../../shared/components';
-import { DRAWING_PREVIEW_HEIGHT } from '../../../shared/constants';
+import {
+  DRAWING_PREVIEW_HEIGHT,
+  ORDER_QR_SIZE,
+} from '../../../shared/constants';
 import { useHeldWhileVisible } from '../../../shared/hooks';
 import type { Attachment } from '../../../shared/types';
 import { formatFileSize } from '../../../shared/utils';
 import { ORDER_STRINGS } from '../constants';
 import { DrawingPreview } from './DrawingPreview';
+import { QrCode } from './QrCode';
 
 const D = ORDER_STRINGS.details;
 
@@ -38,6 +42,11 @@ const makeStyles = createN1Styles(t => ({
     borderColor: t.colors.border,
     backgroundColor: t.colors.background,
   },
+  qr: {
+    height: VIEWER_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   footer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -45,10 +54,11 @@ const makeStyles = createN1Styles(t => ({
   },
 }));
 
-/** What the viewer shows: a document, or the order's drawing. */
+/** What the viewer shows: a document, the order's drawing, or its QR. */
 export type ViewerTarget =
   | { type: 'document'; doc: Attachment }
-  | { type: 'drawing'; drawingNumber: string };
+  | { type: 'drawing'; drawingNumber: string }
+  | { type: 'qr'; doc: Attachment; value: string };
 
 type Props = {
   target: ViewerTarget | null;
@@ -75,7 +85,7 @@ export function DocumentViewer({
   const visible = targetProp !== null;
   // Kept while the dialog fades out.
   const target = useHeldWhileVisible(visible, targetProp);
-  const doc = target?.type === 'document' ? target.doc : null;
+  const doc = target && target.type !== 'drawing' ? target.doc : null;
 
   const body = () => {
     if (!target) {
@@ -83,6 +93,17 @@ export function DocumentViewer({
     }
     if (target.type === 'drawing') {
       return <DrawingPreview drawingNumber={target.drawingNumber} />;
+    }
+    if (target.type === 'qr') {
+      return (
+        <View style={styles.qr} testID="document-viewer-qr">
+          <QrCode
+            value={target.value}
+            size={ORDER_QR_SIZE * 2}
+            accessibilityLabel={target.doc.name}
+          />
+        </View>
+      );
     }
     if (doc?.uri?.startsWith('data:image')) {
       return (
@@ -129,7 +150,7 @@ export function DocumentViewer({
       }
       subtitle={
         doc
-          ? [doc.kind, formatFileSize(doc.sizeBytes)]
+          ? [doc.kind, doc.sizeBytes > 0 && formatFileSize(doc.sizeBytes)]
               .filter(Boolean)
               .join(' · ')
           : undefined
@@ -142,6 +163,7 @@ export function DocumentViewer({
               leftIcon="download"
               variant="secondary"
               onPress={() => onDownload(doc)}
+              testID="document-viewer-download"
             />
           )}
           <N1Button
