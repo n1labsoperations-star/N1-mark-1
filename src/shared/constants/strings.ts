@@ -1,6 +1,8 @@
 // Text shared by several features. Feature-specific text lives in each feature's constants.ts.
 
 export const COMMON_STRINGS = {
+  printFailedTitle: "Couldn't print",
+  printFailed: 'The print dialog could not be opened. Please try again.',
   cancel: 'Cancel',
   save: 'Save changes',
   edit: 'Edit',

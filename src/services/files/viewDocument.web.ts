@@ -1,4 +1,5 @@
 import type { Attachment } from '../../shared/types';
+import { escapeHtml } from '../print/printPage';
 
 // The project builds without the DOM typings; just what this file touches.
 type Popup = {
@@ -13,31 +14,6 @@ type Browser = {
 const browser = globalThis as unknown as Browser;
 
 const isImage = (doc: Attachment) => Boolean(doc.uri?.startsWith('data:image'));
-
-const escapeHtml = (text: string) =>
-  text.replace(
-    /[&<>"]/g,
-    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!),
-  );
-
-/**
- * Prints a generated page (e.g. an invoice): opened in a new tab, then the
- * browser's print dialog, where it can also be saved as a PDF.
- */
-export function printHtml(html: string): boolean {
-  const popup = browser.open?.('', '_blank');
-  if (!popup) {
-    return false;
-  }
-  popup.document.write(
-    html.replace(
-      '</body>',
-      '<script>window.focus();window.print()</script></body>',
-    ),
-  );
-  popup.document.close();
-  return true;
-}
 
 /** Opens the file in a new tab. False when there's nothing to open. */
 export function openDocument(doc: Attachment): boolean {

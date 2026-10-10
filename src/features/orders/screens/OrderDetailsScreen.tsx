@@ -22,7 +22,10 @@ import {
 } from '../../../shared/components';
 import { COMMON_STRINGS, DETAIL_COLUMNS } from '../../../shared/constants';
 import { useOnSettled } from '../../../shared/hooks';
-import { formatLongDate, notifyUnavailable } from '../../../shared/utils';
+import {
+  formatLongDate,
+  notifyUnavailable,
+} from '../../../shared/utils';
 import { useCustomers } from '../../customers';
 import {
   BILLING_META,
@@ -41,6 +44,7 @@ import {
   openDocument,
   printDocument,
 } from '../../../services/files/viewDocument';
+import { printOrNotify } from '../../../services/print';
 import type { Attachment } from '../../../shared/types';
 import {
   RawMaterialDialog,
@@ -52,10 +56,12 @@ import { OrderStatusBadge, PriorityBadge } from '../components/OrderBadges';
 import { RAW_MATERIAL_FIELDS } from '../components/orderForm';
 import { MATERIAL_SOURCE_OPTIONS, ORDER_STRINGS } from '../constants';
 import { useOrder } from '../hooks/useOrders';
-import { orderHeading } from '../utils';
+import { documentPrintHtml, drawingPrintHtml, qrPrintHtml } from '../printing';
+import { orderHeading, orderQrValue } from '../utils';
 
 const D = ORDER_STRINGS.details;
 const F = ORDER_STRINGS.form;
+const P = ORDER_STRINGS.print;
 const orDash = (v: string) => v || COMMON_STRINGS.dash;
 // The drawing's and the order QR's rows in the documents list.
 const DRAWING_DOC_ID = 'order-drawing';
@@ -223,25 +229,47 @@ export function OrderDetailsScreen({
       setTab('jobCard');
     }
   });
-  const printDrawing = useCallback(() => notifyUnavailable(D.printDrawing), []);
+  const printDrawing = useCallback(() => {
+    if (order) {
+      const html = drawingPrintHtml(order, orDash(order.drawingNumber));
+      printOrNotify(html, P.drawingJob(orderHeading(order)), D.printDrawing);
+    }
+  }, [order]);
   const download = useCallback(() => notifyUnavailable(D.downloadAction), []);
-  // View / print a document or the drawing. Files the app holds (picked
-  // images, and PDFs picked this session on web) open and print for real.
+  // View / print a document or the drawing. A PDF picked this session on web
+  // prints in the browser's own viewer; anything else prints as a page.
   const [viewing, setViewing] = useState<ViewerTarget | null>(null);
   const closeViewer = useCallback(() => setViewing(null), []);
   const viewDocument = useCallback(
     (doc: Attachment) => setViewing({ type: 'document', doc }),
     [],
   );
-  const printFile = useCallback((doc: Attachment) => {
-    if (!printDocument(doc)) {
-      notifyUnavailable(D.printAction);
+  const printFile = useCallback(
+    (doc: Attachment) => {
+      const isPickedFile =
+        Platform.OS === 'web' && doc.uri && !doc.uri.startsWith('data:image');
+      if (isPickedFile && printDocument(doc)) {
+        return;
+      }
+      if (order) {
+        printOrNotify(documentPrintHtml(order, doc), doc.name, D.printAction);
+      }
+    },
+    [order],
+  );
+  const printQr = useCallback(() => {
+    if (order) {
+      printOrNotify(qrPrintHtml(order), D.orderQrFile(order.id), D.printAction);
     }
-  }, []);
+  }, [order]);
   const printTarget = useCallback(
     (target: ViewerTarget) =>
-      target.type === 'drawing' ? printDrawing() : printFile(target.doc),
-    [printDrawing, printFile],
+      target.type === 'drawing'
+        ? printDrawing()
+        : target.type === 'qr'
+        ? printQr()
+        : printFile(target.doc),
+    [printDrawing, printQr, printFile],
   );
   const openFile = Platform.OS === 'web' ? openDocument : null;
 
@@ -358,13 +386,13 @@ export function OrderDetailsScreen({
 
   const drawingNo = orDash(order.drawingNumber);
   // What the order QR holds; the app's scanner imports the order from it.
-  const orderQrValue = ORDER_STRINGS.workOrder(order.id);
+  const qrValue = orderQrValue(order);
   const viewDrawing = () =>
     setViewing({ type: 'drawing', drawingNumber: drawingNo });
   const drawingSection = (
     <DrawingQrSection
       drawingNumber={drawingNo}
-      qrValue={orderQrValue}
+      qrValue={qrValue}
       onViewDrawing={viewDrawing}
       onPrintDrawing={printDrawing}
       testID="order"
@@ -530,11 +558,15 @@ export function OrderDetailsScreen({
           doc.id === DRAWING_DOC_ID
             ? viewDrawing()
             : doc.id === ORDER_QR_DOC_ID
-            ? setViewing({ type: 'qr', doc, value: orderQrValue })
+            ? setViewing({ type: 'qr', doc, value: qrValue })
             : viewDocument(doc)
         }
         onPrint={doc =>
-          doc.id === DRAWING_DOC_ID ? printDrawing() : printFile(doc)
+          doc.id === DRAWING_DOC_ID
+            ? printDrawing()
+            : doc.id === ORDER_QR_DOC_ID
+            ? printQr()
+            : printFile(doc)
         }
       />
     </View>

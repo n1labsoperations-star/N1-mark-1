@@ -111,7 +111,11 @@ export {
   type N1BottomTabBarProps,
   type N1BottomTab,
 } from './N1BottomTabBar';
-export { N1BottomBar, type N1BottomBarProps } from './N1BottomBar';
+export {
+  N1BottomBar,
+  useInBottomBar,
+  type N1BottomBarProps,
+} from './N1BottomBar';
 
 // Job details & workflow (userFlow)
 export {

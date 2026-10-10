@@ -1,0 +1,31 @@
+def getExtOrDefault(name, defaultValue) {
+  return rootProject.ext.has(name) ? rootProject.ext.get(name) : defaultValue
+}
+
+apply plugin: "com.android.library"
+
+// AGP 9 builds Kotlin itself unless android.builtInKotlin=false.
+def agpMajor = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.tokenize('.')[0].toInteger()
+def builtInKotlin = providers.gradleProperty("android.builtInKotlin").orNull
+if (agpMajor < 9 || (builtInKotlin != null && !builtInKotlin.toBoolean())) {
+  apply plugin: "org.jetbrains.kotlin.android"
+}
+apply plugin: "com.facebook.react"
+
+android {
+  namespace "com.n1mark1.print"
+  compileSdkVersion getExtOrDefault("compileSdkVersion", 36)
+
+  defaultConfig {
+    minSdkVersion getExtOrDefault("minSdkVersion", 24)
+  }
+}
+
+repositories {
+  google()
+  mavenCentral()
+}
+
+dependencies {
+  implementation "com.facebook.react:react-android"
+}

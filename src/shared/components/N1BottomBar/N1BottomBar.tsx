@@ -1,4 +1,9 @@
-import React, { Children, type ReactNode } from 'react';
+import React, {
+  Children,
+  createContext,
+  useContext,
+  type ReactNode,
+} from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
@@ -24,6 +29,15 @@ const makeStyles = createN1Styles(t => ({
   slot: { flex: 1 },
 }));
 
+const InBottomBar = createContext(false);
+
+/**
+ * True inside an N1BottomBar. Its slots already share the width, so buttons
+ * there mustn't flex: in a slot (a column) native layout would read `flex: 1`
+ * as height and collapse them.
+ */
+export const useInBottomBar = () => useContext(InBottomBar);
+
 /**
  * Action area pinned to the bottom of a screen
  * (Save changes, Pass / Fail, Start / Stop, Confirm & Start).
@@ -41,13 +55,15 @@ export const N1BottomBar = React.memo(function N1BottomBarComponent({
       style={[styles.bar, style]}
       testID={testID}
     >
-      <View style={styles.row}>
-        {Children.toArray(children).map((child, index) => (
-          <View key={index} style={styles.slot}>
-            {child}
-          </View>
-        ))}
-      </View>
+      <InBottomBar.Provider value>
+        <View style={styles.row}>
+          {Children.toArray(children).map((child, index) => (
+            <View key={index} style={styles.slot}>
+              {child}
+            </View>
+          ))}
+        </View>
+      </InBottomBar.Provider>
     </SafeAreaView>
   );
 });

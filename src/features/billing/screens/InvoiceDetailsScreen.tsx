@@ -16,7 +16,7 @@ import {
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
 import { useOnSettled } from '../../../shared/hooks';
-import { printHtml } from '../../../services/files/viewDocument';
+import { printOrNotify } from '../../../services/print';
 import {
   formatCurrency,
   notifyUnavailable,
@@ -153,11 +153,11 @@ export function InvoiceDetailsScreen({
   const { organization } = useSession();
   const [preview, setPreview] = useState<InvoiceDocument | null>(null);
   const closePreview = useCallback(() => setPreview(null), []);
-  const print = useCallback((doc: InvoiceDocument) => {
-    if (!printHtml(invoiceHtml(doc))) {
-      notifyUnavailable(doc.printAction);
-    }
-  }, []);
+  const print = useCallback(
+    (doc: InvoiceDocument) =>
+      printOrNotify(invoiceHtml(doc), doc.title, doc.printAction),
+    [],
+  );
   const downloadPdf = useCallback(
     () => notifyUnavailable(I.downloadAction),
     [],

@@ -7,7 +7,9 @@ import type { RawMaterialInput } from './types';
  * "1042" all give "1042". Empty when there are no digits.
  */
 export function parseJobCode(code: string): string {
-  return code.replace(/\D/g, '').replace(/^0+/, '');
+  // An order's QR code lists its details under the WO number; read only that.
+  const [first = ''] = code.trim().split('\n');
+  return first.replace(/\D/g, '').replace(/^0+/, '');
 }
 
 export const rawMaterialOf = (order: WorkOrder): RawMaterialInput => ({

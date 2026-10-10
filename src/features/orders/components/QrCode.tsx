@@ -5,10 +5,10 @@ import QRCode from 'qrcode';
 import { useN1Theme } from '../../../shared/components';
 
 /** Blank modules around the code, which scanners need to find it. */
-const QUIET_ZONE = 2;
+export const QUIET_ZONE = 2;
 
 /** One SVG path for every dark module: far fewer nodes than a rect each. */
-function qrPath(value: string): { path: string; modules: number } {
+export function qrPath(value: string): { path: string; modules: number } {
   const { size, data } = QRCode.create(value, {
     errorCorrectionLevel: 'M',
   }).modules;

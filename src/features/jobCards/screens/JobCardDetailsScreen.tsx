@@ -56,7 +56,10 @@ import {
   type ViewerTarget,
 } from '../../orders/components/DocumentViewer';
 import { DrawingQrSection } from '../../orders/components/DrawingQrSection';
+import { printOrNotify } from '../../../services/print';
 import { ORDER_STRINGS } from '../../orders/constants';
+import { drawingPrintHtml } from '../../orders/printing';
+import { orderHeading, orderQrValue } from '../../orders/utils';
 import { COMMON_STRINGS } from '../../../shared/constants';
 import { QcHistory } from '../components/QcHistory';
 import { RouteCard } from '../components/RouteCard';
@@ -339,14 +342,21 @@ export function JobCardDetailsScreen({
     },
     [closeDispatch, navigation, jobCardId],
   );
-  // The drawing thumbnail opens full size; printing and downloading files
-  // aren't available yet.
+  // The drawing thumbnail opens full size and prints with the order's QR;
+  // downloading files isn't available yet.
   const [viewing, setViewing] = useState<ViewerTarget | null>(null);
   const closeViewer = useCallback(() => setViewing(null), []);
-  const printDrawing = useCallback(
-    () => notifyUnavailable(ORDER_STRINGS.details.printAction),
-    [],
-  );
+  const printDrawing = useCallback(() => {
+    if (!order) {
+      notifyUnavailable(ORDER_STRINGS.details.printDrawing);
+      return;
+    }
+    printOrNotify(
+      drawingPrintHtml(order, order.drawingNumber || D.noDrawing),
+      ORDER_STRINGS.print.drawingJob(orderHeading(order)),
+      ORDER_STRINGS.details.printDrawing,
+    );
+  }, [order]);
   const download = useCallback(
     () => notifyUnavailable(ORDER_STRINGS.details.downloadAction),
     [],
@@ -495,7 +505,9 @@ export function JobCardDetailsScreen({
       <DrawingQrSection
         drawingNumber={drawingNumber}
         hasDrawing={Boolean(jobCard.designFile)}
-        qrValue={ORDER_STRINGS.workOrder(jobCard.id)}
+        qrValue={
+          order ? orderQrValue(order) : ORDER_STRINGS.workOrder(jobCard.id)
+        }
         onViewDrawing={() => setViewing({ type: 'drawing', drawingNumber })}
         onPrintDrawing={printDrawing}
         columns={OVERVIEW_COLUMNS}

@@ -138,7 +138,8 @@ export const DrawingQrSection = memo(function DrawingQrSectionComponent({
             <QrCode
               value={qrValue}
               size={ORDER_QR_SIZE}
-              accessibilityLabel={D.orderQrA11y(qrValue)}
+              // The first line is the WO number; details follow under it.
+              accessibilityLabel={D.orderQrA11y(qrValue.split('\n')[0])}
               flushLeft
               testID={`${testID}-qr-code`}
             />
