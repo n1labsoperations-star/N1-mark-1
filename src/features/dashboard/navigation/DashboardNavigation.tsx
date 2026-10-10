@@ -1,5 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { JobCardDetailsScreen } from '../../jobCards/screens/JobCardDetailsScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import type { DashboardStackParamList } from '../types';
 
@@ -11,6 +12,12 @@ function DashboardNavigation() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="DashboardHome" component={DashboardScreen} />
+      {/* The same job card screen as in Job Cards, pushed here so Back
+          returns to this stack's screen below it. */}
+      <Stack.Screen
+        name="JobCardDetails"
+        component={JobCardDetailsScreen as React.ComponentType<any>}
+      />
     </Stack.Navigator>
   );
 }

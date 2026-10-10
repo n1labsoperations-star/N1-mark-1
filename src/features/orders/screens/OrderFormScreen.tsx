@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import {
+  DetailHeader,
   N1Button,
   N1Card,
   N1Combobox,
@@ -264,6 +265,10 @@ export function OrderFormScreen({
 
   const isLast = step === STEP_COUNT;
   const backLinkLabel = fromDetails ? F.backToOrder : F.backToOrders;
+  // Phones: a header with back and the form's name, in place of the link.
+  const header = (
+    <DetailHeader title={isEdit ? F.editTitle : F.createTitle} onBack={leave} />
+  );
   const busy = saving || jobCards.saving;
   const submitLabel = isEdit
     ? F.submitEdit
@@ -284,7 +289,7 @@ export function OrderFormScreen({
 
   if (isEdit && !order) {
     return (
-      <AdminScreen testID="order-form-screen">
+      <AdminScreen header={header} testID="order-form-screen">
         <AsyncContent status={status} error={error} onRetry={reload}>
           <N1Text>{ORDER_STRINGS.details.notFound}</N1Text>
         </AsyncContent>
@@ -539,21 +544,29 @@ export function OrderFormScreen({
 
   const top = (
     <View style={styles.top}>
-      <Pressable
-        accessibilityRole="link"
-        accessibilityLabel={backLinkLabel}
-        onPress={leave}
-        style={({ pressed }) => [styles.backLink, pressed && styles.pressed]}
-        testID="order-form-back-to-list"
-      >
-        <N1Icon name="arrow-left" size="sm" color="textSecondary" />
-        <N1Text variant="label" color="secondary">
-          {backLinkLabel}
-        </N1Text>
-      </Pressable>
-      <N1Text variant="h1" accessibilityRole="header">
-        {isEdit ? F.editTitle : F.createTitle}
-      </N1Text>
+      {/* Phones show these in the header instead. */}
+      {!isCompact && (
+        <>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel={backLinkLabel}
+            onPress={leave}
+            style={({ pressed }) => [
+              styles.backLink,
+              pressed && styles.pressed,
+            ]}
+            testID="order-form-back-to-list"
+          >
+            <N1Icon name="arrow-left" size="sm" color="textSecondary" />
+            <N1Text variant="label" color="secondary">
+              {backLinkLabel}
+            </N1Text>
+          </Pressable>
+          <N1Text variant="h1" accessibilityRole="header">
+            {isEdit ? F.editTitle : F.createTitle}
+          </N1Text>
+        </>
+      )}
       <OrderStepper
         steps={F.steps}
         current={step}
@@ -578,7 +591,11 @@ export function OrderFormScreen({
   // Phones: the page scrolls and the buttons sit in the bottom bar.
   if (isCompact) {
     return (
-      <AdminScreen compactFooter={compactFooter} testID="order-form-screen">
+      <AdminScreen
+        header={header}
+        compactFooter={compactFooter}
+        testID="order-form-screen"
+      >
         <View style={styles.compact}>
           {top}
           {fields}
@@ -588,7 +605,7 @@ export function OrderFormScreen({
   }
 
   return (
-    <AdminScreen fixed testID="order-form-screen">
+    <AdminScreen header={header} fixed testID="order-form-screen">
       <N1Card padding="xxl" radius="sm" style={styles.card}>
         {top}
         {/* A new step starts at the top. */}

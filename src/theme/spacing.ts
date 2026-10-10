@@ -47,6 +47,15 @@ export const controlHeight = {
 
 export type N1Size = keyof typeof controlHeight;
 
+/**
+ * Outlined form fields (text, select, date). Phones get a taller field for
+ * easier tapping.
+ */
+export const fieldHeight = {
+  regular: controlHeight.sm + spacing.xs,
+  compact: controlHeight.lg + spacing.xs,
+} as const;
+
 export const iconSize = {
   sm: 16,
   md: 18,
@@ -103,6 +112,11 @@ export const shadow = {
   none: undefined,
   modal: '0px 12px 32px rgba(0, 0, 0, 0.16)',
   raised: '0px 2px 8px rgba(0, 0, 0, 0.06)',
+  /**
+   * Cards on a white page, e.g. the phone dashboard's stat cards. Reaches
+   * 12px below the card, inside the 16px a scroll row leaves for it.
+   */
+  soft: '0px 2px 10px rgba(0, 0, 0, 0.08)',
   /** A floating panel, e.g. the auth form card. */
   card: '0px 8px 32px rgba(0, 0, 0, 0.12)',
 } as const;

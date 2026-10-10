@@ -29,26 +29,57 @@ export const linking: LinkingOptions<RootStackParamList> = {
             screens: {
               Overview: {
                 path: '',
-                screens: { DashboardHome: '' },
+                screens: {
+                  DashboardHome: '',
+                  JobCardDetails: 'priority-jobs/:jobCardId',
+                },
               },
               Users: {
                 path: 'users',
                 screens: {
                   UsersList: '',
-                  UserDetails: ':userId',
+                  JobCardDetails: 'job-cards/:jobCardId',
+                  // Phones swipe between sections (a top-tab navigator).
+                  UserDetails: {
+                    path: ':userId',
+                    screens: {
+                      profile: '',
+                      address: 'address',
+                      work: 'work',
+                      security: 'security',
+                      documents: 'documents',
+                    },
+                  },
                 },
               },
               Customers: {
                 path: 'customers',
                 screens: {
                   CustomersList: '',
-                  CustomerDetails: ':customerId',
+                  // A customer's orders and quotes, opened from the customer.
+                  OrderDetails: 'orders/:orderId',
+                  OrderForm: 'orders/form/:orderId?',
+                  JobCardDetails: 'job-cards/:jobCardId',
+                  QuoteDetails: 'quotes/:quoteId',
+                  // Phones swipe between sections (a top-tab navigator).
+                  CustomerDetails: {
+                    path: ':customerId',
+                    screens: {
+                      info: '',
+                      address: 'address',
+                      stats: 'stats',
+                      orders: 'orders',
+                      quotes: 'quotes',
+                      notes: 'notes',
+                    },
+                  },
                 },
               },
               Orders: {
                 path: 'orders',
                 screens: {
                   OrdersList: '',
+                  JobCardDetails: 'job-cards/:jobCardId',
                   // Optional id: blank creates a new order.
                   OrderForm: 'form/:orderId?',
                   OrderDetails: ':orderId',
@@ -70,9 +101,21 @@ export const linking: LinkingOptions<RootStackParamList> = {
               },
               Profile: {
                 path: 'profile',
-                screens: { MyProfile: '' },
+                screens: { MyProfile: '', ProfileSection: ':section' },
               },
-              Organization: 'organization',
+              // Phones swipe between sections (a top-tab navigator); the
+              // first one has the plain path.
+              Organization: {
+                path: 'organization',
+                screens: {
+                  general: '',
+                  business: 'business',
+                  address: 'address',
+                  gst: 'gst',
+                  invoice: 'invoice',
+                  documents: 'documents',
+                },
+              },
               Billing: {
                 path: 'billing',
                 screens: {

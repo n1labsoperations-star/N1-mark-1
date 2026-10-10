@@ -1,12 +1,35 @@
 import React from 'react';
 import type { ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StatusBar,
+  View,
+} from 'react-native';
+import { KeyboardScrollView } from '../KeyboardScrollView/KeyboardScrollView';
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+  initialWindowMetrics,
+  type Metrics,
+} from 'react-native-safe-area-context';
 import { useN1Breakpoint } from '../../hooks/useN1Breakpoint';
-import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
+import {
+  createN1Styles,
+  useN1Styles,
+  useN1Theme,
+} from '../../../theme/N1ThemeProvider';
 import type { modalWidth } from '../../../theme/tokens';
 import { N1IconButton } from '../N1IconButton/N1IconButton';
 import { N1Text } from '../N1Text/N1Text';
+
+/** Before the native window reports (and in tests): no insets yet. */
+const NO_INSETS: Metrics = {
+  frame: { x: 0, y: 0, width: 0, height: 0 },
+  insets: { top: 0, left: 0, right: 0, bottom: 0 },
+};
 
 export type N1ModalProps = {
   visible: boolean;
@@ -91,6 +114,7 @@ export const N1Modal = React.memo(function N1ModalComponent({
   testID,
 }: N1ModalProps) {
   const styles = useN1Styles(makeStyles);
+  const theme = useN1Theme();
   const { isCompact } = useN1Breakpoint();
   const fullScreen = isCompact && fullScreenOnCompact;
 
@@ -117,21 +141,39 @@ export const N1Modal = React.memo(function N1ModalComponent({
         onRequestClose={onClose}
         testID={testID}
       >
-        <SafeAreaView style={styles.screen}>
-          <View style={styles.screenHeader}>
-            <N1IconButton
-              icon="chevron-left"
-              accessibilityLabel="Back"
-              size="sm"
-              onPress={onClose}
-            />
-            {titles}
-          </View>
-          <ScrollView contentContainerStyle={styles.screenBody}>
-            {children}
-          </ScrollView>
-          {footer && <View style={styles.screenFooter}>{footer}</View>}
-        </SafeAreaView>
+        {/* A modal is its own native window: it needs its own provider for
+            SafeAreaView to clear the notch and the home indicator. */}
+        {/* Dark status bar text on the white sheet; a black top bar behind
+            it may have switched it to light. Restored when this closes. */}
+        <StatusBar
+          barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'}
+        />
+        <SafeAreaProvider initialMetrics={initialWindowMetrics ?? NO_INSETS}>
+          <SafeAreaView style={styles.screen}>
+            {/* The footer rides above the keyboard. */}
+            <KeyboardAvoidingView
+              style={styles.screen}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            >
+              <View style={styles.screenHeader}>
+                <N1IconButton
+                  icon="chevron-left"
+                  accessibilityLabel="Back"
+                  size="sm"
+                  onPress={onClose}
+                />
+                {titles}
+              </View>
+              <KeyboardScrollView
+                contentContainerStyle={styles.screenBody}
+                footerMode
+              >
+                {children}
+              </KeyboardScrollView>
+              {footer && <View style={styles.screenFooter}>{footer}</View>}
+            </KeyboardAvoidingView>
+          </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
     );
   }
@@ -164,9 +206,9 @@ export const N1Modal = React.memo(function N1ModalComponent({
               onPress={onClose}
             />
           </View>
-          <ScrollView contentContainerStyle={styles.body}>
+          <KeyboardScrollView contentContainerStyle={styles.body}>
             {children}
-          </ScrollView>
+          </KeyboardScrollView>
           {footer && <View style={styles.footer}>{footer}</View>}
         </Pressable>
       </Pressable>

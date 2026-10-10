@@ -847,22 +847,21 @@ describe('Back returns to where the job card was opened from', () => {
     expect(h.currentRoute()).toBe('JobCards');
   });
 
-  test('Orders list → Back to the Job Cards list, with or without a flow', async () => {
+  test('Orders list → Back to the Orders list, with or without a flow', async () => {
     const h = await renderAdmin('Orders');
     await press(byTestId(h.root, 'job-card-1042'));
     expect(h.currentRoute()).toBe('JobCardDetails');
     expect(allText(back(h))).toBe('Back');
     await press(back(h));
-    expect(h.currentRoute()).toBe('JobCards');
+    expect(h.currentRoute()).toBe('Orders');
 
-    // No flow yet: the job card opens with Create flow open; Back goes to
-    // the Job Cards list too.
-    await press(byLabel(h.root, 'Orders'));
+    // No flow yet: the job card opens with Create flow open; Back returns to
+    // the Orders list too.
     await press(byLabel(h.root, 'Create job card for WO #1036'));
     expect(h.currentRoute()).toBe('JobCardDetails');
     expect(hasTestId(h.root, 'flow-editor')).toBe(true);
     await press(back(h));
-    expect(h.currentRoute()).toBe('JobCards');
+    expect(h.currentRoute()).toBe('Orders');
   });
 
   test('Order details → Back to that order', async () => {

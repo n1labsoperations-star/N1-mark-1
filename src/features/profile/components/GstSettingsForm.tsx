@@ -45,6 +45,24 @@ const makeStyles = createN1Styles(t => ({
     justifyContent: 'space-between',
     gap: t.spacing.md,
   },
+  // Phones: one small grey card per configured rate.
+  rateCard: {
+    gap: t.spacing.xs,
+    padding: t.spacing.md,
+    borderRadius: t.radius.compact,
+    backgroundColor: t.colors.surfaceMuted,
+  },
+  rateTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: t.spacing.sm,
+  },
+  rateActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.sm,
+  },
   how: { gap: t.spacing.sm },
   howRow: { gap: t.spacing.xxs },
 }));
@@ -180,6 +198,44 @@ export function GstSettingsForm({
     return editing ? all : all.filter(column => column.key !== 'action');
   }, [editing]);
 
+  // Phones: the rate and its status, then the split on one line.
+  const rateCard = (r: TaxRate) => {
+    const split = splitGstRate(r.rate);
+    return (
+      <View style={styles.rateCard} testID={`rate-card-${r.rate}`}>
+        <View style={styles.rateTop}>
+          <N1Text weight="bold">{formatRate(r.rate)}</N1Text>
+          <View style={styles.rateActions}>
+            {/* The badge pins itself to the top; the wrapper centres it. */}
+            <View>
+              {r.active ? (
+                <N1Badge label={S.active} tone="success" dot />
+              ) : (
+                <N1Badge label={S.inactive} tone="neutral" dot />
+              )}
+            </View>
+            {editing && (
+              // Just the pencil, like other row actions.
+              <N1IconButton
+                icon="edit"
+                variant="ghost"
+                size="sm"
+                accessibilityLabel={S.editRateA11y(formatRate(r.rate))}
+                onPress={() => setRateEditor({ rate: r })}
+                testID={`edit-rate-${r.rate}`}
+              />
+            )}
+          </View>
+        </View>
+        <N1Text variant="small" color="secondary">
+          {(['cgst', 'sgst', 'igst'] as const)
+            .map(key => `${S.columns[key]} ${formatRate(split[key])}`)
+            .join(' · ')}
+        </N1Text>
+      </View>
+    );
+  };
+
   const example = values.defaultTaxRate ?? 18;
   const exampleSplit = splitGstRate(example);
 
@@ -266,6 +322,7 @@ export function GstSettingsForm({
               columns={columns}
               data={values.taxRates}
               keyExtractor={r => r.id}
+              renderCompactItem={rateCard}
               testID="tax-rates-table"
             />
             <N1FieldHelper errorText={errors.taxRates} />

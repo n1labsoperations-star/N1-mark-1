@@ -1,7 +1,8 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, type ReactNode } from 'react';
 import { View } from 'react-native';
 import {
   EditableSectionHeader,
+  FormFooter,
   FormRow,
   N1DropDown,
   N1RadioGroup,
@@ -10,6 +11,7 @@ import {
   createN1Styles,
   useN1Styles,
 } from '../../../shared/components';
+import { COMMON_STRINGS, COUNTRY_OPTIONS } from '../../../shared/constants';
 import { useForm, useOnSettled, type FormErrors } from '../../../shared/hooks';
 import {
   CUSTOMER_STRINGS,
@@ -76,6 +78,11 @@ type Props = {
   onEdit: () => void;
   /** Cancel, or a successful save: lock the fields again. */
   onDone: () => void;
+  /**
+   * Phones: places the form and its Cancel / Save into a full-screen editor
+   * (a modal sliding up). Without it, the buttons sit beside the title.
+   */
+  layout?: (parts: { form: ReactNode; footer: ReactNode }) => ReactNode;
 };
 
 /**
@@ -88,6 +95,7 @@ export function CustomerSectionForm({
   editing,
   onEdit,
   onDone,
+  layout,
 }: Props) {
   const styles = useN1Styles(makeStyles);
   const { update, saving, saveError } = useCustomers();
@@ -202,7 +210,15 @@ export function CustomerSectionForm({
                 keyboardType: 'number-pad',
                 maxLength: 6,
               })}
-              {text('country', F.country, F.countryPlaceholder)}
+              <N1DropDown
+                label={F.country}
+                options={COUNTRY_OPTIONS}
+                value={values.country || null}
+                onChange={bind('country')}
+                placeholder={editing ? F.countryPlaceholder : ''}
+                disabled={locked}
+                testID="customer-address-country"
+              />
             </FormRow>
           </>
         );
@@ -215,7 +231,7 @@ export function CustomerSectionForm({
     }
   };
 
-  return (
+  const panel = (
     <View style={styles.panel} testID={`customer-${section}-form`}>
       <EditableSectionHeader
         title={SECTION_TITLES[section]}
@@ -227,6 +243,7 @@ export function CustomerSectionForm({
         editLabel={CUSTOMER_STRINGS.a11y.edit(customer.name)}
         editTestID={`edit-customer-${section}`}
         submitTestID={`customer-${section}-submit`}
+        actionsInFooter={Boolean(layout)}
       />
       <View style={styles.fields}>{fields()}</View>
       {editing && saveError && (
@@ -236,4 +253,19 @@ export function CustomerSectionForm({
       )}
     </View>
   );
+  if (!layout) {
+    return panel;
+  }
+  return layout({
+    form: panel,
+    footer: (
+      <FormFooter
+        submitLabel={COMMON_STRINGS.save}
+        onSubmit={form.submit(save)}
+        onCancel={onDone}
+        loading={saving}
+        submitTestID={`customer-${section}-submit`}
+      />
+    ),
+  });
 }

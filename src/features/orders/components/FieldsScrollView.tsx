@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react';
 import {
   Pressable,
-  ScrollView,
   View,
   type LayoutChangeEvent,
   type NativeScrollEvent,
@@ -9,6 +8,7 @@ import {
   type ScrollViewInstance,
 } from 'react-native';
 import {
+  KeyboardScrollView,
   N1Icon,
   N1Text,
   createN1Styles,
@@ -81,11 +81,10 @@ export function FieldsScrollView({ children, testID }: Props) {
 
   return (
     <View style={styles.root}>
-      <ScrollView
+      <KeyboardScrollView
         ref={scroll}
         style={styles.scroll}
         contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
         scrollEventThrottle={16}
         onLayout={onLayout}
         onContentSizeChange={(_w, h) => setContent(h)}
@@ -93,7 +92,7 @@ export function FieldsScrollView({ children, testID }: Props) {
         testID={testID}
       >
         {children}
-      </ScrollView>
+      </KeyboardScrollView>
       {moreBelow && (
         <View style={styles.hintRow}>
           <Pressable

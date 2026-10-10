@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import {
+  KeyboardScrollView,
   AdminScreen,
+  AdminScreenBackground,
   AsyncContent,
   DetailHeader,
   N1Card,
@@ -14,10 +16,11 @@ import {
 import { ASIDE_WIDTH } from '../../../shared/constants';
 import { AccountSettingsForm } from '../components/AccountSettingsForm';
 import { ChangePasswordForm } from '../components/ChangePasswordForm';
+import { ProfileMenu } from '../components/ProfileMenu';
 import { ProfileSummary } from '../components/ProfileSummary';
 import { PROFILE_STRINGS as S } from '../constants';
 import { useSession } from '../hooks/useSession';
-import type { ProfileScreenProps } from '../types';
+import type { ProfileScreenProps, ProfileSection } from '../types';
 
 type ProfileTab = 'account' | 'security';
 
@@ -50,8 +53,9 @@ const makeStyles = createN1Styles(t => ({
 
 /**
  * The signed-in person's own page: a summary (photo, role, organization) and
- * tabs for Account settings and Security. Other people are
- * managed from Users → User details.
+ * tabs for Account settings and Security. Phones show a menu instead, each
+ * row opening its own screen. Other people are managed from Users → User
+ * details.
  */
 export function MyProfileScreen({
   navigation,
@@ -70,6 +74,12 @@ export function MyProfileScreen({
     setEditing(false);
   }, []);
   const goBack = useCallback(() => navigation.goBack(), [navigation]);
+  // Phones: each menu row opens its own screen.
+  const openMenuItem = useCallback(
+    (section: ProfileSection) =>
+      navigation.navigate('ProfileSection', { section }),
+    [navigation],
+  );
 
   const loading = (
     <AsyncContent status={status} error={error} onRetry={reload}>
@@ -116,12 +126,28 @@ export function MyProfileScreen({
       {isCompact ? (
         content()
       ) : (
-        <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
+        <KeyboardScrollView style={styles.content}>
           {content()}
-        </ScrollView>
+        </KeyboardScrollView>
       )}
     </View>
   );
+
+  // Phones: the menu straight on a white page, no card.
+  if (isCompact) {
+    return (
+      <AdminScreenBackground.Provider value="surface">
+        {/* The top bar shows this screen's name; no header of its own. */}
+        <AdminScreen testID="profile-screen">
+          {profile ? (
+            <ProfileMenu profile={profile} onOpen={openMenuItem} />
+          ) : (
+            loading
+          )}
+        </AdminScreen>
+      </AdminScreenBackground.Provider>
+    );
+  }
 
   return (
     <AdminScreen

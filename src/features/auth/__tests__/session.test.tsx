@@ -56,7 +56,7 @@ test('signing out shows the login screen again', async () => {
   );
   await press(confirm);
 
-  expect(allText(app.root)).toContain('Welcome Back!');
+  expect(allText(app.root)).toContain('Welcome back');
 });
 
 test('the session is saved on web and restored by a new store', async () => {

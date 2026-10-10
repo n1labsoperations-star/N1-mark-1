@@ -1,11 +1,7 @@
 import { memo, useCallback, useRef } from 'react';
+import { StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import {
-  ScrollView,
-  StyleSheet,
-  View,
-  type ScrollViewInstance,
-} from 'react-native';
-import {
+  KeyboardScrollView,
   N1Button,
   N1IconButton,
   N1Text,
@@ -294,15 +290,14 @@ export function LineItemsEditor({
         <View style={styles.removeCell} />
       </View>
       {scrollable ? (
-        <ScrollView
+        <KeyboardScrollView
           ref={scrollRef}
           style={styles.fill}
           onContentSizeChange={onContentSizeChange}
-          keyboardShouldPersistTaps="handled"
           testID="line-items-editor-scroll"
         >
           {rows}
-        </ScrollView>
+        </KeyboardScrollView>
       ) : (
         rows
       )}

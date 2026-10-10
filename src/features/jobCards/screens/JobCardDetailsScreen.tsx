@@ -6,16 +6,13 @@ import {
   type ReactNode,
   type Ref,
 } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  View,
-  type ScrollViewInstance,
-} from 'react-native';
+import { Pressable, View, type ScrollViewInstance } from 'react-native';
 import { StackActions } from '@react-navigation/native';
 import {
   AdminScreen,
+  KeyboardScrollView,
   AsyncContent,
+  DetailHeader,
   ComingSoon,
   N1Button,
   N1ConfirmDialog,
@@ -178,14 +175,14 @@ function StickyHeadPane({
   return (
     <View style={styles.stickyPane} testID={testID}>
       {head}
-      <ScrollView
+      <KeyboardScrollView
         ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.section}
         testID={testID && `${testID}-scroll`}
       >
         {children}
-      </ScrollView>
+      </KeyboardScrollView>
       {foot}
     </View>
   );
@@ -426,10 +423,13 @@ export function JobCardDetailsScreen({
     </Pressable>
   );
 
+  // Phones: a header with back and the screen's name, in place of the link.
+  const header = <DetailHeader title={D.title} onBack={back.goBack} />;
+
   if (!jobCard) {
     return (
-      <AdminScreen testID="job-card-details-screen">
-        {backLink}
+      <AdminScreen header={header} testID="job-card-details-screen">
+        {!isCompact && backLink}
         <AsyncContent status={status} error={error} onRetry={reload}>
           <ComingSoon icon="clipboard" title={D.title} message={D.notFound} />
         </AsyncContent>
@@ -468,7 +468,7 @@ export function JobCardDetailsScreen({
 
   const top = (
     <View style={styles.top}>
-      {backLink}
+      {!isCompact && backLink}
       <View style={styles.titleRow}>
         <View style={styles.title}>
           <N1Text variant={isCompact ? 'h2' : 'h1'} accessibilityRole="header">
@@ -724,7 +724,7 @@ export function JobCardDetailsScreen({
   // Phones: the page scrolls as one.
   if (isCompact) {
     return (
-      <AdminScreen testID="job-card-details-screen">
+      <AdminScreen header={header} testID="job-card-details-screen">
         <N1Card padding="lg" radius="sm" style={styles.card}>
           {top}
           {tabs}
@@ -738,7 +738,7 @@ export function JobCardDetailsScreen({
   }
 
   return (
-    <AdminScreen fixed testID="job-card-details-screen">
+    <AdminScreen header={header} fixed testID="job-card-details-screen">
       <N1Card padding="xxl" radius="sm" style={[styles.card, styles.fullCard]}>
         {top}
         {tabs}
@@ -749,14 +749,14 @@ export function JobCardDetailsScreen({
             {content}
           </View>
         ) : (
-          <ScrollView
+          <KeyboardScrollView
             key={tab}
             style={styles.scroll}
             contentContainerStyle={styles.scrollContent}
             testID="job-card-details-scroll"
           >
             {content}
-          </ScrollView>
+          </KeyboardScrollView>
         )}
       </N1Card>
       {dispatchModal}

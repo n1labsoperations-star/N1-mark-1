@@ -107,7 +107,7 @@ test('details screen: identity, section menu, account and delete', async () => {
   await press(byTestId(screen, 'customer-tab-address'));
   expect(field('customer-address-city').props.value).toBe('Chennai');
   expect(field('customer-address-pinCode').props.value).toBe('600032');
-  expect(field('customer-address-country').props.value).toBe('India');
+  expect(allText(field('customer-address-country'))).toBe('India');
   await press(byTestId(screen, 'customer-tab-stats'));
   expect(field('customer-stats-current').props.value).toBe('12 active');
   expect(field('customer-stats-revenue').props.value).toBe('₹18,42,000');
@@ -203,13 +203,26 @@ test('unknown customer shows not found', async () => {
   expect(allText(h.root)).toContain('This customer no longer exists.');
 });
 
-test('phone: overview donut, compact rows and full-screen details', async () => {
+test('phone: cards with the table figures, actions and full-screen details', async () => {
   mockWidth = 390;
   const h = await renderAdmin('Customers');
-  expect(hasTestId(h.root, 'customer-overview')).toBe(true);
-  expect(allText(h.root)).toContain('12 active · 27 done');
+  // No overview stats on phones; each card carries the table's columns.
+  expect(hasTestId(h.root, 'customer-overview')).toBe(false);
+  const card = allText(byTestId(h.root, 'customer-row-CUS-1'));
+  for (const value of [
+    '12 active',
+    '27 completed',
+    '₹18,42,000',
+    '₹2,12,000',
+  ]) {
+    expect(card).toContain(value);
+  }
+  expect(byLabel(h.root, 'Edit Acme Metalworks')).toBeTruthy();
   await press(byTestId(h.root, 'customer-row-CUS-2'));
-  expect(h.currentRoute()).toBe('CustomerDetails');
+  // Phones open the details on its first swipeable tab.
+  expect(h.currentRoute()).toBe('info');
+  expect(hasTestId(h.root, 'customer-tab-orders')).toBe(true);
+  expect(hasTestId(h.root, 'delete-customer')).toBe(true);
   const text = allText(byTestId(h.root, 'customer-details-screen'));
   expect(text).toContain('Contact person');
   expect(text).toContain('Meera Nair');

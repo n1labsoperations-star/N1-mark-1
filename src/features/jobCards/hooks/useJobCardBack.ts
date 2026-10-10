@@ -7,13 +7,19 @@ const D = JOB_CARD_STRINGS.details;
 type Props = JobCardsScreenProps<'JobCardDetails'>;
 
 /**
- * Back for the job card screens: to the admin screen that opened the card
- * (Dashboard, an order, an employee), else the screen below it
- * (the Job Cards list, or My Jobs on the shop floor).
+ * Back for the job card screens: the screen below it in its stack (the
+ * employee, dashboard or order that pushed it; the Job Cards list; My Jobs
+ * on the shop floor), else the admin screen named by `from`.
  */
 export function useJobCardBack({ route, navigation }: Props) {
   const { jobCardId, from, fromUserId } = route.params;
   const goBack = useCallback(() => {
+    // Pushed onto another module's stack (an employee, the dashboard, an
+    // order): the screen that opened it is right below.
+    if (navigation.getState().index > 0) {
+      navigation.goBack();
+      return;
+    }
     switch (from) {
       case 'dashboard':
         navigation.navigate('Overview');

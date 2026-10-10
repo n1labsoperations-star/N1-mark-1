@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
+import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import {
+  KeyboardScrollView,
   N1Badge,
   N1Button,
   N1Checklist,
-  N1Divider,
   N1DropDown,
   N1Text,
   N1TextInput,
@@ -33,13 +34,18 @@ export type CreateOrganizationValues = {
 };
 
 type Props = {
-  /** Phone layout: one field per row and shorter intro copy. */
+  /**
+   * Phone layout: one field per row, shorter intro copy, and the header and
+   * submit button pinned while the fields scroll.
+   */
   compact: boolean;
+  /** Line under the fields on phones, e.g. "Already have an account? Log in". */
+  footer?: ReactNode;
   onBack: () => void;
   onSubmit: (values: CreateOrganizationValues) => void;
 };
 
-function CreateOrganizationForm({ compact, onBack, onSubmit }: Props) {
+function CreateOrganizationForm({ compact, footer, onBack, onSubmit }: Props) {
   const styles = useN1Styles(makeCreateOrganizationFormStyles);
   const [name, setName] = useState('');
   const [industry, setIndustry] = useState<string | null>(null);
@@ -91,30 +97,29 @@ function CreateOrganizationForm({ compact, onBack, onSubmit }: Props) {
   const rowStyle = compact ? styles.form : styles.row;
   const itemStyle = compact ? undefined : styles.rowItem;
 
-  return (
-    <View style={styles.form}>
-      <View style={styles.header}>
-        <N1Button
-          title="Back to log in"
-          variant="ghost"
-          size="sm"
-          leftIcon="chevron-left"
-          onPress={onBack}
-          style={styles.backButton}
-        />
-        <N1Text variant={compact ? 'h1' : 'display'}>
-          Create Organization
-        </N1Text>
-        <N1Text color="secondary">
-          {compact
-            ? "You'll be the admin. "
-            : "You'll be the admin of this organization. Fields marked "}
-          <N1Text color="danger">*</N1Text>
-          {compact ? ' required.' : ' are required.'}
-        </N1Text>
-      </View>
-      {compact ? <N1Divider /> : null}
+  const header = (
+    <View style={styles.header}>
+      <N1Button
+        title="Back to log in"
+        variant="ghost"
+        size="sm"
+        leftIcon="chevron-left"
+        onPress={onBack}
+        style={styles.backButton}
+      />
+      <N1Text variant={compact ? 'h1' : 'display'}>Create Organization</N1Text>
+      <N1Text color="secondary">
+        {compact
+          ? "You'll be the admin. "
+          : "You'll be the admin of this organization. Fields marked "}
+        <N1Text color="danger">*</N1Text>
+        {compact ? ' required.' : ' are required.'}
+      </N1Text>
+    </View>
+  );
 
+  const fields = (
+    <>
       <View style={rowStyle}>
         <N1TextInput
           label="Organization name"
@@ -212,12 +217,41 @@ function CreateOrganizationForm({ compact, onBack, onSubmit }: Props) {
         />
       </View>
       <N1Checklist items={passwordChecklist(rules)} />
-      <N1Button
-        title="Create organization"
-        size="lg"
-        fullWidth
-        onPress={handleSubmit}
-      />
+    </>
+  );
+
+  const submitButton = (
+    <N1Button
+      title="Create organization"
+      size="lg"
+      fullWidth
+      onPress={handleSubmit}
+    />
+  );
+
+  if (compact) {
+    return (
+      // The scroll view alone makes room for the keyboard (see
+      // KeyboardScrollView); a KeyboardAvoidingView too would do it twice.
+      <View style={styles.screen}>
+        <View style={styles.stickyHeader}>{header}</View>
+        <KeyboardScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {fields}
+          {footer}
+        </KeyboardScrollView>
+        <View style={styles.stickyFooter}>{submitButton}</View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.form}>
+      {header}
+      {fields}
+      {submitButton}
     </View>
   );
 }

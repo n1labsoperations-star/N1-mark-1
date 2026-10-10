@@ -52,6 +52,8 @@ type Props = {
   /** e.g. "Back to customers" or "Back to dashboard". */
   backLabel: string;
   onBack: () => void;
+  /** Phones hide the link; the screen's header has the back button. */
+  showBack?: boolean;
   onDelete: () => void;
   /** The section menu, between who they are and Delete customer. */
   children?: React.ReactNode;
@@ -65,24 +67,27 @@ export function CustomerProfilePanel({
   customer,
   backLabel,
   onBack,
+  showBack = true,
   onDelete,
   children,
 }: Props) {
   const styles = useN1Styles(makeStyles);
   return (
     <View style={styles.panel} testID="customer-profile">
-      <Pressable
-        accessibilityRole="link"
-        accessibilityLabel={backLabel}
-        onPress={onBack}
-        style={({ pressed }) => [styles.backLink, pressed && styles.pressed]}
-        testID="customer-details-back"
-      >
-        <N1Icon name="arrow-left" size="sm" color="textSecondary" />
-        <N1Text variant="label" color="secondary">
-          {backLabel}
-        </N1Text>
-      </Pressable>
+      {showBack && (
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={backLabel}
+          onPress={onBack}
+          style={({ pressed }) => [styles.backLink, pressed && styles.pressed]}
+          testID="customer-details-back"
+        >
+          <N1Icon name="arrow-left" size="sm" color="textSecondary" />
+          <N1Text variant="label" color="secondary">
+            {backLabel}
+          </N1Text>
+        </Pressable>
+      )}
 
       <View style={styles.identity}>
         <N1Avatar name={customer.name} size="lg" />

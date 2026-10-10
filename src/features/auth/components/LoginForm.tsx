@@ -3,7 +3,6 @@ import { Image, View } from 'react-native';
 import {
   N1Button,
   N1Checkbox,
-  N1Logo,
   N1Text,
   N1TextInput,
   useN1Styles,
@@ -17,6 +16,8 @@ const BRAND_LOGO = require('../../../../assets/images/n1-logo.png');
 
 type FieldErrors = { email?: string; password?: string };
 
+const LOGIN_ID_LABEL = 'Email or phone number';
+const PASSWORD_LABEL = 'Password';
 const LOGIN_ID_REQUIRED = 'Email or phone number is required';
 const LOGIN_ID_INVALID = 'Enter a valid email or phone number';
 const PASSWORD_REQUIRED = 'Password is required';
@@ -34,12 +35,11 @@ function validate(email: string, password: string): FieldErrors {
 }
 
 type Props = {
-  title: string;
+  /** Left out on phones, where the shell shows the heading. */
+  title?: string;
   subtitle?: string;
   /** Shows the "Remember me" checkbox (wide layout only in the design). */
   showRememberMe?: boolean;
-  /** Small logo above the title (phones, where the hero panel is hidden). */
-  showLogo?: boolean;
   /** Small brand mark, left aligned above the title (wide layout). */
   showBrand?: boolean;
   /** Shown under the password field, e.g. for wrong credentials. */
@@ -52,7 +52,6 @@ function LoginForm({
   title,
   subtitle,
   showRememberMe = false,
-  showLogo = false,
   showBrand = false,
   errorText,
   onSubmit,
@@ -75,27 +74,24 @@ function LoginForm({
 
   return (
     <View style={styles.form}>
-      {showLogo ? (
-        <View style={styles.logo}>
-          <N1Logo size="sm" />
+      {title ? (
+        <View style={styles.heading}>
+          {showBrand ? (
+            <Image
+              source={BRAND_LOGO}
+              style={styles.brand}
+              resizeMode="contain"
+              accessibilityLabel="N1"
+              testID="login-brand"
+            />
+          ) : null}
+
+          <N1Text variant="display">{title}</N1Text>
+          {subtitle ? <N1Text color="secondary">{subtitle}</N1Text> : null}
         </View>
       ) : null}
-      <View style={styles.heading}>
-        {showBrand ? (
-          <Image
-            source={BRAND_LOGO}
-            style={styles.brand}
-            resizeMode="contain"
-            accessibilityLabel="N1"
-            testID="login-brand"
-          />
-        ) : null}
-
-        <N1Text variant="display">{title}</N1Text>
-        {subtitle ? <N1Text color="secondary">{subtitle}</N1Text> : null}
-      </View>
       <N1TextInput
-        label="Email or phone number"
+        label={LOGIN_ID_LABEL}
         value={email}
         onChangeText={value => {
           setEmail(value);
@@ -109,7 +105,7 @@ function LoginForm({
         textContentType="username"
       />
       <N1TextInput
-        label="Password"
+        label={PASSWORD_LABEL}
         value={password}
         onChangeText={value => {
           setPassword(value);
@@ -139,7 +135,13 @@ function LoginForm({
           onPress={onForgotPassword}
         />
       </View>
-      <N1Button title="Log in" size="lg" fullWidth onPress={submit} />
+      <N1Button
+        title="Log in"
+        size="lg"
+        fullWidth
+        onPress={submit}
+        testID="login-submit"
+      />
     </View>
   );
 }

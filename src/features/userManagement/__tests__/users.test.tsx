@@ -441,7 +441,7 @@ describe('User details', () => {
     expect(allText(h.root)).toContain('This employee no longer exists.');
   });
 
-  test('phone layout: section tabs on top, Delete user under the profile', async () => {
+  test('phone layout: section tabs on top, Delete in the header', async () => {
     mockWidth = 390;
     const h = await renderAdmin('Users');
     await h.navigate('UserDetails', { userId: 'USR-2' });
@@ -449,7 +449,9 @@ describe('User details', () => {
     expect(allText(byTestId(h.root, 'user-identity'))).toContain(
       'ABC Engineering Pvt Ltd',
     );
-    expect(allText(byTestId(h.root, 'delete-user'))).toBe('Delete employee');
+    expect(byTestId(h.root, 'delete-user').props.accessibilityLabel).toContain(
+      'Delete',
+    );
   });
 });
 
@@ -457,7 +459,9 @@ test('phone list uses cards and a pinned Create User button', async () => {
   mockWidth = 390;
   const { root } = await renderAdmin('Users');
   expect(hasTestId(root, 'user-card-USR-2')).toBe(true);
-  expect(hasTestId(root, 'users-filter')).toBe(false);
+  // Search and filter sit on the black header on phones.
+  expect(hasTestId(root, 'users-filter')).toBe(true);
+  expect(byLabel(root, 'Search employees')).toBeTruthy();
   await press(byTestId(root, 'create-user'));
   expect(allText(root)).toContain('Create employee');
 });

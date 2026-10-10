@@ -43,6 +43,13 @@ export function TaxRateModal({
   const [text, setText] = useState('');
   const [active, setActive] = useState(true);
   const [error, setError] = useState<string>();
+  // Add or Edit, fixed while open: closing clears `rate` before the sheet
+  // has slid away, which would flash the Add title and hide Active.
+  const [isEdit, setIsEdit] = useState(Boolean(rate));
+  // Updated during render, so even the first frame after opening is right.
+  if (visible && isEdit !== Boolean(rate)) {
+    setIsEdit(Boolean(rate));
+  }
 
   useEffect(() => {
     if (visible) {
@@ -70,7 +77,7 @@ export function TaxRateModal({
       visible={visible}
       onClose={onCancel}
       size="sm"
-      title={rate ? S.editRate : S.addRate}
+      title={isEdit ? S.editRate : S.addRate}
       footer={
         <FormFooter
           onCancel={onCancel}
@@ -112,7 +119,7 @@ export function TaxRateModal({
         {S.calculated}
         {valid ? ` (${formatRate(Number(text))})` : ''}
       </N1Text>
-      {rate && (
+      {isEdit && (
         <N1Switch
           label={S.rateActive}
           value={active}

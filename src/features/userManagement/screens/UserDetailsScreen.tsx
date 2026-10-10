@@ -1,7 +1,10 @@
-import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import { useCallback, useState, type ReactNode } from 'react';
+import { Pressable, View } from 'react-native';
 import {
+  KeyboardScrollView,
   AdminScreen,
+  AdminScreenBackground,
   AsyncContent,
   ComingSoon,
   DetailHeader,
@@ -9,6 +12,8 @@ import {
   N1Card,
   N1Divider,
   N1Icon,
+  N1IconButton,
+  N1Modal,
   N1Tabs,
   type N1Tab,
   N1Text,
@@ -16,6 +21,7 @@ import {
   createN1Styles,
   useN1Breakpoint,
   useN1Styles,
+  useN1Theme,
 } from '../../../shared/components';
 import { SECTION_NAV_WIDTH } from '../../../shared/constants';
 import { useConfirmDelete } from '../../../shared/hooks';
@@ -47,7 +53,48 @@ const SECTIONS: N1Tab<Section>[] = [
   { key: 'documents', label: D.sections.documents, icon: 'file' },
 ];
 
+/** Phones: one swipeable page per section. */
+const SectionTabs = createMaterialTopTabNavigator<Record<Section, undefined>>();
+
+function SectionTabLabel({
+  title,
+  focused,
+}: {
+  title: string;
+  focused: boolean;
+}) {
+  return (
+    <N1Text
+      variant="label"
+      weight={focused ? 'bold' : undefined}
+      color={focused ? 'primary' : 'secondary'}
+    >
+      {title}
+    </N1Text>
+  );
+}
+
+const sectionTabLabel =
+  (title: string) =>
+  ({ focused }: { focused: boolean }) =>
+    <SectionTabLabel title={title} focused={focused} />;
+
 const makeStyles = createN1Styles(t => ({
+  // Phones: the person above the swipeable section tabs, on white.
+  compactRoot: { flex: 1, backgroundColor: t.colors.surface },
+  compactHero: { padding: t.spacing.lg },
+  tabBar: {
+    backgroundColor: t.colors.surface,
+    elevation: 0,
+    shadowOpacity: 0,
+    borderBottomWidth: t.borderWidth.hairline,
+    borderBottomColor: t.colors.border,
+  },
+  tabItem: { width: 'auto', paddingHorizontal: t.spacing.lg },
+  tabIndicator: {
+    height: t.borderWidth.thick,
+    backgroundColor: t.colors.primary,
+  },
   // Wide screens: the card fills the window; only the section scrolls.
   card: { flex: 1, minHeight: 0 },
   row: {
@@ -83,9 +130,7 @@ const makeStyles = createN1Styles(t => ({
   },
   content: { flex: 1 },
   section: { gap: t.spacing.lg },
-  compactTabs: { marginBottom: t.spacing.lg },
   identity: { gap: t.spacing.sm },
-  compactIdentity: { marginBottom: t.spacing.lg },
   identityRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -105,6 +150,7 @@ export function UserDetailsScreen({
   navigation,
 }: UserManagementScreenProps<'UserDetails'>) {
   const styles = useN1Styles(makeStyles);
+  const theme = useN1Theme();
   const { isCompact } = useN1Breakpoint();
   const { organization } = useSession();
   const {
@@ -123,6 +169,17 @@ export function UserDetailsScreen({
     route.params.section ?? 'profile',
   );
   const [editing, setEditing] = useState(false);
+  // Phones: Profile / Address edit in a full-screen editor sliding up. The
+  // section is kept while it slides away so its form doesn't vanish.
+  const [editor, setEditor] = useState<'profile' | 'address' | null>(null);
+  const [editorShown, setEditorShown] = useState<'profile' | 'address'>(
+    'profile',
+  );
+  const openEditor = useCallback((key: 'profile' | 'address') => {
+    setEditorShown(key);
+    setEditor(key);
+  }, []);
+  const closeEditor = useCallback(() => setEditor(null), []);
   // Always the Users list, wherever this page was opened from.
   const goBack = useCallback(() => navigation.popTo('UsersList'), [navigation]);
   const deletion = useConfirmDelete<AdminUser>(
@@ -142,16 +199,13 @@ export function UserDetailsScreen({
   }, []);
 
   // Opens in Job Cards; Back there returns here.
+  // Pushed on this stack: Back returns to the work history.
   const openJobCard = useCallback(
     (jobCardId: string) =>
-      navigation.navigate('JobCards', {
-        screen: 'JobCardDetails',
-        params: {
-          jobCardId,
-          from: 'employee',
-          fromUserId: route.params.userId,
-        },
-        initial: false,
+      navigation.navigate('JobCardDetails', {
+        jobCardId,
+        from: 'employee',
+        fromUserId: route.params.userId,
       }),
     [navigation, route.params.userId],
   );
@@ -219,7 +273,7 @@ export function UserDetailsScreen({
     </View>
   );
 
-  const content = () => {
+  const content = (current: Section = section) => {
     if (!user) {
       return (
         <AsyncContent status={status} error={error} onRetry={reload}>
@@ -227,26 +281,25 @@ export function UserDetailsScreen({
         </AsyncContent>
       );
     }
-    switch (section) {
+    switch (current) {
       case 'profile':
         return (
           <View style={styles.section}>
             <UserDetailsForm
               user={user}
               organizationName={orgName}
-              editing={editing}
-              onEdit={startEdit}
+              editing={!isCompact && current === section && editing}
+              onEdit={isCompact ? () => openEditor('profile') : startEdit}
               onDone={stopEdit}
             />
-            {isCompact && deleteLink}
           </View>
         );
       case 'address':
         return (
           <UserAddressForm
             user={user}
-            editing={editing}
-            onEdit={startEdit}
+            editing={!isCompact && current === section && editing}
+            onEdit={isCompact ? () => openEditor('address') : startEdit}
             onDone={stopEdit}
           />
         );
@@ -276,28 +329,143 @@ export function UserDetailsScreen({
       tabs={SECTIONS}
       value={section}
       onChange={changeSection}
-      variant={isCompact ? 'segmented' : 'menu'}
-      scrollable={isCompact}
-      style={isCompact && styles.compactTabs}
+      variant="menu"
       testID="user-section"
     />
   );
 
-  return (
-    <AdminScreen
-      header={<DetailHeader title={D.title} onBack={goBack} />}
-      fixed
-      testID="user-details-screen"
+  const dialog = (
+    <DeleteUserDialog
+      user={deletion.target}
+      loading={deletion.loading}
+      onConfirm={deletion.confirm}
+      onCancel={deletion.cancel}
+    />
+  );
+  const header = (
+    <DetailHeader
+      title={D.title}
+      onBack={goBack}
+      // Phones: Delete sits in the header, beside the screen's name.
+      compactRight={
+        user && (
+          <N1IconButton
+            icon="trash"
+            variant="danger"
+            size="sm"
+            accessibilityLabel={USER_STRINGS.a11y.delete(user.name)}
+            onPress={() => deletion.request(user)}
+            testID="delete-user"
+          />
+        )
+      }
+    />
+  );
+
+  const editorScreen = (title: string, form: ReactNode, footer: ReactNode) => (
+    <N1Modal
+      visible={editor !== null}
+      onClose={closeEditor}
+      title={title}
+      footer={footer}
+      testID="user-editor"
     >
-      <N1Card radius="sm" style={!isCompact && styles.card}>
+      {form}
+    </N1Modal>
+  );
+  // Phones: the section's form, unlocked, in a full-screen editor.
+  const editorModal = user && (
+    <>
+      {editorShown === 'profile' ? (
+        <UserDetailsForm
+          user={user}
+          organizationName={orgName}
+          editing={editor !== null}
+          onEdit={startEdit}
+          onDone={closeEditor}
+          layout={({ form, footer }) =>
+            editorScreen(USER_STRINGS.editTitle, form, footer)
+          }
+        />
+      ) : (
+        <UserAddressForm
+          user={user}
+          editing={editor !== null}
+          onEdit={startEdit}
+          onDone={closeEditor}
+          layout={({ form, footer }) =>
+            editorScreen(D.sections.address, form, footer)
+          }
+        />
+      )}
+    </>
+  );
+
+  // Phones: the header's back button only, the person on top, then Material
+  // top tabs (swipe or tap) over a white page. No card.
+  if (isCompact) {
+    if (!user) {
+      return (
+        <AdminScreen header={header} testID="user-details-screen">
+          {content()}
+        </AdminScreen>
+      );
+    }
+    return (
+      <AdminScreenBackground.Provider value="surface">
+        <View style={styles.compactRoot} testID="user-details-screen">
+          {header}
+          <View style={styles.compactHero}>{identity}</View>
+          <SectionTabs.Navigator
+            initialRouteName={section}
+            screenOptions={{
+              tabBarScrollEnabled: true,
+              tabBarStyle: styles.tabBar,
+              tabBarItemStyle: styles.tabItem,
+              tabBarIndicatorStyle: styles.tabIndicator,
+              tabBarPressColor: theme.colors.surfaceMuted,
+            }}
+            // Leaving a section drops its unsaved edits.
+            screenListeners={({ route: tab }) => ({
+              focus: () => {
+                changeSection(tab.name);
+                // Remembered on the route, so coming back (e.g. from a job
+                // card) reopens this tab.
+                navigation.setParams({ section: tab.name });
+              },
+            })}
+          >
+            {SECTIONS.map(({ key, label }) => (
+              <SectionTabs.Screen
+                key={key}
+                name={key}
+                options={{
+                  title: label,
+                  tabBarAccessibilityLabel: label,
+                  tabBarButtonTestID: `user-section-${key}`,
+                  tabBarLabel: sectionTabLabel(label),
+                }}
+              >
+                {() => (
+                  <AdminScreen testID={`user-section-page-${key}`}>
+                    {content(key)}
+                  </AdminScreen>
+                )}
+              </SectionTabs.Screen>
+            ))}
+          </SectionTabs.Navigator>
+          {editorModal}
+          {dialog}
+        </View>
+      </AdminScreenBackground.Provider>
+    );
+  }
+
+  return (
+    <AdminScreen header={header} fixed testID="user-details-screen">
+      <N1Card radius="sm" style={styles.card}>
         {backLink}
-        {isCompact ? (
-          <>
-            {identity && <View style={styles.compactIdentity}>{identity}</View>}
-            {tabs}
-            {content()}
-          </>
-        ) : (
+        {
           <View style={styles.row}>
             <View style={styles.nav}>
               {identity && (
@@ -314,22 +482,14 @@ export function UserDetailsScreen({
                 </>
               )}
             </View>
-            <ScrollView
-              style={styles.content}
-              keyboardShouldPersistTaps="handled"
-            >
+            <KeyboardScrollView style={styles.content}>
               {content()}
-            </ScrollView>
+            </KeyboardScrollView>
           </View>
-        )}
+        }
       </N1Card>
 
-      <DeleteUserDialog
-        user={deletion.target}
-        loading={deletion.loading}
-        onConfirm={deletion.confirm}
-        onCancel={deletion.cancel}
-      />
+      {dialog}
     </AdminScreen>
   );
 }

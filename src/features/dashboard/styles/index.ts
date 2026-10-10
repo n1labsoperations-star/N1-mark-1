@@ -3,3 +3,8 @@ export { makeSidebarItemStyles } from './SidebarItem.styles';
 export { makeSidebarSearchStyles } from './SidebarSearch.styles';
 export { makeTopBarStyles } from './TopBar.styles';
 export { makeSummaryCardStyles } from './SummaryCard.styles';
+export {
+  HERO_OVERSCROLL,
+  makeDashboardHeroStyles,
+} from './DashboardHero.styles';
+export { makeCompactTopBarStyles } from './CompactTopBar.styles';

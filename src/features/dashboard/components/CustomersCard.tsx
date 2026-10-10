@@ -1,5 +1,11 @@
 import { memo } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import {
   N1Avatar,
   N1Button,
@@ -42,6 +48,12 @@ const makeStyles = createN1Styles(t => ({
     justifyContent: 'center',
     borderWidth: t.borderWidth.hairline,
     borderColor: t.colors.border,
+  },
+  // Phones have no column labels, so the title row draws the divider.
+  compactHeader: {
+    paddingBottom: t.spacing.md,
+    borderBottomWidth: t.borderWidth.hairline,
+    borderBottomColor: t.colors.border,
   },
   titles: { flex: 1, gap: t.spacing.xxs },
   // Plain column labels, like the rows below them.
@@ -90,6 +102,7 @@ type Props = {
   onViewAll: () => void;
   /** Fill the parent's height and scroll the rows inside the card. */
   scrollable?: boolean;
+  style?: StyleProp<ViewStyle>;
 };
 
 /** Every customer's orders, billing, pending deliveries and share of orders. */
@@ -98,6 +111,7 @@ export const CustomersCard = memo(function CustomersCardComponent({
   onOpenCustomer,
   onViewAll,
   scrollable = false,
+  style,
 }: Props) {
   const styles = useN1Styles(makeStyles);
   const { isCompact } = useN1Breakpoint();
@@ -175,10 +189,10 @@ export const CustomersCard = memo(function CustomersCardComponent({
 
   return (
     <View
-      style={[styles.card, scrollable && styles.fill]}
+      style={[styles.card, scrollable && styles.fill, style]}
       testID="customers-card"
     >
-      <View style={styles.header}>
+      <View style={[styles.header, isCompact && styles.compactHeader]}>
         <View style={styles.headerIcon}>
           <N1Icon name="building" size="sm" color="textSecondary" />
         </View>
@@ -210,13 +224,13 @@ export const CustomersCard = memo(function CustomersCardComponent({
               [S.columns.pending, styles.num],
               [S.columns.share, styles.num],
             ] as const
-          ).map(([label, style]) => (
+          ).map(([label, columnStyle]) => (
             <N1Text
               key={label}
               variant="caption"
               color="tertiary"
               numberOfLines={1}
-              style={style}
+              style={columnStyle}
             >
               {label}
             </N1Text>

@@ -69,21 +69,22 @@ test('summary card on the left, Account settings tab first', async () => {
   );
 });
 
-test('Edit unlocks the fields, validates the phone and saves', async () => {
+test('Edit unlocks the fields, validates the email and saves', async () => {
   const h = await renderAdmin('MyProfile');
   await press(byTestId(h.root, 'edit-profile'));
   expect(byTestId(h.root, 'profile-form-name').props.editable).toBe(true);
-  // The email is the sign-in and stays locked.
-  expect(byTestId(h.root, 'profile-form-email').props.editable).toBe(false);
-  await typeInto(byTestId(h.root, 'profile-form-phone'), '123');
+  // The phone number is the sign-in and stays locked.
+  expect(byTestId(h.root, 'profile-form-phone').props.editable).toBe(false);
+  expect(byTestId(h.root, 'profile-form-email').props.editable).toBe(true);
+  await typeInto(byTestId(h.root, 'profile-form-email'), 'not-an-email');
   await press(byTestId(h.root, 'profile-form-submit'));
-  expect(allText(h.root)).toContain('Enter a valid phone number');
-  await typeInto(byTestId(h.root, 'profile-form-phone'), '+91 90000 11111');
+  expect(allText(h.root)).toContain('Enter a valid email address');
+  await typeInto(byTestId(h.root, 'profile-form-email'), 'koushik@abc.com');
   await typeInto(byTestId(h.root, 'profile-form-name'), 'Koushik D');
   await press(byTestId(h.root, 'profile-form-submit'));
   expect(h.store.getState().profile.profile).toMatchObject({
     name: 'Koushik D',
-    phone: '+91 90000 11111',
+    email: 'koushik@abc.com',
   });
   // Saved: locked again, and the summary and shell follow the new name.
   expect(byTestId(h.root, 'profile-form-name').props.editable).toBe(false);
@@ -98,7 +99,7 @@ test('Account settings: address details, locked until Edit, PIN code checked', a
   expect(field('city').props.value).toBe('Chennai');
   expect(allText(field('state'))).toBe('Tamil Nadu');
   expect(field('pinCode').props.value).toBe('600040');
-  expect(field('country').props.value).toBe('India');
+  expect(allText(field('country'))).toBe('India');
   expect(field('address').props.editable).toBe(false);
 
   await press(byTestId(h.root, 'edit-profile'));
@@ -110,12 +111,15 @@ test('Account settings: address details, locked until Edit, PIN code checked', a
   await typeInto(field('city'), 'Bengaluru');
   await choose(h.root, 'profile-form-state', 'Karnataka');
   await typeInto(field('pinCode'), '560001');
+  // Country is picked from a list too.
+  await choose(h.root, 'profile-form-country', 'Singapore');
   await press(byTestId(h.root, 'profile-form-submit'));
   expect(h.store.getState().profile.profile).toMatchObject({
     address: '45, MG Road',
     city: 'Bengaluru',
     state: 'Karnataka',
     pinCode: '560001',
+    country: 'Singapore',
   });
   expect(field('city').props.editable).toBe(false);
 });
@@ -262,11 +266,73 @@ test('log out asks first, then returns to the login screen', async () => {
   );
 });
 
-test('phone layout: summary above the tabs', async () => {
+test('phone layout: a menu instead of the summary and tabs', async () => {
   mockWidth = 390;
   const h = await renderAdmin('MyProfile');
-  expect(hasTestId(h.root, 'profile-summary')).toBe(true);
-  expect(hasTestId(h.root, 'profile-tab-account')).toBe(true);
+  expect(hasTestId(h.root, 'profile-summary')).toBe(false);
+  expect(hasTestId(h.root, 'profile-tab-account')).toBe(false);
+  const menu = allText(byTestId(h.root, 'profile-menu'));
+  for (const value of [
+    'Koushik Dasarathan',
+    'Organization details',
+    'Account settings',
+    'Security',
+    'Address details',
+    'Log out',
+  ]) {
+    expect(menu).toContain(value);
+  }
+});
+
+test('phone menu rows open their own screens', async () => {
+  mockWidth = 390;
+  const h = await renderAdmin('MyProfile');
+
+  await press(byTestId(h.root, 'profile-menu-address'));
+  expect(hasTestId(h.root, 'profile-section-address')).toBe(true);
+  // Address only: the personal details are under Account settings.
+  expect(hasTestId(h.root, 'profile-form-city')).toBe(true);
+  expect(hasTestId(h.root, 'profile-form-name')).toBe(false);
+});
+
+test('phone menu: role and status chips, and the photo opens the picker', async () => {
+  mockWidth = 390;
+  const h = await renderAdmin('MyProfile');
+  const menu = allText(byTestId(h.root, 'profile-menu'));
+  expect(menu).toContain('Admin');
+  expect(menu).toContain('Active');
+
+  await press(byTestId(h.root, 'profile-photo'));
+  expect(h.store.getState().profile.profile?.photo).toEqual(
+    expect.objectContaining({ name: 'photo.png' }),
+  );
+});
+
+test('phone Organization details lists the organization, not its page', async () => {
+  mockWidth = 390;
+  const h = await renderAdmin('MyProfile');
+
+  await press(byTestId(h.root, 'profile-menu-organization'));
+  expect(hasTestId(h.root, 'organization-screen')).toBe(false);
+  const facts = allText(byTestId(h.root, 'profile-organization'));
+  for (const value of [
+    'Organization',
+    'ABC Engineering Pvt Ltd',
+    'Organization code',
+    'ABC001',
+    'Member since',
+  ]) {
+    expect(facts).toContain(value);
+  }
+});
+
+test('phone account settings leave the address out', async () => {
+  mockWidth = 390;
+  const h = await renderAdmin('MyProfile');
+
+  await press(byTestId(h.root, 'profile-menu-account'));
+  expect(hasTestId(h.root, 'profile-form-name')).toBe(true);
+  expect(hasTestId(h.root, 'profile-form-city')).toBe(false);
 });
 
 async function record(saga: (a: never) => Generator, action?: UnknownAction) {
@@ -322,10 +388,11 @@ test('the user in the top bar opens My profile; back returns', async () => {
 
 test('phone: the avatar and the menu user card open My profile', async () => {
   mockWidth = 390;
-  const h = await renderAdmin('Orders');
+  // Job Cards has no Add action, so the top bar shows the initials.
+  const h = await renderAdmin('JobCards');
   await press(byTestId(h.root, 'open-profile'));
   expect(h.currentRoute()).toBe('MyProfile');
-  await h.navigate('Orders');
+  await h.navigate('JobCards');
   await press(byTestId(h.root, 'sidebar-open-profile'));
   expect(h.currentRoute()).toBe('MyProfile');
 });

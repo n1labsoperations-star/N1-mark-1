@@ -1,3 +1,4 @@
+import type { JobCardsStackParamList } from '../jobCards/types';
 import type { DrawerScreenProps } from '@react-navigation/drawer';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type {
@@ -77,6 +78,8 @@ export type UserManagementStackParamList = {
     /** Section to open on; defaults to the profile. */
     section?: UserDetailsSection;
   };
+  /** A job card from someone's work history; Back returns to it. */
+  JobCardDetails: JobCardsStackParamList['JobCardDetails'];
 };
 
 export type UserDetailsSection =

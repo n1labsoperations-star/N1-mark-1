@@ -1,3 +1,6 @@
+import type { BillingStackParamList } from '../billing/types';
+import type { JobCardsStackParamList } from '../jobCards/types';
+import type { OrdersStackParamList } from '../orders/types';
 import type { DrawerScreenProps } from '@react-navigation/drawer';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type {
@@ -74,7 +77,15 @@ export type CustomersStackParamList = {
     customerId: string;
     /** Where it was opened from, so Back returns there. Default: the list. */
     from?: CustomerDetailsOrigin;
+    /** Phones: the tab to open on (kept while you're away). */
+    tab?: string;
   };
+  // Opened from a customer's Orders / Quotes and pushed here, so Back
+  // returns to the customer. Same screens as in Orders and Billing.
+  OrderDetails: OrdersStackParamList['OrderDetails'];
+  OrderForm: OrdersStackParamList['OrderForm'];
+  JobCardDetails: JobCardsStackParamList['JobCardDetails'];
+  QuoteDetails: BillingStackParamList['QuoteDetails'];
 };
 
 export type CustomersNavigation =

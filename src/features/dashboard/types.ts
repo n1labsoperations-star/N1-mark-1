@@ -12,7 +12,7 @@ import type { UserManagementStackParamList } from '../userManagement/types';
 
 // Screens in the admin sidebar / drawer.
 export type AdminDrawerParamList = {
-  Overview: undefined;
+  Overview: NavigatorScreenParams<DashboardStackParamList> | undefined;
   Users: NavigatorScreenParams<UserManagementStackParamList> | undefined;
   Customers: NavigatorScreenParams<CustomersStackParamList> | undefined;
   Orders: NavigatorScreenParams<OrdersStackParamList> | undefined;
@@ -25,9 +25,25 @@ export type AdminDrawerParamList = {
   Organization: undefined;
 };
 
+/**
+ * Phones: an action a screen puts in the top bar's right-hand spot, in place
+ * of the user's initials (e.g. Create employee).
+ */
+export type TopBarAction = {
+  icon: N1IconName;
+  label: string;
+  onPress: () => void;
+  testID?: string;
+};
+
+/** Drawer screen options the top bar reads beyond the standard ones. */
+export type AdminDrawerExtraOptions = { topBarAction?: TopBarAction };
+
 // Stack nested inside the drawer's "Overview" item.
 export type DashboardStackParamList = {
   DashboardHome: undefined;
+  /** A priority job; Back returns to the dashboard. */
+  JobCardDetails: JobCardsStackParamList['JobCardDetails'];
 };
 
 /** Drawer items listed in the sidebar menu. */

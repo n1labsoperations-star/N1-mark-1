@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { useN1Breakpoint } from '../../../shared/components';
 import AuthLayout from '../components/AuthLayout';
+import AuthMobileShell from '../components/AuthMobileShell';
 import AuthPrompt from '../components/AuthPrompt';
 import LoginForm from '../components/LoginForm';
 import { INVALID_CREDENTIALS_MESSAGE } from '../constants';
@@ -27,36 +28,55 @@ function LoginScreen() {
     signIn(user.role);
   };
 
+  const goToCreateOrganization = () =>
+    navigation.navigate('Auth', { screen: 'CreateOrganization' });
+
+  const goToForgotPassword = () =>
+    navigation.navigate('Auth', {
+      screen: 'ForgotPasswordFlow',
+      params: { screen: 'ForgotPassword' },
+    });
+
+  if (isCompact) {
+    return (
+      <AuthMobileShell
+        title="Welcome back"
+        subtitle="Log in to manage your organization and team."
+        footer={
+          <AuthPrompt
+            question="No account yet?"
+            action="Create organization"
+            onPress={goToCreateOrganization}
+          />
+        }
+      >
+        <LoginForm
+          errorText={error}
+          onSubmit={handleSubmit}
+          onForgotPassword={goToForgotPassword}
+        />
+      </AuthMobileShell>
+    );
+  }
+
   return (
     <AuthLayout
       footer={
         <AuthPrompt
           question="Setting up for your company?"
           action="Create organization"
-          onPress={() =>
-            navigation.navigate('Auth', { screen: 'CreateOrganization' })
-          }
+          onPress={goToCreateOrganization}
         />
       }
     >
       <LoginForm
-        title={isCompact ? 'Welcome Back!' : 'Get Started'}
-        subtitle={
-          isCompact
-            ? 'Log in to your dashboard.'
-            : 'Log in as a user or admin to view your dashboard.'
-        }
-        showLogo={isCompact}
-        showBrand={!isCompact}
-        showRememberMe={!isCompact}
+        title="Get Started"
+        subtitle="Log in as a user or admin to view your dashboard."
+        showBrand
+        showRememberMe
         errorText={error}
         onSubmit={handleSubmit}
-        onForgotPassword={() =>
-          navigation.navigate('Auth', {
-            screen: 'ForgotPasswordFlow',
-            params: { screen: 'ForgotPassword' },
-          })
-        }
+        onForgotPassword={goToForgotPassword}
       />
     </AuthLayout>
   );

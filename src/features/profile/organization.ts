@@ -28,6 +28,8 @@ export const ORGANIZATION_STRINGS = {
   uploadHint: 'PNG or JPG, up to 2 MB',
   changeLogo: 'Change logo',
   completion: 'Profile completion',
+  /** Phones: beside the organization code. */
+  completionShort: (percent: number) => `${percent}% complete`,
   completionDone: 'All details added',
   completionLeft: 'Still to add',
   completionMissing: (count: number) =>
@@ -71,7 +73,7 @@ export const ORGANIZATION_STRINGS = {
     city: 'e.g. Chennai',
     state: 'Select state',
     pinCode: 'e.g. 600098',
-    country: 'e.g. India',
+    country: 'Select country',
     gstNumber: 'e.g. 33ABCDE1234F1Z5',
     invoicePrefix: 'e.g. INV-2026-',
     invoiceStartNumber: 'e.g. 1',

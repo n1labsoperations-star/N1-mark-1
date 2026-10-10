@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 import {
   N1Icon,
   N1IconButton,
@@ -21,6 +21,7 @@ type Props = {
   /** The lead card: dark, with light text. */
   featured?: boolean;
   onOpen: () => void;
+  style?: StyleProp<ViewStyle>;
   testID?: string;
 };
 
@@ -32,6 +33,7 @@ function SummaryCard({
   tone,
   featured = false,
   onOpen,
+  style,
   testID,
 }: Props) {
   const styles = useN1Styles(makeSummaryCardStyles);
@@ -39,7 +41,10 @@ function SummaryCard({
   const toneColors = theme.colors.tone[tone];
 
   return (
-    <View style={[styles.card, featured && styles.featured]} testID={testID}>
+    <View
+      style={[styles.card, featured && styles.featured, style]}
+      testID={testID}
+    >
       <View style={styles.top}>
         <View
           style={[

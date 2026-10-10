@@ -2,11 +2,13 @@ import { memo } from 'react';
 import { View } from 'react-native';
 import {
   N1Avatar,
+  N1Icon,
   N1Text,
   createN1Styles,
   useN1Styles,
 } from '../../../shared/components';
 import { RowActions } from '../../../shared/components';
+import { formatDate } from '../../../shared/utils';
 import { USER_STRINGS } from '../constants';
 import { userContact } from '../utils';
 import type { AdminUser } from '../types';
@@ -21,17 +23,31 @@ type Props = {
 const makeStyles = createN1Styles(t => ({
   card: {
     gap: t.spacing.md,
-    padding: t.spacing.lg,
-    borderRadius: t.radius.lg,
+    padding: t.spacing.md,
+    borderRadius: t.radius.compact,
     backgroundColor: t.colors.surface,
   },
   identity: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.md },
   text: { flex: 1, gap: t.spacing.xxs },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm },
+  // Separates who the user is from the date and actions below.
+  divider: {
+    height: t.borderWidth.hairline,
+    backgroundColor: t.colors.border,
+  },
   footer: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm },
-  spacer: { flex: 1 },
+  joined: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.xs,
+  },
 }));
 
-/** One user on the phone list. */
+/**
+ * One user on the phone list: who they are with their role and status, then
+ * a line, then when they joined with Edit and Delete.
+ */
 export const UserCard = memo(function UserCardComponent({
   user,
   onEdit,
@@ -51,10 +67,18 @@ export const UserCard = memo(function UserCardComponent({
           </N1Text>
         </View>
       </View>
-      <View style={styles.footer}>
+      <View style={styles.badges}>
         <RoleBadge role={user.role} />
         <UserStatusBadge status={user.status} />
-        <View style={styles.spacer} />
+      </View>
+      <View style={styles.divider} />
+      <View style={styles.footer}>
+        <View style={styles.joined}>
+          <N1Icon name="calendar" size="sm" color="textTertiary" />
+          <N1Text variant="small" color="secondary" numberOfLines={1}>
+            {USER_STRINGS.details.joined(formatDate(user.joinedAt))}
+          </N1Text>
+        </View>
         <RowActions
           onEdit={() => onEdit(user)}
           onDelete={() => onDelete(user)}

@@ -2,11 +2,11 @@ import { useNavigation } from '@react-navigation/native';
 import { useCallback, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import {
+  HeaderSearchBar,
   FilterMenu,
   ListToolbar,
   N1Button,
   N1IconButton,
-  N1PageHeader,
   N1Pagination,
   N1Table,
   N1Text,
@@ -37,6 +37,7 @@ import {
   machineSearchText,
   matchesMachineFilters,
 } from '../utils';
+import { useTopBarAction } from '../../dashboard/hooks/useTopBarAction';
 
 type FormTarget = { machine: Machine | null } | null;
 
@@ -171,15 +172,7 @@ export function MachinesListScreen() {
     [openEdit],
   );
 
-  const addButton = isCompact ? (
-    <N1IconButton
-      icon="plus"
-      variant="primary"
-      accessibilityLabel={S.addA11y}
-      onPress={openCreate}
-      testID="add-machine"
-    />
-  ) : (
+  const addButton = (
     <N1Button
       title={S.add}
       leftIcon="plus"
@@ -191,6 +184,21 @@ export function MachinesListScreen() {
 
   const firstLoad =
     (status === 'idle' || status === 'loading') && items.length === 0;
+
+  // Phones: Add sits in the top bar, in place of the user's initials.
+  const addAction = useMemo(
+    () =>
+      isCompact
+        ? {
+            icon: 'plus' as const,
+            label: S.addA11y,
+            onPress: openCreate,
+            testID: 'add-machine',
+          }
+        : undefined,
+    [isCompact, openCreate],
+  );
+  useTopBarAction(addAction);
 
   const toolbar = (
     <ListToolbar
@@ -206,14 +214,36 @@ export function MachinesListScreen() {
         onApply={applyFilters}
         testID="machines-filter"
       />
-      {!isCompact && addButton}
+      {addButton}
     </ListToolbar>
   );
 
   return (
-    <AdminScreen testID="machines-screen" fixed>
+    <AdminScreen
+      // Phones: search and filter on the black header, under the top
+      // bar that shows this screen's name.
+      header={
+        isCompact ? (
+          <HeaderSearchBar
+            query={query}
+            onQueryChange={setQuery}
+            placeholder={S.search}
+            right={
+              <FilterMenu
+                variant="inverse"
+                groups={filterGroups}
+                value={filters}
+                onApply={applyFilters}
+                testID="machines-filter"
+              />
+            }
+          />
+        ) : undefined
+      }
+      testID="machines-screen"
+      fixed
+    >
       {/* Wide screens: the title and Add live in the table's toolbar. */}
-      {isCompact && <N1PageHeader title={S.title} right={addButton} />}
       {/* The table shows its own loading state; AsyncContent only takes over
           when the first load fails. */}
       <AsyncContent
@@ -235,27 +265,38 @@ export function MachinesListScreen() {
           onRowPress={openDetails}
           renderCompactItem={renderCompactItem}
           toolbarTitle={isCompact ? undefined : S.title}
-          toolbar={toolbar}
+          toolbar={isCompact ? undefined : toolbar}
           scrollable={!isCompact}
           emptyText={
             items.length ? COMMON_STRINGS.noResults : COMMON_STRINGS.empty
           }
           footer={
-            !isCompact && (
-              <N1Pagination
-                summary={S.summary(
-                  COMMON_STRINGS.showing(pager.shownCount, pager.total, S.noun),
-                  stats,
-                )}
-                hasPrevious={pager.hasPrevious}
-                hasNext={pager.hasNext}
-                onPrevious={pager.previous}
-                onNext={pager.next}
-                page={pager.page}
-                pageCount={pager.pageCount}
-                onPageChange={pager.goTo}
-              />
-            )
+            // Every page, phones too: after the last card.
+            <N1Pagination
+              summary={
+                isCompact
+                  ? COMMON_STRINGS.showing(
+                      pager.shownCount,
+                      pager.total,
+                      S.noun,
+                    )
+                  : S.summary(
+                      COMMON_STRINGS.showing(
+                        pager.shownCount,
+                        pager.total,
+                        S.noun,
+                      ),
+                      stats,
+                    )
+              }
+              hasPrevious={pager.hasPrevious}
+              hasNext={pager.hasNext}
+              onPrevious={pager.previous}
+              onNext={pager.next}
+              page={pager.page}
+              pageCount={pager.pageCount}
+              onPageChange={pager.goTo}
+            />
           }
           testID="machines-table"
         />

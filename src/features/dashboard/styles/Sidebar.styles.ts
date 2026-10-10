@@ -9,9 +9,10 @@ export const makeSidebarStyles = createN1Styles(t => ({
   },
   // The N1 brand mark (169×120 artwork), tinted to the sidebar's text colour.
   // Sized to fit the collapsed rail without moving.
+  // Explicit width too: iOS otherwise draws the image at its full size.
   brand: {
+    width: (t.iconSize.lg * 169) / 120,
     height: t.iconSize.lg,
-    aspectRatio: 169 / 120,
   },
   header: {
     flexDirection: 'row',

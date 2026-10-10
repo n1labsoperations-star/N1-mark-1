@@ -7,7 +7,7 @@ import {
   N1TextInput,
 } from '../../../shared/components';
 import { FormFooter, FormRow } from '../../../shared/components';
-import { COMMON_STRINGS } from '../../../shared/constants';
+import { COMMON_STRINGS, COUNTRY_OPTIONS } from '../../../shared/constants';
 import {
   useForm,
   useHeldWhileVisible,
@@ -269,11 +269,13 @@ export function CustomerFormModal({
           maxLength={6}
           testID="customer-form-pin"
         />
-        <N1TextInput
+        <N1DropDown
           label={F.country}
+          options={COUNTRY_OPTIONS}
+          value={values.country || null}
+          onChange={bind('country')}
           placeholder={F.countryPlaceholder}
-          value={values.country}
-          onChangeText={bind('country')}
+          testID="customer-form-country"
         />
       </FormRow>
       <N1TextInput

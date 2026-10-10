@@ -1,7 +1,8 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, type ReactNode } from 'react';
 import { View } from 'react-native';
 import {
   EditableSectionHeader,
+  FormFooter,
   FormRow,
   N1DropDown,
   N1Text,
@@ -64,6 +65,11 @@ type Props = {
   onEdit: () => void;
   /** Cancel, or a successful save: lock the fields again. */
   onDone: () => void;
+  /**
+   * Phones: places the form and its Cancel / Save into a full-screen editor
+   * (a modal sliding up). Without it, the buttons sit beside the title.
+   */
+  layout?: (parts: { form: ReactNode; footer: ReactNode }) => ReactNode;
 };
 
 /**
@@ -76,6 +82,7 @@ export function UserDetailsForm({
   editing,
   onEdit,
   onDone,
+  layout,
 }: Props) {
   const styles = useN1Styles(makeStyles);
   const { update, saving, saveError } = useUsers();
@@ -121,7 +128,7 @@ export function UserDetailsForm({
     />
   );
 
-  return (
+  const panel = (
     <View style={styles.panel} testID="user-details-form">
       <EditableSectionHeader
         title={D.personalInfo}
@@ -133,6 +140,7 @@ export function UserDetailsForm({
         editLabel={USER_STRINGS.a11y.edit(user.name)}
         editTestID="edit-user"
         submitTestID="user-details-submit"
+        actionsInFooter={Boolean(layout)}
       />
       <View style={styles.fields}>
         <FormRow>
@@ -204,4 +212,19 @@ export function UserDetailsForm({
       )}
     </View>
   );
+  if (!layout) {
+    return panel;
+  }
+  return layout({
+    form: panel,
+    footer: (
+      <FormFooter
+        submitLabel={COMMON_STRINGS.save}
+        onSubmit={form.submit(save)}
+        onCancel={onDone}
+        loading={saving}
+        submitTestID="user-details-submit"
+      />
+    ),
+  });
 }

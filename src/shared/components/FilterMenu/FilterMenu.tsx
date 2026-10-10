@@ -8,12 +8,14 @@ import {
   type HostInstance,
 } from 'react-native';
 import {
+  N1BottomSheet,
   N1Button,
   N1Checkbox,
   N1Icon,
   N1IconButton,
   N1Text,
   createN1Styles,
+  useN1Breakpoint,
   useN1Styles,
   useN1Theme,
 } from '..';
@@ -33,6 +35,11 @@ export type FilterMenuProps = {
   groups: FilterGroup[];
   value: FilterValues;
   onApply: (value: FilterValues) => void;
+  /**
+   * inverse: an icon-only dark tile for the black header on phones
+   * (HeaderSearchBar), the applied count as a dot badge.
+   */
+  variant?: 'default' | 'inverse';
   testID?: string;
 };
 
@@ -40,6 +47,8 @@ export type FilterMenuProps = {
 const PANEL_WIDTH = 440;
 const PANEL_MAX_HEIGHT = 420;
 const GROUP_LIST_WIDTH = 140;
+/** Phones: height of the group list and options inside the bottom sheet. */
+const SHEET_BODY_HEIGHT = 280;
 
 const makeStyles = createN1Styles(t => ({
   // Matches the toolbar's filled search and buttons.
@@ -60,6 +69,19 @@ const makeStyles = createN1Styles(t => ({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: t.colors.primary,
+  },
+  inverseTrigger: {
+    width: t.controlHeight.md,
+    height: t.controlHeight.md,
+    borderRadius: t.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: t.colors.surfaceInverseActive,
+  },
+  inverseCount: {
+    position: 'absolute',
+    top: -t.spacing.xs,
+    right: -t.spacing.xs,
   },
   pressed: { opacity: t.opacity.pressed },
   backdrop: { flex: 1 },
@@ -83,10 +105,11 @@ const makeStyles = createN1Styles(t => ({
     borderBottomColor: t.colors.border,
   },
   body: { flexDirection: 'row', flexShrink: 1 },
+  // Groups and options share a row height and top inset, so both columns
+  // line up row for row.
   groups: {
     width: GROUP_LIST_WIDTH,
     padding: t.spacing.sm,
-    gap: t.spacing.xxs,
     borderRightWidth: t.borderWidth.hairline,
     borderRightColor: t.colors.border,
   },
@@ -94,15 +117,22 @@ const makeStyles = createN1Styles(t => ({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    height: t.controlHeight.md,
     paddingHorizontal: t.spacing.sm,
-    paddingVertical: t.spacing.sm,
     borderRadius: t.radius.sm,
   },
   groupActive: { backgroundColor: t.colors.background },
   options: { flex: 1 },
-  optionsContent: { paddingHorizontal: t.spacing.lg },
+  optionsContent: {
+    paddingHorizontal: t.spacing.lg,
+    paddingVertical: t.spacing.sm,
+  },
+  // Phones: the same 10pt gap off the divider as the groups have on either
+  // side; the rows run to the sheet's edge like the header's line.
+  sheetOptionsContent: { paddingLeft: t.spacing.sm, paddingRight: 0 },
   option: {
-    paddingVertical: t.spacing.md,
+    height: t.controlHeight.md,
+    justifyContent: 'center',
     borderBottomWidth: t.borderWidth.hairline,
     borderBottomColor: t.colors.border,
   },
@@ -115,6 +145,13 @@ const makeStyles = createN1Styles(t => ({
     borderTopWidth: t.borderWidth.hairline,
     borderTopColor: t.colors.border,
   },
+  // Phones: the sheet sizes to content, so the two columns get a height.
+  sheetBody: {
+    height: SHEET_BODY_HEIGHT,
+    borderTopWidth: t.borderWidth.hairline,
+    borderTopColor: t.colors.border,
+  },
+  sheetFooter: { paddingHorizontal: 0 },
   clearAll: { flex: 1 },
   clearAllText: { textDecorationLine: 'underline' },
 }));
@@ -130,9 +167,13 @@ export function FilterMenu({
   groups,
   value,
   onApply,
+  variant = 'default',
   testID,
 }: FilterMenuProps) {
   const styles = useN1Styles(makeStyles);
+  const inverse = variant === 'inverse';
+  const { isCompact } = useN1Breakpoint();
+  const sheet = isCompact;
   const theme = useN1Theme();
   const edge = theme.spacing.lg;
   const window = useWindowDimensions();
@@ -153,7 +194,11 @@ export function FilterMenu({
     trigger.current?.measureInWindow((x, y, w, h) => {
       setAnchor({
         top: y + h + 6,
-        right: Math.max(edge, window.width - (x + w)),
+        // Right-aligned to the trigger, but never past either screen edge.
+        right: Math.min(
+          Math.max(edge, window.width - (x + w)),
+          window.width - edge - width,
+        ),
       });
     });
   };
@@ -177,6 +222,82 @@ export function FilterMenu({
     setOpen(false);
   };
 
+  // Group list, options and Clear all / Close / Apply: in the anchored
+  // panel on wide screens, in a bottom sheet on phones.
+  const content = (
+    <>
+      <View style={[styles.body, sheet && styles.sheetBody]}>
+        <View style={styles.groups} accessibilityRole="tablist">
+          {groups.map(g => {
+            const picked = draft[g.key]?.length ?? 0;
+            const active = g.key === group?.key;
+            return (
+              <Pressable
+                key={g.key}
+                accessibilityRole="tab"
+                aria-selected={active}
+                onPress={() => setActiveGroup(g.key)}
+                style={[styles.group, active && styles.groupActive]}
+              >
+                <N1Text variant="small" weight={active ? 'bold' : 'regular'}>
+                  {g.label}
+                </N1Text>
+                {picked > 0 && (
+                  <N1Text variant="caption" color="secondary">
+                    {picked}
+                  </N1Text>
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
+        <ScrollView
+          style={styles.options}
+          contentContainerStyle={[
+            styles.optionsContent,
+            sheet && styles.sheetOptionsContent,
+          ]}
+        >
+          {group?.options.map(option => (
+            <View key={option.value} style={styles.option}>
+              <N1Checkbox
+                label={option.label}
+                checked={draft[group.key]?.includes(option.value) ?? false}
+                onChange={() => toggle(group.key, option.value)}
+              />
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+
+      <View style={[styles.footer, sheet && styles.sheetFooter]}>
+        <View style={styles.clearAll}>
+          <Pressable accessibilityRole="button" onPress={clearAll} hitSlop={4}>
+            <N1Text
+              variant="small"
+              weight="semiBold"
+              style={styles.clearAllText}
+            >
+              {COMMON_STRINGS.clearAll}
+            </N1Text>
+          </Pressable>
+        </View>
+        <N1Button
+          title={COMMON_STRINGS.close}
+          variant="secondary"
+          size="sm"
+          onPress={() => setOpen(false)}
+        />
+        <N1Button
+          title={COMMON_STRINGS.apply}
+          size="sm"
+          onPress={apply}
+          testID={testID && `${testID}-apply`}
+        />
+      </View>
+    </>
+  );
+
   return (
     <>
       <Pressable
@@ -189,127 +310,84 @@ export function FilterMenu({
         }
         aria-expanded={open}
         onPress={show}
-        style={({ pressed }) => [styles.trigger, pressed && styles.pressed]}
+        style={({ pressed }) => [
+          inverse ? styles.inverseTrigger : styles.trigger,
+          pressed && styles.pressed,
+        ]}
         testID={testID}
       >
-        <N1Icon name="filter" size="sm" color="textPrimary" />
-        <N1Text variant="small" weight="semiBold">
-          {COMMON_STRINGS.filter}
-        </N1Text>
-        {applied > 0 && (
-          <View style={styles.count}>
-            <N1Text variant="caption" weight="bold" color="onPrimary">
-              {applied}
+        {inverse ? (
+          <>
+            <N1Icon name="filter" size="md" color="textInverse" />
+            {applied > 0 && (
+              <View style={[styles.count, styles.inverseCount]}>
+                <N1Text variant="caption" weight="bold" color="onPrimary">
+                  {applied}
+                </N1Text>
+              </View>
+            )}
+          </>
+        ) : (
+          <>
+            <N1Icon name="filter" size="sm" color="textPrimary" />
+            <N1Text variant="small" weight="semiBold">
+              {COMMON_STRINGS.filter}
             </N1Text>
-          </View>
+            {applied > 0 && (
+              <View style={styles.count}>
+                <N1Text variant="caption" weight="bold" color="onPrimary">
+                  {applied}
+                </N1Text>
+              </View>
+            )}
+            <N1Icon name="chevron-down" size="sm" color="textSecondary" />
+          </>
         )}
-        <N1Icon name="chevron-down" size="sm" color="textSecondary" />
       </Pressable>
 
-      <Modal
-        visible={open}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setOpen(false)}
-      >
-        <Pressable
-          style={styles.backdrop}
-          accessibilityLabel={COMMON_STRINGS.close}
-          onPress={() => setOpen(false)}
-        />
-        <View
-          style={[
-            styles.panel,
-            { top: anchor.top, right: anchor.right, width },
-          ]}
+      {sheet ? (
+        <N1BottomSheet
+          open={open}
+          onClose={() => setOpen(false)}
+          title={COMMON_STRINGS.filters}
           testID={testID && `${testID}-panel`}
         >
-          <View style={styles.header}>
-            <N1Text weight="bold">{COMMON_STRINGS.filters}</N1Text>
-            <N1IconButton
-              icon="close"
-              variant="ghost"
-              size="sm"
-              accessibilityLabel={COMMON_STRINGS.close}
-              onPress={() => setOpen(false)}
-            />
-          </View>
-
-          <View style={styles.body}>
-            <View style={styles.groups} accessibilityRole="tablist">
-              {groups.map(g => {
-                const picked = draft[g.key]?.length ?? 0;
-                const active = g.key === group?.key;
-                return (
-                  <Pressable
-                    key={g.key}
-                    accessibilityRole="tab"
-                    aria-selected={active}
-                    onPress={() => setActiveGroup(g.key)}
-                    style={[styles.group, active && styles.groupActive]}
-                  >
-                    <N1Text
-                      variant="small"
-                      weight={active ? 'bold' : 'regular'}
-                    >
-                      {g.label}
-                    </N1Text>
-                    {picked > 0 && (
-                      <N1Text variant="caption" color="secondary">
-                        {picked}
-                      </N1Text>
-                    )}
-                  </Pressable>
-                );
-              })}
+          {content}
+        </N1BottomSheet>
+      ) : (
+        <Modal
+          visible={open}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setOpen(false)}
+        >
+          <Pressable
+            style={styles.backdrop}
+            accessibilityLabel={COMMON_STRINGS.close}
+            onPress={() => setOpen(false)}
+          />
+          <View
+            style={[
+              styles.panel,
+              { top: anchor.top, right: anchor.right, width },
+            ]}
+            testID={testID && `${testID}-panel`}
+          >
+            <View style={styles.header}>
+              <N1Text weight="bold">{COMMON_STRINGS.filters}</N1Text>
+              <N1IconButton
+                icon="close"
+                variant="ghost"
+                size="sm"
+                accessibilityLabel={COMMON_STRINGS.close}
+                onPress={() => setOpen(false)}
+              />
             </View>
-            <ScrollView
-              style={styles.options}
-              contentContainerStyle={styles.optionsContent}
-            >
-              {group?.options.map(option => (
-                <View key={option.value} style={styles.option}>
-                  <N1Checkbox
-                    label={option.label}
-                    checked={draft[group.key]?.includes(option.value) ?? false}
-                    onChange={() => toggle(group.key, option.value)}
-                  />
-                </View>
-              ))}
-            </ScrollView>
-          </View>
 
-          <View style={styles.footer}>
-            <View style={styles.clearAll}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={clearAll}
-                hitSlop={4}
-              >
-                <N1Text
-                  variant="small"
-                  weight="semiBold"
-                  style={styles.clearAllText}
-                >
-                  {COMMON_STRINGS.clearAll}
-                </N1Text>
-              </Pressable>
-            </View>
-            <N1Button
-              title={COMMON_STRINGS.close}
-              variant="secondary"
-              size="sm"
-              onPress={() => setOpen(false)}
-            />
-            <N1Button
-              title={COMMON_STRINGS.apply}
-              size="sm"
-              onPress={apply}
-              testID={testID && `${testID}-apply`}
-            />
+            {content}
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
     </>
   );
 }

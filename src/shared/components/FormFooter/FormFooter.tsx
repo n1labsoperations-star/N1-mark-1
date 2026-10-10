@@ -1,3 +1,4 @@
+import { View } from 'react-native';
 import { N1Button, createN1Styles, useN1Styles, type N1IconName } from '..';
 import { COMMON_STRINGS } from '../../constants';
 import { useInBottomBar } from '../N1BottomBar/N1BottomBar';
@@ -16,8 +17,16 @@ export type FormFooterProps = {
   submitTestID?: string;
 };
 
-const makeStyles = createN1Styles(() => ({
+const makeStyles = createN1Styles(t => ({
   grow: { flex: 1 },
+  // In a bottom bar: share the row's width without `flex`, which native
+  // layout can read as height there and collapse the buttons.
+  share: { flexGrow: 1, flexBasis: 0 },
+  // One row of its own, so the buttons sit side by side wherever it's
+  // placed: a modal's footer or a phone's bottom bar. flexGrow, not flex: 1,
+  // so a parent that sizes to its content (the bottom bar) counts the row's
+  // height; flex: 1 zeroes it there and the buttons spill out.
+  row: { flexGrow: 1, flexDirection: 'row', gap: t.spacing.md },
 }));
 
 /** Cancel + primary action, sharing the width, for modal and page forms. */
@@ -34,9 +43,12 @@ export function FormFooter({
 }: FormFooterProps) {
   const styles = useN1Styles(makeStyles);
   const inBottomBar = useInBottomBar();
-  // Side by side in a modal footer row; a bottom bar shares the width itself.
-  const grow = compact || inBottomBar ? undefined : styles.grow;
-  return (
+  const grow = compact
+    ? undefined
+    : inBottomBar
+    ? styles.share
+    : styles.grow;
+  const buttons = (
     <>
       {onCancel && (
         <N1Button
@@ -60,4 +72,6 @@ export function FormFooter({
       />
     </>
   );
+  // Compact buttons keep their natural width in the parent's own row.
+  return compact ? buttons : <View style={styles.row}>{buttons}</View>;
 }

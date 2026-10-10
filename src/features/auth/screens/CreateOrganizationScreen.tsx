@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { useN1Breakpoint } from '../../../shared/components';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useN1Breakpoint, useN1Styles } from '../../../shared/components';
 import AuthLayout from '../components/AuthLayout';
 import AuthPrompt from '../components/AuthPrompt';
 import CreateOrganizationForm, {
@@ -10,8 +11,10 @@ import { useAppDispatch } from '../../../app/store/hooks';
 import { profileActions } from '../../profile/store/profileSlice';
 import { USER_ROLES } from '../constants';
 import { useAuthSession } from '../hooks';
+import { makeAuthLayoutStyles } from '../styles';
 
 function CreateOrganizationScreen() {
+  const styles = useN1Styles(makeAuthLayoutStyles);
   const { isCompact } = useN1Breakpoint();
   const navigation = useNavigation();
   const { signIn } = useAuthSession();
@@ -36,19 +39,33 @@ function CreateOrganizationScreen() {
     signIn(USER_ROLES.ADMIN);
   };
 
-  return (
-    <AuthLayout
-      wide
-      footer={
-        <AuthPrompt
-          question="Already have an account?"
-          action="Log in"
-          onPress={goToLogin}
+  const loginPrompt = (
+    <AuthPrompt
+      question="Already have an account?"
+      action="Log in"
+      onPress={goToLogin}
+    />
+  );
+
+  // Phones: the form pins its own header and button, so it skips the
+  // scrolling auth layout.
+  if (isCompact) {
+    return (
+      <SafeAreaView style={styles.compactSafeArea}>
+        <CreateOrganizationForm
+          compact
+          footer={loginPrompt}
+          onBack={goToLogin}
+          onSubmit={handleSubmit}
         />
-      }
-    >
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <AuthLayout wide footer={loginPrompt}>
       <CreateOrganizationForm
-        compact={isCompact}
+        compact={false}
         onBack={goToLogin}
         onSubmit={handleSubmit}
       />

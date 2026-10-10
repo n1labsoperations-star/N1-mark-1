@@ -10,6 +10,7 @@ import {
   useN1Styles,
   EditableSectionHeader,
 } from '../../../shared/components';
+import { COUNTRY_OPTIONS } from '../../../shared/constants';
 import { useForm, useOnSettled } from '../../../shared/hooks';
 import { formatDate, formatFileSize } from '../../../shared/utils';
 import { pickDocument } from '../../../services/files/pickDocument';
@@ -35,12 +36,13 @@ const F = S.fields;
 const P = S.placeholders;
 
 type FileField = 'invoiceLogo' | 'signature';
-type DropDownField = 'businessType' | 'industry' | 'state';
+type DropDownField = 'businessType' | 'industry' | 'state' | 'country';
 
 const DROPDOWN_OPTIONS: Record<DropDownField, typeof STATE_OPTIONS> = {
   businessType: BUSINESS_TYPE_OPTIONS,
   industry: INDUSTRY_OPTIONS,
   state: STATE_OPTIONS,
+  country: COUNTRY_OPTIONS,
 };
 
 const makeStyles = createN1Styles(t => ({
@@ -208,7 +210,7 @@ export function OrganizationSectionForm({
             </FormRow>
             <FormRow>
               {text('pinCode', { keyboardType: 'number-pad', maxLength: 6 })}
-              {text('country')}
+              {dropDown('country')}
             </FormRow>
           </>
         );

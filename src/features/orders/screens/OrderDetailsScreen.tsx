@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import {
+  KeyboardScrollView,
+  DetailHeader,
   N1Badge,
   N1Button,
   N1Card,
@@ -143,6 +145,14 @@ export function OrderDetailsScreen({
   // orders list.
   const { fromCustomerId, fromJobCardId, fromInvoiceId } = route.params;
   const goBack = useCallback(() => {
+    // Pushed on top of another screen in this stack (a job card, or a
+    // customer when opened from Customers): back to it.
+    const state = navigation.getState();
+    const below = state.routes[state.index - 1];
+    if (below && below.name !== 'OrdersList') {
+      navigation.goBack();
+      return;
+    }
     if (fromInvoiceId) {
       navigation.navigate('Billing', {
         screen: 'InvoiceDetails',
@@ -192,11 +202,10 @@ export function OrderDetailsScreen({
   }, [navigation, order?.customerId]);
   const openJobCard = useCallback(
     (card: JobCard) =>
-      navigation.navigate('JobCards', {
-        screen: 'JobCardDetails',
-        // Back returns to this order.
-        params: { jobCardId: card.id, from: 'order' },
-        initial: false,
+      // Pushed on the Orders stack: Back returns to this order.
+      navigation.navigate('JobCardDetails', {
+        jobCardId: card.id,
+        from: 'order',
       }),
     [navigation],
   );
@@ -293,10 +302,13 @@ export function OrderDetailsScreen({
     </Pressable>
   );
 
+  // Phones: a header with back and the screen's name, in place of the link.
+  const header = <DetailHeader title={D.title} onBack={goBack} />;
+
   if (!order) {
     return (
-      <AdminScreen testID="order-details-screen">
-        {backLink}
+      <AdminScreen header={header} testID="order-details-screen">
+        {!isCompact && backLink}
         <AsyncContent status={status} error={error} onRetry={reload}>
           <ComingSoon icon="package" title={D.title} message={D.notFound} />
         </AsyncContent>
@@ -306,7 +318,7 @@ export function OrderDetailsScreen({
 
   const top = (
     <View style={styles.top}>
-      {backLink}
+      {!isCompact && backLink}
       <View style={styles.titleRow}>
         <N1Text
           variant={isCompact ? 'h2' : 'h1'}
@@ -634,7 +646,7 @@ export function OrderDetailsScreen({
   // Phones: the page scrolls as one.
   if (isCompact) {
     return (
-      <AdminScreen testID="order-details-screen">
+      <AdminScreen header={header} testID="order-details-screen">
         <N1Card padding="lg" radius="sm" style={styles.card}>
           {top}
           {tabs}
@@ -647,19 +659,19 @@ export function OrderDetailsScreen({
   }
 
   return (
-    <AdminScreen fixed testID="order-details-screen">
+    <AdminScreen header={header} fixed testID="order-details-screen">
       <N1Card padding="xxl" radius="sm" style={[styles.card, styles.fullCard]}>
         {top}
         {tabs}
         {/* A new tab starts at the top. */}
-        <ScrollView
+        <KeyboardScrollView
           key={tab}
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           testID="order-details-scroll"
         >
           {content}
-        </ScrollView>
+        </KeyboardScrollView>
       </N1Card>
       {rawMaterialDialog}
       {viewer}

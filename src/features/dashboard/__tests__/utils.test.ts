@@ -32,10 +32,18 @@ describe('visibleMenuItems', () => {
     ]);
   });
 
-  test('phones show the shorter menu', () => {
+  test('phones show every module too', () => {
     expect(
       labels(visibleMenuItems(MENU_ITEMS, { compact: true, query: '' })),
-    ).toEqual(['Dashboard', 'Employees', 'Orders']);
+    ).toEqual([
+      'Dashboard',
+      'Employees',
+      'Customers',
+      'Orders',
+      'Job Cards',
+      'Machines',
+      'Billing',
+    ]);
   });
 
   test('search matches labels case-insensitively', () => {
