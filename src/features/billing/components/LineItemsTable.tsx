@@ -10,7 +10,12 @@ import {
 import { formatCurrency } from '../../../shared/utils';
 import { BILLING_STRINGS } from '../constants';
 import type { LineItem } from '../types';
-import { lineAmount, rateLabel, timeQtyLabel } from '../utils';
+import {
+  lineAmount,
+  rateLabel,
+  runningTimeLabel,
+  setupTimeLabel,
+} from '../utils';
 
 const L = BILLING_STRINGS.lineItems;
 
@@ -29,12 +34,18 @@ const makeStyles = createN1Styles(t => ({
   },
 }));
 
-type Props = { items: readonly LineItem[]; quantity: number };
+type Props = {
+  items: readonly LineItem[];
+  quantity: number;
+  /** Wide screens: fill the parent's height; only the rows scroll. */
+  scrollable?: boolean;
+};
 
 /** Read-only process operations (invoice and quote detail). */
 export const LineItemsTable = memo(function LineItemsTableComponent({
   items,
   quantity,
+  scrollable = false,
 }: Props) {
   const styles = useN1Styles(makeStyles);
 
@@ -45,12 +56,18 @@ export const LineItemsTable = memo(function LineItemsTableComponent({
         title: L.operation,
         render: i => <N1Text weight="bold">{i.operation}</N1Text>,
       },
-      { key: 'description', title: L.description, flex: 2.4 },
+      { key: 'description', title: L.description, flex: 2.2 },
       {
-        key: 'timeQty',
-        title: L.timeQty,
-        flex: 1.2,
-        render: i => <N1Text>{timeQtyLabel(i, quantity)}</N1Text>,
+        key: 'runningTime',
+        title: L.runningTime,
+        flex: 1.1,
+        render: i => <N1Text>{runningTimeLabel(i)}</N1Text>,
+      },
+      {
+        key: 'setupTime',
+        title: L.setupTime,
+        flex: 1.1,
+        render: i => <N1Text>{setupTimeLabel(i)}</N1Text>,
       },
       {
         key: 'rate',
@@ -81,7 +98,9 @@ export const LineItemsTable = memo(function LineItemsTableComponent({
         </View>
         <N1Text variant="small">{i.description}</N1Text>
         <N1Text variant="caption" color="secondary">
-          {`${timeQtyLabel(i, quantity)} · ${rateLabel(i)}`}
+          {`${runningTimeLabel(i)} · ${L.setupTime} ${setupTimeLabel(
+            i,
+          )} · ${rateLabel(i)}`}
         </N1Text>
       </View>
     ),
@@ -95,6 +114,7 @@ export const LineItemsTable = memo(function LineItemsTableComponent({
       keyExtractor={i => i.id}
       renderCompactItem={renderCompactItem}
       emptyText={L.none}
+      scrollable={scrollable}
       style={styles.table}
       testID="line-items-table"
     />

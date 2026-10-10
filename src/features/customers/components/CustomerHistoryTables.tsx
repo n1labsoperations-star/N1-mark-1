@@ -113,10 +113,11 @@ function useOpenInModule() {
     [drawer],
   );
   const openQuote = useCallback(
-    (q: Quote) =>
+    (q: Quote, customerId: string) =>
       drawer?.navigate('Billing', {
         screen: 'QuoteDetails',
-        params: { quoteId: q.id },
+        // Back on the quote returns to this customer.
+        params: { quoteId: q.id, fromCustomerId: customerId },
         initial: false,
       }),
     [drawer],
@@ -176,7 +177,7 @@ export const CustomerQuotesTable = memo(function CustomerQuotesTableComponent({
       columns={QUOTE_COLUMNS}
       data={sharedQuotes}
       keyExtractor={q => q.id}
-      onRowPress={openQuote}
+      onRowPress={q => openQuote(q, customer.id)}
       emptyText={emptyText(quotes.status, D.noQuotes)}
       testID="customer-quotes"
     />

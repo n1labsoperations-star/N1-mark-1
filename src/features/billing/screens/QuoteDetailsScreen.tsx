@@ -1,104 +1,173 @@
-import { useCallback, useMemo } from 'react';
-import { View } from 'react-native';
-import {
-  N1Button,
-  N1Card,
-  N1DetailGrid,
-  N1Divider,
-  N1IconButton,
-  createN1Styles,
-  useN1Breakpoint,
-  useN1Styles,
-} from '../../../shared/components';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, View } from 'react-native';
 import {
   AdminScreen,
   AsyncContent,
   ComingSoon,
-  DetailHeader,
-  StatGrid,
+  FormFooter,
+  FormRow,
+  N1Button,
+  N1DetailGrid,
+  N1DropDown,
+  N1Text,
+  N1TextInput,
+  createN1Styles,
+  useN1Breakpoint,
+  useN1Styles,
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
-import { formatCurrency, notifyUnavailable } from '../../../shared/utils';
+import { useOnSettled } from '../../../shared/hooks';
+import { printHtml } from '../../../services/files/viewDocument';
+import { notifyUnavailable, toNumber } from '../../../shared/utils';
+import { useSession } from '../../profile';
 import { QuoteStatusBadge } from '../components/BillingBadges';
+import { InvoicePreviewModal } from '../components/InvoicePreviewModal';
+import {
+  BillingBackLink,
+  BillingDetailLayout,
+} from '../components/BillingDetailLayout';
 import { BillingSection } from '../components/BillingSection';
+import { LineItemsEditor } from '../components/LineItemsEditor';
 import { LineItemsTable } from '../components/LineItemsTable';
 import { TotalsSummary } from '../components/TotalsSummary';
-import { BILLING_STRINGS, QUOTE_STATUS_META } from '../constants';
-import { useInvoices, useQuote } from '../hooks/useBilling';
-import { isQuoteMapped } from '../workflow';
-import { calculateTotals } from '../utils';
-import { useGst } from '../hooks/useGst';
+import { BILLING_STRINGS, QUOTE_STATUS_OPTIONS } from '../constants';
+import { useQuote } from '../hooks/useBilling';
 import { useConvertToOrder } from '../hooks/useBillingWorkflow';
+import { gstRateOptions, useGst } from '../hooks/useGst';
+import { useQuoteForm } from '../hooks/useQuoteForm';
+import {
+  invoiceHtml,
+  quoteDocument,
+  type InvoiceDocument,
+} from '../invoiceDocument';
+import { calculateTotals } from '../utils';
 import type { BillingScreenProps } from '../types';
 
 const Q = BILLING_STRINGS.quote;
+const T = BILLING_STRINGS.totals;
 
 const makeStyles = createN1Styles(t => ({
-  body: { gap: t.spacing.lg },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm },
+  pressed: { opacity: t.opacity.pressed },
+  orderLink: { alignSelf: 'flex-start' },
+  underline: { textDecorationLine: 'underline' },
+  asideActions: { gap: t.spacing.sm },
+  fields: { gap: t.spacing.md },
+  fieldRow: { flexDirection: 'row', gap: t.spacing.md },
+  // Phones: Preview and PDF side by side.
+  compactActions: { flex: 1, flexDirection: 'row', gap: t.spacing.sm },
   grow: { flex: 1 },
 }));
 
+/**
+ * One quote, laid out like the invoice: details under the title, the
+ * operations on the left and the amounts on the right. Edit makes the
+ * fields and operations editable right here.
+ */
 export function QuoteDetailsScreen({
   route,
   navigation,
 }: BillingScreenProps<'QuoteDetails'>) {
   const styles = useN1Styles(makeStyles);
   const { isCompact } = useN1Breakpoint();
-  const { quoteId } = route.params;
-  const { quote, status, error, reload } = useQuote(quoteId);
+  const { quoteId, fromCustomerId, edit: editRequested } = route.params;
+  const {
+    quote,
+    status,
+    error,
+    reload,
+    update,
+    saving,
+    saveError,
+    clearErrors,
+  } = useQuote(quoteId);
 
-  const goBack = useCallback(() => navigation.goBack(), [navigation]);
-  const revise = useCallback(
-    () => navigation.navigate('QuoteForm', { quoteId }),
-    [navigation, quoteId],
-  );
+  const form = useQuoteForm(quote);
+  const [editing, setEditing] = useState(false);
+  const { reset: resetForm } = form;
+  const startEdit = useCallback(() => {
+    clearErrors();
+    resetForm();
+    setEditing(true);
+  }, [clearErrors, resetForm]);
+  const cancelEdit = useCallback(() => {
+    resetForm();
+    setEditing(false);
+  }, [resetForm]);
+  const save = useCallback(() => {
+    const changes = form.validate();
+    if (changes) {
+      update(quoteId, changes);
+    }
+  }, [form, update, quoteId]);
+  useOnSettled(saving, saveError, () => setEditing(false));
+  // Opened with edit (the Quotes list's Edit).
+  useEffect(() => {
+    if (editRequested && quote) {
+      startEdit();
+      navigation.setParams({ edit: undefined });
+    }
+  }, [editRequested, quote, startEdit, navigation]);
+
+  // Back to the customer the quote was opened from, else the Quotes list.
+  const goBack = useCallback(() => {
+    if (fromCustomerId) {
+      navigation.navigate('Customers', {
+        screen: 'CustomerDetails',
+        params: { customerId: fromCustomerId },
+        merge: true,
+      });
+    } else {
+      navigation.popTo('BillingHome', { tab: 'quotes' });
+    }
+  }, [navigation, fromCustomerId]);
+  const backLabel = fromCustomerId ? Q.backToCustomer : Q.back;
+
+  // Opens the order a converted quote is linked to.
   const toOrder = useConvertToOrder();
-  const { items: invoices } = useInvoices();
+  // Preview Quote: the quote as it prints, from what's saved.
+  const { organization } = useSession();
+  const [preview, setPreview] = useState<InvoiceDocument | null>(null);
+  const closePreview = useCallback(() => setPreview(null), []);
+  const print = useCallback((doc: InvoiceDocument) => {
+    if (!printHtml(invoiceHtml(doc))) {
+      notifyUnavailable(doc.printAction);
+    }
+  }, []);
   const downloadPdf = useCallback(
     () => notifyUnavailable(BILLING_STRINGS.invoice.downloadAction),
     [],
   );
 
-  const gst = useGst(quote?.customerName ?? '');
-  const totals = useMemo(
-    () =>
-      quote
-        ? calculateTotals(
-            quote.lineItems,
-            quote.quantity,
-            0,
-            quote.gstRate,
-            gst.supply,
-          )
-        : null,
-    [quote, gst.supply],
+  // While editing, the amounts follow the inputs.
+  const gst = useGst(
+    editing ? form.values.customerName : quote?.customerName ?? '',
   );
+  const quantity = editing
+    ? toNumber(form.values.quantity)
+    : quote?.quantity ?? 0;
+  const totals = useMemo(() => {
+    if (!quote) {
+      return null;
+    }
+    return editing
+      ? calculateTotals(form.lines.items, quantity, 0, form.gstRate, gst.supply)
+      : calculateTotals(
+          quote.lineItems,
+          quantity,
+          0,
+          quote.gstRate,
+          gst.supply,
+        );
+  }, [quote, editing, form.lines.items, quantity, form.gstRate, gst.supply]);
 
-  const statusLabel = quote ? QUOTE_STATUS_META[quote.status].label : '';
-  const header = (
-    <DetailHeader
-      title={Q.title}
-      subtitle={quote && `${quote.id} · ${statusLabel}`}
-      onBack={goBack}
-      right={quote && <QuoteStatusBadge status={quote.status} />}
-      compactRight={
-        quote && (
-          <N1IconButton
-            icon="edit"
-            variant="primary"
-            size="sm"
-            accessibilityLabel={COMMON_STRINGS.edit}
-            onPress={revise}
-          />
-        )
-      }
-    />
+  const backLink = (
+    <BillingBackLink label={backLabel} onPress={goBack} testID="quote-back" />
   );
 
   if (!quote || !totals) {
     return (
-      <AdminScreen header={header}>
+      <AdminScreen testID="quote-details-screen">
+        {backLink}
         <AsyncContent status={status} error={error} onRetry={reload}>
           <ComingSoon icon="receipt" title={Q.title} message={Q.notFound} />
         </AsyncContent>
@@ -106,87 +175,216 @@ export function QuoteDetailsScreen({
     );
   }
 
-  const mapped = isQuoteMapped(quote, invoices);
-  const stats = [
-    { key: 'total', label: Q.total, value: formatCurrency(totals.total) },
-    { key: 'operations', label: Q.operations, value: quote.lineItems.length },
-    {
-      key: 'material',
-      label: Q.material,
-      value: quote.material || COMMON_STRINGS.dash,
-    },
-    { key: 'status', label: Q.status, value: statusLabel },
-  ];
+  const previewButton = (
+    <N1Button
+      title={isCompact ? Q.previewShort : Q.preview}
+      leftIcon="eye"
+      variant="secondary"
+      onPress={() =>
+        totals && setPreview(quoteDocument(quote, totals, organization))
+      }
+      fullWidth={!isCompact}
+      style={isCompact && styles.grow}
+      testID="preview-quote"
+    />
+  );
+  const pdfButton = (
+    <N1Button
+      title={isCompact ? Q.pdfShort : Q.downloadPdf}
+      leftIcon="download"
+      variant="secondary"
+      onPress={downloadPdf}
+      fullWidth={!isCompact}
+      style={isCompact && styles.grow}
+    />
+  );
+  const saveFooter = (
+    <FormFooter
+      onCancel={cancelEdit}
+      submitLabel={COMMON_STRINGS.save}
+      onSubmit={save}
+      loading={saving}
+      compact={!isCompact}
+      submitTestID="save-quote"
+    />
+  );
+  const headerRight = editing ? (
+    !isCompact && saveFooter
+  ) : (
+    <N1Button
+      title={COMMON_STRINGS.edit}
+      leftIcon="edit"
+      variant="secondary"
+      size="sm"
+      onPress={startEdit}
+      testID="edit-quote"
+    />
+  );
 
-  const body = (
-    <View style={styles.body}>
-      {isCompact && <QuoteStatusBadge status={quote.status} />}
-      <StatGrid items={stats} variant="muted" testID="quote-summary" />
-      <View style={styles.actions}>
-        {!mapped && (
-          <N1Button
-            title={Q.convert}
-            leftIcon="package"
-            onPress={() => toOrder.convert(quote)}
-            loading={toOrder.convertingId === quote.id}
-            fullWidth={isCompact}
-            testID="convert-quote"
-          />
-        )}
-        <N1Button
-          title={Q.revise}
-          leftIcon="edit"
-          variant="secondary"
-          onPress={revise}
-          style={isCompact && styles.grow}
-          testID="revise-quote"
-        />
-        <N1Button
-          title={isCompact ? Q.pdfShort : Q.downloadPdf}
-          leftIcon="download"
-          variant="secondary"
-          onPress={downloadPdf}
-          style={isCompact && styles.grow}
-        />
-      </View>
-      <N1Divider />
-      <N1DetailGrid
-        columns={3}
-        items={[
-          { label: Q.customer, value: quote.customerName },
-          { label: Q.partName, value: quote.partName },
-          { label: Q.quantity, value: `${quote.quantity} pcs` },
-          ...(quote.orderId
-            ? [
-                {
-                  label: Q.order,
-                  value: (
-                    // Opens the order it's mapped to.
-                    <N1Button
-                      title={Q.orderValue(quote.orderId)}
-                      variant="link"
-                      size="sm"
-                      onPress={() => toOrder.convert(quote)}
-                      testID="quote-order"
-                    />
-                  ),
-                },
-              ]
-            : []),
-        ]}
+  const { values, errors, bind } = form;
+  const summary = editing ? (
+    <FormRow>
+      <N1TextInput
+        label={Q.customer}
+        required
+        placeholder={Q.customerPlaceholder}
+        value={values.customerName}
+        onChangeText={bind('customerName')}
+        errorText={errors.customerName}
+        testID="quote-customer"
       />
-      <N1Divider />
-      <BillingSection title={BILLING_STRINGS.lineItems.title}>
-        <LineItemsTable items={quote.lineItems} quantity={quote.quantity} />
+      <N1TextInput
+        label={Q.partName}
+        required
+        placeholder={Q.partNamePlaceholder}
+        value={values.partName}
+        onChangeText={bind('partName')}
+        errorText={errors.partName}
+        testID="quote-part"
+      />
+      <N1TextInput
+        label={Q.quantity}
+        required
+        placeholder={Q.quantityPlaceholder}
+        value={values.quantity}
+        onChangeText={bind('quantity')}
+        errorText={errors.quantity}
+        keyboardType="number-pad"
+        testID="quote-quantity"
+      />
+    </FormRow>
+  ) : (
+    <N1DetailGrid
+      columns={isCompact ? 2 : quote.orderId ? 4 : 3}
+      items={[
+        { label: Q.customer, value: quote.customerName },
+        { label: Q.partName, value: quote.partName },
+        { label: Q.quantity, value: `${quote.quantity} pcs` },
+        ...(quote.orderId
+          ? [
+              {
+                label: Q.order,
+                value: (
+                  // Opens the order it's mapped to.
+                  <Pressable
+                    accessibilityRole="link"
+                    onPress={() => toOrder.convert(quote)}
+                    style={({ pressed }) => [
+                      styles.orderLink,
+                      pressed && styles.pressed,
+                    ]}
+                    testID="quote-order"
+                  >
+                    <N1Text weight="bold" style={styles.underline}>
+                      {Q.orderValue(quote.orderId)}
+                    </N1Text>
+                  </Pressable>
+                ),
+              },
+            ]
+          : []),
+      ]}
+    />
+  );
+
+  const operations = (
+    <>
+      {editing ? (
+        <LineItemsEditor
+          controller={form.lines}
+          quantity={quantity}
+          scrollable={!isCompact}
+        />
+      ) : (
+        <LineItemsTable
+          items={quote.lineItems}
+          quantity={quote.quantity}
+          scrollable={!isCompact}
+        />
+      )}
+      {editing && form.linesError && (
+        <N1Text variant="small" color="danger">
+          {form.linesError}
+        </N1Text>
+      )}
+    </>
+  );
+
+  // The money, in the grey box; edit fields in place of the actions.
+  const amounts = (
+    <>
+      <BillingSection title={BILLING_STRINGS.invoice.amount}>
+        <TotalsSummary totals={totals} fill />
       </BillingSection>
-      <N1Divider />
-      <TotalsSummary totals={totals} />
-    </View>
+      {editing ? (
+        <View style={styles.fields}>
+          <View style={styles.fieldRow}>
+            <N1DropDown
+              label={Q.status}
+              options={QUOTE_STATUS_OPTIONS}
+              value={values.status}
+              onChange={bind('status')}
+              containerStyle={styles.grow}
+              testID="quote-status"
+            />
+            {gst.registered && (
+              <N1DropDown
+                label={T.gstRate}
+                options={gstRateOptions(gst.rates, form.gstRate)}
+                value={form.gstRate}
+                onChange={form.setGstRate}
+                placeholder={T.gstRatePlaceholder}
+                containerStyle={styles.grow}
+                testID="quote-gst-rate"
+              />
+            )}
+          </View>
+          {saveError && (
+            <N1Text variant="small" color="danger">
+              {saveError}
+            </N1Text>
+          )}
+        </View>
+      ) : (
+        !isCompact && (
+          <View style={styles.asideActions}>
+            {previewButton}
+            {pdfButton}
+          </View>
+        )
+      )}
+    </>
   );
 
   return (
-    <AdminScreen header={header} testID="quote-details-screen">
-      {isCompact ? body : <N1Card padding="xxl">{body}</N1Card>}
-    </AdminScreen>
+    <>
+      <BillingDetailLayout
+        testID="quote-details-screen"
+        back={backLink}
+        title={Q.heading}
+        badge={<QuoteStatusBadge status={quote.status} />}
+        subtitle={quote.id}
+        headerRight={headerRight}
+        summary={summary}
+        operations={operations}
+        amounts={amounts}
+        compactFooter={
+          editing ? (
+            saveFooter
+          ) : (
+            <View style={styles.compactActions}>
+              {previewButton}
+              {pdfButton}
+            </View>
+          )
+        }
+      />
+      <InvoicePreviewModal
+        doc={preview}
+        onClose={closePreview}
+        onPrint={print}
+        onDownload={downloadPdf}
+      />
+    </>
   );
 }

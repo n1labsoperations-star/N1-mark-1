@@ -324,8 +324,10 @@ export function JobCardDetailsScreen({
       const drawer = navigation.getParent();
       if (drawer?.getState()?.routeNames.includes('Billing')) {
         navigation.navigate('Billing', {
-          screen: fillRates ? 'InvoiceEdit' : 'InvoiceDetails',
-          params: { invoiceId },
+          screen: 'InvoiceDetails',
+          // Back on the invoice returns to this job card; rates still to
+          // fill in open it in edit mode.
+          params: { invoiceId, fromJobCardId: jobCardId, edit: fillRates },
           initial: false,
         });
       } else {
@@ -335,7 +337,7 @@ export function JobCardDetailsScreen({
         );
       }
     },
-    [closeDispatch, navigation],
+    [closeDispatch, navigation, jobCardId],
   );
   // The drawing thumbnail opens full size; printing and downloading files
   // aren't available yet.

@@ -15,23 +15,19 @@ export const selectInvoiceStats = createSelector(
   [selectAllInvoices],
   invoices => ({
     total: invoices.length,
+    new: invoices.filter(i => i.status === 'new').length,
+    overdue: invoices.filter(i => i.status === 'overdue').length,
     paid: invoices.filter(i => i.status === 'paid').length,
-    pending: invoices.filter(
-      i => i.status === 'pending' || i.status === 'draft',
-    ).length,
     thisMonth: invoices
       .filter(i => isThisMonth(i.issuedAt))
       .reduce((sum, i) => sum + invoiceTotal(i), 0),
   }),
 );
 
-/** "Pending" covers quotes not yet answered: drafts and sent quotes. */
 export const selectQuoteStats = createSelector([selectAllQuotes], quotes => ({
   total: quotes.length,
-  accepted: quotes.filter(q => q.status === 'accepted').length,
-  pending: quotes.filter(q => q.status === 'sent' || q.status === 'draft')
-    .length,
-  rejected: quotes.filter(q => q.status === 'rejected').length,
+  draft: quotes.filter(q => q.status === 'draft').length,
+  sent: quotes.filter(q => q.status === 'sent').length,
 }));
 
 /** Dashboard figures derived from invoices. */
@@ -39,7 +35,8 @@ export const selectBillingSummary = createSelector(
   [selectAllInvoices],
   invoices => {
     const year = new Date().getFullYear();
-    const billed = invoices.filter(i => i.status !== 'draft');
+    // Every invoice is billed; outstanding is what isn't paid yet.
+    const billed = invoices;
     return {
       monthlyBilled: billed
         .filter(i => isThisMonth(i.issuedAt))

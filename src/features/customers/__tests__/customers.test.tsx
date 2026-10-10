@@ -268,11 +268,16 @@ test('details screen lists the customer’s orders and shared quotes', async () 
   await press(byTestId(h.root, 'customer-tab-quotes'));
   const quotes = allText(byTestId(h.root, 'customer-quotes'));
   expect(quotes).toContain('QT-2026-0040');
-  expect(quotes).toContain('Accepted');
+  expect(quotes).toContain('Sent');
   expect(quotes).not.toContain('QT-2026-0042');
 
   await press(byText(byTestId(h.root, 'customer-quotes'), 'QT-2026-0040'));
   expect(h.currentRoute()).toBe('QuoteDetails');
+  // Back on the quote returns to this customer.
+  const back = byTestId(h.root, 'quote-back');
+  expect(allText(back)).toBe('Back to customer');
+  await press(back);
+  expect(h.currentRoute()).toBe('CustomerDetails');
 });
 
 test('wide screens: the page stays put; only the customer rows scroll', async () => {

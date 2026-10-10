@@ -86,6 +86,8 @@ export type OrdersStackParamList = {
     fromCustomerId?: string;
     /** Opened from this job card: Back returns there. */
     fromJobCardId?: string;
+    /** Opened from this invoice's job link: Back returns there. */
+    fromInvoiceId?: string;
   };
   /** Without an id the form creates a new order. */
   OrderForm:

@@ -104,9 +104,9 @@ test('list is sorted by priority then due date', async () => {
     'WO #1043',
     'WO #1039',
     'WO #1041',
+    'WO #125',
     'WO #1036',
     'WO #1034',
-    'WO #1044',
   ];
   const positions = order.map(id => text.indexOf(id));
   expect(positions).toEqual([...positions].sort((a, b) => a - b));
@@ -121,7 +121,7 @@ test('list is sorted by priority then due date', async () => {
   const hscroll = byTestId(root, 'orders-table-hscroll');
   expect(hscroll.props.horizontal).toBe(true);
   expect(allText(hscroll)).toContain('WO #1042');
-  expect(allText(root)).toContain('Showing 10 of 12 orders');
+  expect(allText(root)).toContain('Showing 10 of 13 orders');
 });
 
 test('only orders with a job card show the job card button', async () => {
@@ -306,8 +306,8 @@ test('wide screens: the page stays put and only the order rows scroll', async ()
   const table = byTestId(root, 'orders-table');
   const scroll = byTestId(table, 'orders-table-scroll');
   expect(allText(scroll)).toContain('WO #1042');
-  expect(allText(scroll)).not.toContain('Showing 10 of 12 orders');
-  expect(allText(table)).toContain('Showing 10 of 12 orders');
+  expect(allText(scroll)).not.toContain('Showing 10 of 13 orders');
+  expect(allText(table)).toContain('Showing 10 of 13 orders');
   // Title and Create live in the toolbar.
   expect(allText(table)).toContain('Orders');
   expect(byTestId(table, 'create-order')).toBeTruthy();
@@ -881,8 +881,8 @@ test('phone: stat tiles, cards and step footer', async () => {
   mockWidth = 390;
   const h = await renderAdmin('Orders');
   expect(allText(h.root)).toContain('Open orders');
-  // 11 open: all but 1035, whose invoice is paid; 5 of them high.
-  expect(allText(byTestId(h.root, 'stat-open'))).toContain('11');
+  // 12 open: all but 1035, whose invoice is paid; 5 of them high.
+  expect(allText(byTestId(h.root, 'stat-open'))).toContain('12');
   expect(allText(byTestId(h.root, 'stat-high'))).toContain('5');
   expect(hasTestId(h.root, 'order-card-1042')).toBe(true);
   await press(byTestId(h.root, 'order-card-1042'));

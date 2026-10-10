@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { View } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 import {
   N1Text,
   createN1Styles,
@@ -21,14 +21,16 @@ export function BillingSection({
   title,
   caption,
   children,
+  style,
 }: {
   title: string;
   caption?: string;
   children: ReactNode;
+  style?: StyleProp<ViewStyle>;
 }) {
   const styles = useN1Styles(makeStyles);
   return (
-    <View style={styles.section}>
+    <View style={[styles.section, style]}>
       <View style={styles.header}>
         <N1Text variant="overline">{title}</N1Text>
         {caption && (

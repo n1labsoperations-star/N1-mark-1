@@ -57,7 +57,7 @@ export function periodStart(period: DashboardPeriod, now = new Date()): Date {
 
 /**
  * Summary card figures for one period: invoices issued and orders created
- * since its start. Drafts aren't billed; outstanding is what's still unpaid.
+ * since its start. Every invoice is billed; outstanding is what's unpaid.
  */
 export function summarizePeriod(
   invoices: readonly Invoice[],
@@ -67,9 +67,7 @@ export function summarizePeriod(
 ): PeriodSummary {
   const since = periodStart(period, now).getTime();
   const inPeriod = (iso: string) => new Date(iso).getTime() >= since;
-  const billed = invoices.filter(
-    i => i.status !== 'draft' && inPeriod(i.issuedAt),
-  );
+  const billed = invoices.filter(i => inPeriod(i.issuedAt));
   const sum = (list: Invoice[]) =>
     list.reduce((total, i) => total + invoiceTotal(i), 0);
   return {

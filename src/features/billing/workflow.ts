@@ -61,6 +61,7 @@ export function invoiceForDispatch(
         operation: op.name,
         description: '',
         minutesPerPiece: 0,
+        setupMinutes: 0,
         ratePerMinute: 0,
       }));
   return {
@@ -69,20 +70,15 @@ export function invoiceForDispatch(
     routeCard: order?.routeCardNo ?? '',
     partName: [jobCard.partName, jobCard.jobName].filter(Boolean).join(' — '),
     quantity: jobCard.quantity,
-    status: 'draft',
+    status: 'new',
     lineItems,
     discount: 0,
     gstRate: quote ? quote.gstRate : defaultGstRate,
     quoteId: quote?.id ?? null,
+    poAmount: null,
     notes: '',
   };
 }
-
-/** The customer's quotes, newest first (matched by name, as stored). */
-export const quotesForCustomer = (quotes: readonly Quote[], name: string) => {
-  const key = name.trim().toLowerCase();
-  return quotes.filter(q => q.customerName.trim().toLowerCase() === key);
-};
 
 /**
  * Already tied to an order: converted to one, or billed against an order's

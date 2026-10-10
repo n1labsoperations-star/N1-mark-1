@@ -2,7 +2,6 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { BillingScreen } from '../screens/BillingScreen';
 import { InvoiceDetailsScreen } from '../screens/InvoiceDetailsScreen';
-import { InvoiceEditScreen } from '../screens/InvoiceEditScreen';
 import { QuoteDetailsScreen } from '../screens/QuoteDetailsScreen';
 import { QuoteFormScreen } from '../screens/QuoteFormScreen';
 import type { BillingStackParamList } from '../types';
@@ -16,7 +15,6 @@ function BillingNavigation() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="BillingHome" component={BillingScreen} />
       <Stack.Screen name="InvoiceDetails" component={InvoiceDetailsScreen} />
-      <Stack.Screen name="InvoiceEdit" component={InvoiceEditScreen} />
       <Stack.Screen name="QuoteDetails" component={QuoteDetailsScreen} />
       <Stack.Screen name="QuoteForm" component={QuoteFormScreen} />
     </Stack.Navigator>
