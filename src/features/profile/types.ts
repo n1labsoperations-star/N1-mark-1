@@ -105,6 +105,7 @@ export type ProfileInput = Partial<
     MyProfile,
     | 'name'
     | 'designation'
+    | 'email'
     | 'phone'
     | 'photo'
     | 'address'
@@ -124,8 +125,16 @@ export type PasswordChangeInput = {
 export type Session = { profile: MyProfile; organization: Organization };
 
 // Stack nested inside the admin drawer's hidden "Profile" item.
+/** Phones: My profile's menu opens each of these as its own screen. */
+export type ProfileSection =
+  | 'organization'
+  | 'account'
+  | 'security'
+  | 'address';
+
 export type ProfileStackParamList = {
   MyProfile: undefined;
+  ProfileSection: { section: ProfileSection };
 };
 
 export type ProfileScreenProps<R extends keyof ProfileStackParamList> =

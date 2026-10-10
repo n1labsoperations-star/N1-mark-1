@@ -2,9 +2,9 @@ import { useNavigation } from '@react-navigation/native';
 import { useCallback, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import {
+  HeaderSearchBar,
   N1Avatar,
   N1Button,
-  N1PageHeader,
   N1Pagination,
   N1Table,
   N1Text,
@@ -43,6 +43,7 @@ import {
   userContact,
   userSearchText,
 } from '../utils';
+import { useTopBarAction } from '../../dashboard/hooks/useTopBarAction';
 
 const makeStyles = createN1Styles(t => ({
   nameCell: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.md },
@@ -174,11 +175,24 @@ export function UsersListScreen() {
       title={USER_STRINGS.create}
       leftIcon="plus"
       onPress={openCreate}
-      size={isCompact ? 'md' : 'sm'}
-      fullWidth={isCompact}
+      size="sm"
       testID="create-user"
     />
   );
+  // Phones: Create sits in the top bar, in place of the user's initials.
+  const createAction = useMemo(
+    () =>
+      isCompact
+        ? {
+            icon: 'plus' as const,
+            label: USER_STRINGS.create,
+            onPress: openCreate,
+            testID: 'create-user',
+          }
+        : undefined,
+    [isCompact, openCreate],
+  );
+  useTopBarAction(createAction);
 
   const firstLoad =
     (status === 'idle' || status === 'loading') && items.length === 0;
@@ -206,9 +220,31 @@ export function UsersListScreen() {
   );
 
   return (
-    <AdminScreen compactFooter={createButton} testID="users-screen" fixed>
+    <AdminScreen
+      // Phones: search and filter on the black header, under the top
+      // bar that shows this screen's name.
+      header={
+        isCompact ? (
+          <HeaderSearchBar
+            query={query}
+            onQueryChange={setQuery}
+            placeholder={USER_STRINGS.search}
+            right={
+              <FilterMenu
+                variant="inverse"
+                groups={filterGroups}
+                value={filters}
+                onApply={applyFilters}
+                testID="users-filter"
+              />
+            }
+          />
+        ) : undefined
+      }
+      testID="users-screen"
+      fixed
+    >
       {/* Wide screens: the title and Create live in the table's toolbar. */}
-      {isCompact && <N1PageHeader title={USER_STRINGS.title} />}
       {/* The table shows its own loading state; AsyncContent only takes over
           when the first load fails. */}
       <AsyncContent
@@ -225,28 +261,27 @@ export function UsersListScreen() {
           onRowPress={openDetails}
           renderCompactItem={renderCompactItem}
           toolbarTitle={isCompact ? undefined : USER_STRINGS.title}
-          toolbar={toolbar}
+          toolbar={isCompact ? undefined : toolbar}
           scrollable={!isCompact}
           emptyText={
             items.length ? COMMON_STRINGS.noResults : COMMON_STRINGS.empty
           }
           footer={
-            !isCompact && (
-              <N1Pagination
-                summary={COMMON_STRINGS.showing(
-                  pager.shownCount,
-                  pager.total,
-                  USER_STRINGS.noun,
-                )}
-                hasPrevious={pager.hasPrevious}
-                hasNext={pager.hasNext}
-                onPrevious={pager.previous}
-                onNext={pager.next}
-                page={pager.page}
-                pageCount={pager.pageCount}
-                onPageChange={pager.goTo}
-              />
-            )
+            // Every page, phones too: after the last card.
+            <N1Pagination
+              summary={COMMON_STRINGS.showing(
+                pager.shownCount,
+                pager.total,
+                USER_STRINGS.noun,
+              )}
+              hasPrevious={pager.hasPrevious}
+              hasNext={pager.hasNext}
+              onPrevious={pager.previous}
+              onNext={pager.next}
+              page={pager.page}
+              pageCount={pager.pageCount}
+              onPageChange={pager.goTo}
+            />
           }
           testID="users-table"
         />

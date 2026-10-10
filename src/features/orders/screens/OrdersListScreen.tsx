@@ -2,9 +2,9 @@ import { useNavigation } from '@react-navigation/native';
 import { useCallback, useMemo } from 'react';
 import { View } from 'react-native';
 import {
+  HeaderSearchBar,
   N1Button,
   N1IconButton,
-  N1PageHeader,
   N1Pagination,
   N1Table,
   N1Text,
@@ -41,6 +41,7 @@ import {
   orderSearchText,
   orderTitle,
 } from '../utils';
+import { useTopBarAction } from '../../dashboard/hooks/useTopBarAction';
 
 const makeStyles = createN1Styles(t => ({
   actions: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm },
@@ -161,15 +162,15 @@ export function OrdersListScreen() {
     [navigation],
   );
 
-  // Opens the order's job card in Job Cards (Back goes to its list), with
+  // Opens the order's job card (Back returns to Orders), with
   // Create flow open when it has no route yet. Orders without a job card get
   // theirs from Create order (raw material arrived) or the shop floor.
   const openJobCard = useCallback(
     (orderId: string, createFlow: boolean) =>
-      navigation.navigate('JobCards', {
-        screen: 'JobCardDetails',
-        params: { jobCardId: orderId, editFlow: createFlow || undefined },
-        initial: false,
+      // Pushed on the Orders stack: Back returns to this list.
+      navigation.navigate('JobCardDetails', {
+        jobCardId: orderId,
+        editFlow: createFlow || undefined,
       }),
     [navigation],
   );
@@ -229,15 +230,7 @@ export function OrdersListScreen() {
     [stats],
   );
 
-  const createButton = isCompact ? (
-    <N1IconButton
-      icon="plus"
-      variant="primary"
-      accessibilityLabel={S.createA11y}
-      onPress={openCreate}
-      testID="create-order"
-    />
-  ) : (
+  const createButton = (
     <N1Button
       title={S.create}
       leftIcon="plus"
@@ -249,6 +242,21 @@ export function OrdersListScreen() {
 
   const firstLoad =
     (status === 'idle' || status === 'loading') && items.length === 0;
+
+  // Phones: Add sits in the top bar, in place of the user's initials.
+  const addAction = useMemo(
+    () =>
+      isCompact
+        ? {
+            icon: 'plus' as const,
+            label: S.createA11y,
+            onPress: openCreate,
+            testID: 'create-order',
+          }
+        : undefined,
+    [isCompact, openCreate],
+  );
+  useTopBarAction(addAction);
 
   const toolbar = (
     <ListToolbar
@@ -264,14 +272,36 @@ export function OrdersListScreen() {
         onApply={applyFilters}
         testID="orders-filter"
       />
-      {!isCompact && createButton}
+      {createButton}
     </ListToolbar>
   );
 
   return (
-    <AdminScreen testID="orders-screen" fixed>
+    <AdminScreen
+      // Phones: search and filter on the black header, under the top
+      // bar that shows this screen's name.
+      header={
+        isCompact ? (
+          <HeaderSearchBar
+            query={query}
+            onQueryChange={setQuery}
+            placeholder={S.search}
+            right={
+              <FilterMenu
+                variant="inverse"
+                groups={filterGroups}
+                value={filters}
+                onApply={applyFilters}
+                testID="orders-filter"
+              />
+            }
+          />
+        ) : undefined
+      }
+      testID="orders-screen"
+      fixed
+    >
       {/* Wide screens: the title and Create live in the table's toolbar. */}
-      {isCompact && <N1PageHeader title={S.title} right={createButton} />}
       {isCompact && <StatGrid items={statItems} variant="muted" />}
       {/* The table shows its own loading state; AsyncContent only takes over
           when the first load fails. */}
@@ -289,29 +319,28 @@ export function OrdersListScreen() {
           onRowPress={openDetails}
           renderCompactItem={renderCompactItem}
           toolbarTitle={isCompact ? undefined : S.title}
-          toolbar={toolbar}
+          toolbar={isCompact ? undefined : toolbar}
           scrollable={!isCompact}
           minWidth={TABLE_MIN_WIDTH}
           emptyText={
             items.length ? COMMON_STRINGS.noResults : COMMON_STRINGS.empty
           }
           footer={
-            (!isCompact || pager.pageCount > 1) && (
-              <N1Pagination
-                summary={COMMON_STRINGS.showing(
-                  pager.shownCount,
-                  pager.total,
-                  S.noun,
-                )}
-                hasPrevious={pager.hasPrevious}
-                hasNext={pager.hasNext}
-                onPrevious={pager.previous}
-                onNext={pager.next}
-                page={pager.page}
-                pageCount={pager.pageCount}
-                onPageChange={pager.goTo}
-              />
-            )
+            // Every page, phones too: after the last card.
+            <N1Pagination
+              summary={COMMON_STRINGS.showing(
+                pager.shownCount,
+                pager.total,
+                S.noun,
+              )}
+              hasPrevious={pager.hasPrevious}
+              hasNext={pager.hasNext}
+              onPrevious={pager.previous}
+              onNext={pager.next}
+              page={pager.page}
+              pageCount={pager.pageCount}
+              onPageChange={pager.goTo}
+            />
           }
           testID="orders-table"
         />

@@ -18,15 +18,18 @@ function ResetPasswordScreen() {
   const [submitted, setSubmitted] = useState(false);
   const rules = checkPassword(password, confirmPassword);
 
-  // No API yet: finish the flow and return to Login.
-  const handleConfirm = () => {
-    setSubmitted(true);
-    if (!isPasswordValid(rules)) {
-      return;
-    }
+  // Leaves the whole forgot-password flow for Login in the auth stack.
+  const backToLogin = () =>
     navigation
       .getParent<NativeStackNavigationProp<AuthStackParamList>>()
       ?.popTo('Login');
+
+  // No API yet: finish the flow and return to Login.
+  const handleConfirm = () => {
+    setSubmitted(true);
+    if (isPasswordValid(rules)) {
+      backToLogin();
+    }
   };
 
   return (
@@ -36,6 +39,8 @@ function ResetPasswordScreen() {
         iconTone="success"
         title="Set New Password"
         subtitle="Code verified. Choose a new password for your account."
+        backLabel="Back to log in"
+        onBack={backToLogin}
       >
         <N1TextInput
           label="New password"

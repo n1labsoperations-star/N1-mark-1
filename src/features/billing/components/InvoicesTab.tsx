@@ -2,6 +2,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useCallback, useMemo, type ReactNode } from 'react';
 import { View } from 'react-native';
 import {
+  HeaderSearchBar,
   FilterMenu,
   N1IconButton,
   N1Pagination,
@@ -33,6 +34,7 @@ import {
 } from '../utils';
 import { InvoiceStatusBadge } from './BillingBadges';
 import { InvoiceCard } from './BillingCards';
+import { useBillingHeader } from './BillingHeaderSlot';
 
 const S = BILLING_STRINGS.invoices;
 
@@ -177,6 +179,28 @@ export function InvoicesTab({ toolbarStart }: Props) {
   const firstLoad =
     (status === 'idle' || status === 'loading') && items.length === 0;
 
+  // Phones: search and filter on the black header (see BillingScreen).
+  const headerBar = useMemo(
+    () => (
+      <HeaderSearchBar
+        query={query}
+        onQueryChange={setQuery}
+        placeholder={S.search}
+        right={
+          <FilterMenu
+            variant="inverse"
+            groups={filterGroups}
+            value={filters}
+            onApply={applyFilters}
+            testID="invoices-filter"
+          />
+        }
+      />
+    ),
+    [query, setQuery, filterGroups, filters, applyFilters],
+  );
+  useBillingHeader(headerBar, isCompact);
+
   const toolbar = (
     <ListToolbar
       align="end"
@@ -218,32 +242,31 @@ export function InvoicesTab({ toolbarStart }: Props) {
         onRowPress={view}
         renderCompactItem={renderCompactItem}
         toolbarStart={isCompact ? undefined : toolbarStart}
-        toolbar={toolbar}
+        toolbar={isCompact ? undefined : toolbar}
         scrollable={!isCompact}
         emptyText={
           items.length ? COMMON_STRINGS.noResults : COMMON_STRINGS.empty
         }
         footer={
-          (!isCompact || pager.pageCount > 1) && (
-            <N1Pagination
-              summary={
-                isCompact
-                  ? showing
-                  : S.summary(
-                      showing,
-                      stats,
-                      formatCompactCurrency(stats.thisMonth),
-                    )
-              }
-              hasPrevious={pager.hasPrevious}
-              hasNext={pager.hasNext}
-              onPrevious={pager.previous}
-              onNext={pager.next}
-              page={pager.page}
-              pageCount={pager.pageCount}
-              onPageChange={pager.goTo}
-            />
-          )
+          // Every page, phones too: after the last card.
+          <N1Pagination
+            summary={
+              isCompact
+                ? showing
+                : S.summary(
+                    showing,
+                    stats,
+                    formatCompactCurrency(stats.thisMonth),
+                  )
+            }
+            hasPrevious={pager.hasPrevious}
+            hasNext={pager.hasNext}
+            onPrevious={pager.previous}
+            onNext={pager.next}
+            page={pager.page}
+            pageCount={pager.pageCount}
+            onPageChange={pager.goTo}
+          />
         }
         testID="invoices-table"
       />

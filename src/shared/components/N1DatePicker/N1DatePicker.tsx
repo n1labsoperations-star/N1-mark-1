@@ -10,6 +10,7 @@ import { N1Icon } from '../N1Icon/N1Icon';
 import { N1IconButton } from '../N1IconButton/N1IconButton';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
 import { N1FieldHelper, N1FieldLabel } from '../N1FieldLabel/N1FieldLabel';
+import { useN1Breakpoint } from '../../hooks/useN1Breakpoint';
 import { N1Text } from '../N1Text/N1Text';
 
 export type N1DatePickerProps = {
@@ -96,13 +97,14 @@ const makeStyles = createN1Styles(t => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: t.spacing.sm,
-    height: t.controlHeight.sm + t.spacing.xs,
+    height: t.fieldHeight.regular,
     paddingHorizontal: t.spacing.md,
     borderRadius: t.radius.sm,
     borderWidth: t.borderWidth.hairline,
     borderColor: t.colors.border,
     backgroundColor: t.colors.surface,
   },
+  fieldCompact: { height: t.fieldHeight.compact },
   fieldOpen: {
     borderColor: t.colors.tone.neutral.solid,
     boxShadow: `0 0 0 ${t.borderWidth.thick + 1}px ${
@@ -172,6 +174,7 @@ export function N1DatePicker({
   testID,
 }: N1DatePickerProps) {
   const styles = useN1Styles(makeStyles);
+  const { isCompact } = useN1Breakpoint();
   const window = useWindowDimensions();
   const field = useRef<HostInstance | null>(null);
   const [open, setOpen] = useState(false);
@@ -245,6 +248,7 @@ export function N1DatePicker({
         onPress={show}
         style={[
           styles.field,
+          isCompact && styles.fieldCompact,
           open && styles.fieldOpen,
           Boolean(errorText) && styles.fieldError,
         ]}

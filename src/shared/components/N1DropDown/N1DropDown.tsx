@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   View,
@@ -9,9 +10,11 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import { N1BottomSheet } from '../N1BottomSheet/N1BottomSheet';
 import { N1Icon } from '../N1Icon/N1Icon';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
 import { N1FieldHelper, N1FieldLabel } from '../N1FieldLabel/N1FieldLabel';
+import { useN1Breakpoint } from '../../hooks/useN1Breakpoint';
 import { N1Text } from '../N1Text/N1Text';
 
 export type N1DropDownOption<T extends string | number> = {
@@ -57,13 +60,14 @@ const makeStyles = createN1Styles(t => ({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: t.spacing.sm,
-    height: t.controlHeight.sm + t.spacing.xs,
+    height: t.fieldHeight.regular,
     paddingHorizontal: t.spacing.md,
     borderRadius: t.radius.sm,
     borderWidth: t.borderWidth.hairline,
     borderColor: t.colors.border,
     backgroundColor: t.colors.surface,
   },
+  fieldCompact: { height: t.fieldHeight.compact },
   fieldFilled: {
     height: t.controlHeight.sm,
     borderColor: t.colors.background,
@@ -98,9 +102,22 @@ const makeStyles = createN1Styles(t => ({
     borderRadius: t.radius.xs,
   },
   optionActive: { backgroundColor: t.colors.surfaceMuted },
+  // Bottom sheet rows: taller for thumbs, with a tick on the chosen one.
+  sheetOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: t.spacing.sm,
+    minHeight: t.controlHeight.lg,
+    paddingHorizontal: t.spacing.md,
+    borderRadius: t.radius.sm,
+  },
 }));
 
-/** Select field. Its options open in a list right under the field. */
+/**
+ * Select field. On web its options open in a list right under the field; in
+ * the iOS / Android app they open in a bottom sheet.
+ */
 export const N1DropDown = React.memo(function N1DropDownComponent<
   T extends string | number,
 >({
@@ -119,12 +136,15 @@ export const N1DropDown = React.memo(function N1DropDownComponent<
   testID,
 }: N1DropDownProps<T>) {
   const styles = useN1Styles(makeStyles);
+  const { isCompact } = useN1Breakpoint();
   const window = useWindowDimensions();
   const field = useRef<HostInstance | null>(null);
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<MenuAnchor | null>(null);
   const [hovered, setHovered] = useState<T | null>(null);
   const selected = options.find(o => o.value === value);
+  // Read per render so tests can switch platforms.
+  const useSheet = Platform.OS !== 'web';
 
   const choose = (option: N1DropDownOption<T>) => {
     setOpen(false);
@@ -136,6 +156,10 @@ export const N1DropDown = React.memo(function N1DropDownComponent<
   const show = () => {
     setAnchor(null);
     setOpen(true);
+    // The sheet needs no anchor.
+    if (useSheet) {
+      return;
+    }
     field.current?.measureInWindow((x, y, w, h) => {
       const below = window.height - (y + h + MENU_GAP);
       const across = {
@@ -168,6 +192,7 @@ export const N1DropDown = React.memo(function N1DropDownComponent<
         onPress={show}
         style={[
           styles.field,
+          isCompact && styles.fieldCompact,
           variant === 'filled' && styles.fieldFilled,
           open && styles.fieldOpen,
           Boolean(errorText) && styles.fieldError,
@@ -185,48 +210,81 @@ export const N1DropDown = React.memo(function N1DropDownComponent<
       </Pressable>
       <N1FieldHelper helperText={helperText} errorText={errorText} />
 
-      <Modal visible={open} transparent onRequestClose={() => setOpen(false)}>
-        <Pressable
-          accessibilityLabel="Close options"
-          style={styles.backdrop}
-          onPress={() => setOpen(false)}
-        />
-        <View
-          style={[styles.menu, anchor ?? styles.menuMeasuring]}
+      {useSheet ? (
+        <N1BottomSheet
+          open={open}
+          onClose={() => setOpen(false)}
+          title={label ?? accessibilityLabel}
           testID={testID && `${testID}-menu`}
         >
-          <ScrollView accessibilityRole="list">
-            {options.map(option => {
-              const isSelected = option.value === value;
-              return (
-                <Pressable
-                  key={String(option.value)}
-                  accessibilityRole="menuitem"
-                  aria-selected={isSelected}
-                  aria-disabled={option.disabled}
-                  disabled={option.disabled}
-                  onPress={() => choose(option)}
-                  onHoverIn={() => setHovered(option.value)}
-                  onHoverOut={() => setHovered(null)}
-                  style={({ pressed }) => [
-                    styles.option,
-                    (isSelected || pressed || hovered === option.value) &&
-                      styles.optionActive,
-                    option.disabled && styles.disabled,
-                  ]}
-                >
-                  <N1Text
-                    variant="small"
-                    weight={isSelected ? 'semiBold' : 'regular'}
+          {options.map(option => {
+            const isSelected = option.value === value;
+            return (
+              <Pressable
+                key={String(option.value)}
+                accessibilityRole="menuitem"
+                aria-selected={isSelected}
+                aria-disabled={option.disabled}
+                disabled={option.disabled}
+                onPress={() => choose(option)}
+                style={({ pressed }) => [
+                  styles.sheetOption,
+                  (isSelected || pressed) && styles.optionActive,
+                  option.disabled && styles.disabled,
+                ]}
+              >
+                <N1Text weight={isSelected ? 'semiBold' : 'regular'}>
+                  {option.label}
+                </N1Text>
+                {isSelected ? <N1Icon name="check" size="md" /> : null}
+              </Pressable>
+            );
+          })}
+        </N1BottomSheet>
+      ) : (
+        <Modal visible={open} transparent onRequestClose={() => setOpen(false)}>
+          <Pressable
+            accessibilityLabel="Close options"
+            style={styles.backdrop}
+            onPress={() => setOpen(false)}
+          />
+          <View
+            style={[styles.menu, anchor ?? styles.menuMeasuring]}
+            testID={testID && `${testID}-menu`}
+          >
+            <ScrollView accessibilityRole="list">
+              {options.map(option => {
+                const isSelected = option.value === value;
+                return (
+                  <Pressable
+                    key={String(option.value)}
+                    accessibilityRole="menuitem"
+                    aria-selected={isSelected}
+                    aria-disabled={option.disabled}
+                    disabled={option.disabled}
+                    onPress={() => choose(option)}
+                    onHoverIn={() => setHovered(option.value)}
+                    onHoverOut={() => setHovered(null)}
+                    style={({ pressed }) => [
+                      styles.option,
+                      (isSelected || pressed || hovered === option.value) &&
+                        styles.optionActive,
+                      option.disabled && styles.disabled,
+                    ]}
                   >
-                    {option.label}
-                  </N1Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-      </Modal>
+                    <N1Text
+                      variant="small"
+                      weight={isSelected ? 'semiBold' : 'regular'}
+                    >
+                      {option.label}
+                    </N1Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }) as <T extends string | number>(props: N1DropDownProps<T>) => React.ReactNode;

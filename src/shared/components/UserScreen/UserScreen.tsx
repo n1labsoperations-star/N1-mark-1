@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { KeyboardScrollView } from '../KeyboardScrollView/KeyboardScrollView';
 import { N1BottomBar, createN1Styles, useN1Styles } from '..';
 
 export type UserScreenProps = {
@@ -29,13 +30,12 @@ export function UserScreen({ footer, children, testID }: UserScreenProps) {
   const styles = useN1Styles(makeStyles);
   return (
     <View style={styles.root} testID={testID}>
-      <ScrollView
+      <KeyboardScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
       >
         {children}
-      </ScrollView>
+      </KeyboardScrollView>
       {footer && <N1BottomBar>{footer}</N1BottomBar>}
     </View>
   );

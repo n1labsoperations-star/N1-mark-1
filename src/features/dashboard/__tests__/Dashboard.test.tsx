@@ -79,7 +79,7 @@ describe('DashboardNavigation', () => {
 
     expect(menuLinks(root)).toEqual([
       'Dashboard',
-      'Users',
+      'Employees',
       'Customers',
       'Orders',
       'Job Cards',
@@ -87,13 +87,21 @@ describe('DashboardNavigation', () => {
       'Billing',
     ]);
     expect(allText(root)).toContain('ABC Engineering Pvt Ltd');
-    expect(allText(root)).toContain('MAIN MENU');
+    expect(allText(root)).not.toContain('MAIN MENU');
   });
 
-  test('phones show the short menu, the user card and a menu button', async () => {
+  test('phones show the full menu, the user card and a menu button', async () => {
     const root = await renderDashboard(PHONE);
 
-    expect(menuLinks(root)).toEqual(['Dashboard', 'Users', 'Orders']);
+    expect(menuLinks(root)).toEqual([
+      'Dashboard',
+      'Employees',
+      'Customers',
+      'Orders',
+      'Job Cards',
+      'Machines',
+      'Billing',
+    ]);
     expect(allText(root)).toContain('Admin · ABC Engineering');
     expect(byLabel(root, 'Open menu')).toBeDefined();
     expect(byLabel(root, 'Close menu')).toBeDefined();
@@ -124,8 +132,8 @@ describe('DashboardNavigation', () => {
     const root = await renderDashboard(WIDE);
 
     await press(byLabel(root, 'Collapse sidebar'));
-    expect(byLabel(root, 'Search menu')).toBeUndefined();
-    expect(allText(root)).not.toContain('MAIN MENU');
+    // Rail: the search shrinks to an icon button.
+    expect(byLabel(root, 'Search menu')).toBeTruthy();
 
     await press(byLabel(root, 'Expand sidebar'));
     expect(byLabel(root, 'Search menu')).toBeDefined();
@@ -165,10 +173,10 @@ describe('UsersScreen', () => {
   test('search, role and status filters narrow the table', async () => {
     const root = await render(<UsersScreen />, WIDE);
 
-    await type(root, 'Search users', 'rao');
+    await type(root, 'Search employees', 'rao');
     expect(rowNames(root)).toEqual(['Divya Rao']);
 
-    await type(root, 'Search users', '');
+    await type(root, 'Search employees', '');
     await pick(root, ROLE_FILTER_OPTIONS, 'admin');
     expect(rowNames(root)).toEqual(['Koushik Dasarathan']);
 
@@ -180,7 +188,7 @@ describe('UsersScreen', () => {
   test('shows a message when nothing matches', async () => {
     const root = await render(<UsersScreen />, PHONE);
 
-    await type(root, 'Search users', 'nobody');
+    await type(root, 'Search employees', 'nobody');
 
     expect(allText(root)).toContain('No users match these filters.');
   });

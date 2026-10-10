@@ -47,6 +47,10 @@ beforeEach(() => {
 
 const LOGIN_ID = 'you@company.com or 98765 43210';
 
+// Press the submit button by its ID.
+const submitLogin = (root: ReactTestInstance) =>
+  press(root.findAll(node => node.props.testID === 'login-submit')[0]);
+
 describe('LoginScreen', () => {
   test('wide layout shows the hero panel, remember me and footer', async () => {
     const text = allText(await render(<LoginScreen />, WIDE));
@@ -58,17 +62,17 @@ describe('LoginScreen', () => {
     expect(text).toContain('Remember me');
     expect(text).toContain('Forgot password?');
     expect(text).toContain('Create organization');
-    expect(text).not.toContain('Welcome Back!');
+    expect(text).not.toContain('Welcome back');
   });
 
-  test('compact layout shows the phone copy without hero or remember me', async () => {
-    const text = allText(await render(<LoginScreen />, PHONE));
+  test('the phone footer opens Create organization', async () => {
+    const root = await render(<LoginScreen />, PHONE);
 
-    expect(text).toContain('Welcome Back!');
-    expect(text).toContain('Log in to your dashboard.');
-    expect(text).toContain('Create organization');
-    expect(text).not.toContain('Remember me');
-    expect(text).not.toContain('Get Started');
+    await press(findText(root, 'Create organization'));
+
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Auth', {
+      screen: 'CreateOrganization',
+    });
   });
 
   test.each([
@@ -84,7 +88,7 @@ describe('LoginScreen', () => {
 
     await type(root, LOGIN_ID, email);
     await type(root, 'Enter your password', password);
-    await press(findText(root, 'Log in'));
+    await submitLogin(root);
 
     // The root navigator then shows only that role's area.
     expect(store.getState().session.role).toBe(role);
@@ -97,7 +101,7 @@ describe('LoginScreen', () => {
 
     await type(root, LOGIN_ID, 'admin@n1.com');
     await type(root, 'Enter your password', 'wrong');
-    await press(findText(root, 'Log in'));
+    await submitLogin(root);
 
     expect(store.getState().session.role).toBeNull();
     expect(allText(root)).toContain('Invalid email, phone number or password.');
@@ -107,7 +111,7 @@ describe('LoginScreen', () => {
     const store = createStore();
     const root = await render(<LoginScreen />, PHONE, store);
 
-    await press(findText(root, 'Log in'));
+    await submitLogin(root);
     expect(allText(root)).toContain('Email or phone number is required');
     expect(allText(root)).toContain('Password is required');
     expect(allText(root)).not.toContain(
@@ -119,7 +123,7 @@ describe('LoginScreen', () => {
     // clears the password error.
     await type(root, LOGIN_ID, 'admin');
     await type(root, 'Enter your password', 'Admin@123');
-    await press(findText(root, 'Log in'));
+    await submitLogin(root);
     const text = allText(root);
     expect(text).toContain('Enter a valid email or phone number');
     expect(text).not.toContain('Password is required');

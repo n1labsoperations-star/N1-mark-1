@@ -14,17 +14,17 @@ export const MENU_ITEMS: MenuItem[] = [
     route: 'Customers',
     label: 'Customers',
     icon: 'building',
-    onCompact: false,
+    onCompact: true,
   },
   { route: 'Orders', label: 'Orders', icon: 'package', onCompact: true },
   {
     route: 'JobCards',
     label: 'Job Cards',
     icon: 'clipboard',
-    onCompact: false,
+    onCompact: true,
   },
-  { route: 'Machines', label: 'Machines', icon: 'wrench', onCompact: false },
-  { route: 'Billing', label: 'Billing', icon: 'receipt', onCompact: false },
+  { route: 'Machines', label: 'Machines', icon: 'wrench', onCompact: true },
+  { route: 'Billing', label: 'Billing', icon: 'receipt', onCompact: true },
 ];
 
 // Sample data until the API exists.
@@ -121,6 +121,8 @@ export const DASHBOARD_STRINGS = {
   /** Greets the signed-in user; plain "Welcome back" until the name loads. */
   title: (name?: string) => (name ? `Welcome back, ${name}` : 'Welcome back'),
   subtitle: (org: string) => `Overview for ${org}.`,
+  /** Phones: above the user's name. */
+  greeting: 'Welcome back,',
   /** This calendar week (from Monday), month or year. */
   periods: [
     { key: 'week', label: 'Week' },

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import {
+  KeyboardScrollView,
   AdminScreen,
   N1Card,
   N1Divider,
@@ -100,6 +101,8 @@ export function BillingBackLink({ label, onPress, testID }: BackLinkProps) {
 
 type Props = {
   testID: string;
+  /** Phones: <DetailHeader /> with back and the screen's name. */
+  header?: ReactNode;
   /** <BillingBackLink />. */
   back: ReactNode;
   /** Right of the back link, e.g. View Quote. */
@@ -132,6 +135,7 @@ type Props = {
  */
 export function BillingDetailLayout({
   testID,
+  header,
   back,
   topRight,
   title,
@@ -192,7 +196,11 @@ export function BillingDetailLayout({
 
   if (isCompact) {
     return (
-      <AdminScreen testID={testID} compactFooter={compactFooter}>
+      <AdminScreen
+        header={header}
+        testID={testID}
+        compactFooter={compactFooter}
+      >
         <N1Card radius="sm" style={styles.card}>
           {topBar}
           {details}
@@ -204,21 +212,20 @@ export function BillingDetailLayout({
   }
 
   return (
-    <AdminScreen fixed testID={testID}>
+    <AdminScreen header={header} fixed testID={testID}>
       <N1Card radius="sm" style={[styles.card, styles.fixedCard]}>
         {topBar}
         <View style={styles.split}>
           {details}
           {/* Scrolls on its own only when the edit fields don't fit. */}
-          <ScrollView
+          <KeyboardScrollView
             style={styles.aside}
             contentContainerStyle={styles.asideContent}
             showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
           >
             {amountsBox}
             {aside}
-          </ScrollView>
+          </KeyboardScrollView>
         </View>
       </N1Card>
     </AdminScreen>

@@ -946,7 +946,11 @@ test('phone: stat tiles, cards and step footer', async () => {
   await press(byTestId(form, 'order-form-design'));
   await press(byTestId(form, 'order-form-next'));
   expect(allText(form)).toContain('Step 2 of 3 · Order details');
-  await press(byLabel(form, 'Back'));
+  // The header's back leaves the form; the footer's Back (last) steps back.
+  const backs = form.findAll(
+    n => typeof n.type === 'string' && n.props.accessibilityLabel === 'Back',
+  );
+  await press(backs[backs.length - 1]);
   expect(allText(form)).toContain('Step 1 of 3 · Customer');
 });
 
@@ -1036,8 +1040,11 @@ describe('Orders list actions', () => {
     await press(byLabel(h.root, 'Open job card for WO #1042'));
     expect(h.currentRoute()).toBe('JobCardDetails');
 
+    // Back returns to the Orders list (the card was pushed on its stack).
+    await press(byTestId(h.root, 'job-card-details-back'));
+    expect(h.currentRoute()).toBe('Orders');
+
     // 1036 has no route card yet: its job card, with Create flow open.
-    await h.navigate('Orders');
     await press(byLabel(h.root, 'Create job card for WO #1036'));
     expect(h.currentRoute()).toBe('JobCardDetails');
     expect(allText(byTestId(h.root, 'job-card-machining'))).toMatch(

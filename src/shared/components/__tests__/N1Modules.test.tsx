@@ -368,6 +368,10 @@ describe('N1TextInput', () => {
 });
 
 describe('N1DropDown', () => {
+  /** Lets the bottom sheet finish sliding out. */
+  const waitForSheet = () =>
+    ReactTestRenderer.act(() => new Promise(done => setTimeout(done, 400)));
+
   const options = [
     { label: 'Admin', value: 'admin' },
     { label: 'User', value: 'user' },
@@ -387,11 +391,12 @@ describe('N1DropDown', () => {
     const field = byLabel(r.root, 'Role');
     expect(field.props.accessibilityValue.text).toBe('Select role');
     await press(field);
-    expect(r.root.findByType(RN.Modal).props.visible).toBe(true);
+    expect(byRole(r.root, 'menuitem')).toHaveLength(3);
     const items = byRole(r.root, 'menuitem');
     await press(items[1]);
     expect(onChange).toHaveBeenCalledWith('user');
-    expect(r.root.findByType(RN.Modal).props.visible).toBe(false);
+    await waitForSheet();
+    expect(byRole(r.root, 'menuitem')).toHaveLength(0);
   });
 
   test('re-selecting the current value does not fire onChange', async () => {
@@ -410,25 +415,59 @@ describe('N1DropDown', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  test('the list opens under the field (phones too); the backdrop closes it', async () => {
-    setWindowWidth(375);
+  test('in the app the options open in a bottom sheet titled by the label', async () => {
+    const onChange = jest.fn();
     const r = await render(
       <N1DropDown
         label="Role"
         options={options}
-        onChange={jest.fn()}
-        errorText="Required"
+        onChange={onChange}
         testID="role"
       />,
     );
+    const sheet = () =>
+      r.root.findAll(
+        n => typeof n.type === 'string' && n.props.testID === 'role-menu',
+      );
+    expect(sheet()).toHaveLength(0);
+
     await press(byLabel(r.root, 'Role'));
-    // A list anchored to the field, not a centred sheet.
-    const [menu] = r.root.findAll(
-      n => typeof n.type === 'string' && n.props.testID === 'role-menu',
-    );
-    expect(flatStyle(menu).position).toBe('absolute');
-    await press(byLabel(r.root, 'Close options'));
-    expect(r.root.findByType(RN.Modal).props.visible).toBe(false);
+    expect(sheet()).toHaveLength(1);
+    // Rises from the bottom rather than hanging off the field.
+    expect(flatStyle(sheet()[0]).position).toBeUndefined();
+    expect(allText(r.root)).toContain('Role');
+
+    await press(byRole(r.root, 'menuitem')[1]);
+    expect(onChange).toHaveBeenCalledWith(options[1].value);
+    await waitForSheet();
+    expect(sheet()).toHaveLength(0);
+  });
+
+  test('on web the list opens under the field (phones too); the backdrop closes it', async () => {
+    const os = RN.Platform.OS;
+    RN.Platform.OS = 'web';
+    try {
+      setWindowWidth(375);
+      const r = await render(
+        <N1DropDown
+          label="Role"
+          options={options}
+          onChange={jest.fn()}
+          errorText="Required"
+          testID="role"
+        />,
+      );
+      await press(byLabel(r.root, 'Role'));
+      // A list anchored to the field, not a sheet.
+      const [menu] = r.root.findAll(
+        n => typeof n.type === 'string' && n.props.testID === 'role-menu',
+      );
+      expect(flatStyle(menu).position).toBe('absolute');
+      await press(byLabel(r.root, 'Close options'));
+      expect(r.root.findByType(RN.Modal).props.visible).toBe(false);
+    } finally {
+      RN.Platform.OS = os;
+    }
   });
 });
 

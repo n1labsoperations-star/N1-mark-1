@@ -133,7 +133,7 @@ test('log out asks first, then returns to login; next role loads its own profile
     n => typeof n.type === 'string' && n.props.accessibilityLabel === 'Log out',
   );
   await press(confirm);
-  expect(allText(root)).toContain('Welcome Back!');
+  expect(allText(root)).toContain('Welcome back');
 
   await fillLogin(root, 'qc@n1.com', 'Qc@12345');
   await press(byLabel(root, 'Profile'));

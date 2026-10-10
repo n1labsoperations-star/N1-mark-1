@@ -1,11 +1,25 @@
 import { createContext, useContext, type ReactNode } from 'react';
-import { ScrollView, View } from 'react-native';
-import { N1BottomBar, createN1Styles, useN1Breakpoint, useN1Styles } from '..';
+import { KeyboardAvoidingView, Platform, View } from 'react-native';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
+import { KeyboardScrollView } from '../KeyboardScrollView/KeyboardScrollView';
+import {
+  N1BottomBar,
+  createN1Styles,
+  useN1Breakpoint,
+  useN1Styles,
+  useN1Theme,
+} from '..';
 
 export type AdminScreenProps = {
-  /** Fixed above the scrolling content, e.g. <DetailHeader />. */
+  /**
+   * Phones: fixed above the scrolling content, e.g. <DetailHeader /> with a
+   * back button and the screen's name. Wide screens don't show it.
+   */
   header?: ReactNode;
-  /** Phones only: buttons pinned to the bottom (Create user, Save changes). */
+  /**
+   * Phones only: buttons pinned to the bottom (Create user, Save changes).
+   * They ride up above the keyboard.
+   */
   compactFooter?: ReactNode;
   /**
    * Wide screens: the page itself doesn't scroll. The content fills the
@@ -40,34 +54,49 @@ const makeStyles = createN1Styles(t => ({
 
 /** Scrolling page body used by every admin screen. */
 export function AdminScreen({
+  header,
   compactFooter,
   fixed = false,
   children,
   testID,
 }: AdminScreenProps) {
   const styles = useN1Styles(makeStyles);
+  const theme = useN1Theme();
   const { isCompact } = useN1Breakpoint();
   const background = useContext(AdminScreenBackground);
+  const withFooter = isCompact && Boolean(compactFooter);
+  // Phones without a footer bar: the last content (e.g. pagination) clears
+  // the home indicator. No provider (isolated renders) means no inset.
+  const bottomInset = useContext(SafeAreaInsetsContext)?.bottom ?? 0;
   return (
-    <View
+    <KeyboardAvoidingView
+      enabled={withFooter}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={[styles.root, background === 'surface' && styles.surface]}
       testID={testID}
     >
+      {isCompact && header}
       {fixed && !isCompact ? (
         <View style={[styles.content, styles.fixedContent]}>{children}</View>
       ) : (
-        <ScrollView
+        <KeyboardScrollView
           style={styles.scroll}
           contentContainerStyle={[
             styles.content,
             isCompact && styles.compactContent,
+            isCompact &&
+              !withFooter && {
+                paddingBottom: theme.spacing.lg + bottomInset,
+              },
           ]}
-          keyboardShouldPersistTaps="handled"
+          // A footer rides up with the keyboard (KeyboardAvoidingView
+          // below), so the scroll view mustn't make room for it as well.
+          footerMode={withFooter}
         >
           {children}
-        </ScrollView>
+        </KeyboardScrollView>
       )}
-      {isCompact && compactFooter && <N1BottomBar>{compactFooter}</N1BottomBar>}
-    </View>
+      {withFooter && <N1BottomBar>{compactFooter}</N1BottomBar>}
+    </KeyboardAvoidingView>
   );
 }

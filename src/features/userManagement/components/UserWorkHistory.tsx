@@ -6,6 +6,7 @@ import {
   N1Text,
   createN1Styles,
   useN1Styles,
+  useN1Breakpoint,
 } from '../../../shared/components';
 import { formatDate } from '../../../shared/utils';
 import {
@@ -35,6 +36,8 @@ const makeStyles = createN1Styles(t => ({
     paddingHorizontal: t.spacing.sm,
     borderRadius: t.radius.sm,
   },
+  // Phones: rows line up with the heading and the page edge.
+  rowCompact: { paddingHorizontal: 0 },
   divider: {
     borderTopWidth: t.borderWidth.hairline,
     borderTopColor: t.colors.border,
@@ -108,6 +111,7 @@ function WorkRow({
   onOpen: (jobCardId: string) => void;
 }) {
   const styles = useN1Styles(makeStyles);
+  const { isCompact } = useN1Breakpoint();
   // "RC #1040 • Deburring, Marking • Started Sep 25, 2026"
   const details = [
     W.routeCard(jobCard.id),
@@ -120,7 +124,11 @@ function WorkRow({
         accessibilityRole="button"
         accessibilityLabel={USER_STRINGS.a11y.openJobCard(jobCard.id)}
         onPress={() => onOpen(jobCard.id)}
-        style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+        style={({ pressed }) => [
+          styles.row,
+          isCompact && styles.rowCompact,
+          pressed && styles.pressed,
+        ]}
         testID={`user-work-${jobCard.id}`}
       >
         <View style={styles.icon}>

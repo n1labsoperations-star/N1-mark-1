@@ -21,6 +21,8 @@ export type EditableSectionHeaderProps = {
   editLabel?: string;
   editTestID?: string;
   submitTestID?: string;
+  /** Edit, Cancel and Save sit in the screen's footer instead (phones). */
+  actionsInFooter?: boolean;
 };
 
 const makeStyles = createN1Styles(t => ({
@@ -50,6 +52,7 @@ export function EditableSectionHeader({
   editLabel,
   editTestID,
   submitTestID,
+  actionsInFooter = false,
 }: EditableSectionHeaderProps) {
   const styles = useN1Styles(makeStyles);
   return (
@@ -59,7 +62,7 @@ export function EditableSectionHeader({
         <N1Text variant="h3">{title}</N1Text>
       </View>
       <View style={styles.actions}>
-        {editing ? (
+        {actionsInFooter ? null : editing ? (
           <>
             <N1Button
               title={COMMON_STRINGS.cancel}

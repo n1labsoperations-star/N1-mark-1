@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import {
+  KeyboardScrollView,
   AdminScreen,
   AsyncContent,
+  DetailHeader,
   ComingSoon,
   EditableSectionHeader,
   N1Card,
@@ -114,10 +116,13 @@ export function MachineDetailsScreen({
     </Pressable>
   );
 
+  // Phones: a header with back and the screen's name, in place of the link.
+  const header = <DetailHeader title={D.title} onBack={goBack} />;
+
   if (!machine) {
     return (
-      <AdminScreen testID="machine-details-screen">
-        {backLink}
+      <AdminScreen header={header} testID="machine-details-screen">
+        {!isCompact && backLink}
         <AsyncContent status={status} error={error} onRetry={reload}>
           <ComingSoon icon="wrench" title={D.title} message={D.notFound} />
         </AsyncContent>
@@ -127,7 +132,7 @@ export function MachineDetailsScreen({
 
   const heading = (
     <View style={styles.heading} testID="machine-details-heading">
-      {backLink}
+      {!isCompact && backLink}
       <View style={styles.identity}>
         <View style={styles.titles}>
           <N1Text variant="h2" accessibilityRole="header">
@@ -182,7 +187,7 @@ export function MachineDetailsScreen({
 
   if (isCompact) {
     return (
-      <AdminScreen testID="machine-details-screen">
+      <AdminScreen header={header} testID="machine-details-screen">
         <N1Card radius="sm" style={styles.card}>
           {heading}
           {content}
@@ -192,17 +197,16 @@ export function MachineDetailsScreen({
   }
 
   return (
-    <AdminScreen fixed testID="machine-details-screen">
+    <AdminScreen header={header} fixed testID="machine-details-screen">
       <N1Card radius="sm" style={[styles.card, styles.fixedCard]}>
         {heading}
-        <ScrollView
+        <KeyboardScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
           testID="machine-details-scroll"
         >
           {content}
-        </ScrollView>
+        </KeyboardScrollView>
       </N1Card>
     </AdminScreen>
   );

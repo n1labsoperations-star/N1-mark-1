@@ -153,6 +153,7 @@ export { N1Timer, formatElapsed, type N1TimerProps } from './N1Timer';
 
 // Overlays
 export { N1Modal, type N1ModalProps } from './N1Modal';
+export { N1BottomSheet, type N1BottomSheetProps } from './N1BottomSheet';
 export { N1ConfirmDialog, type N1ConfirmDialogProps } from './N1ConfirmDialog';
 
 // App-level primitives
@@ -179,3 +180,8 @@ export * from './EditableSectionHeader';
 export * from './PasswordSetForm';
 export * from './RowActions';
 export * from './FormFooter';
+export {
+  KeyboardScrollView,
+  type KeyboardScrollViewProps,
+} from './KeyboardScrollView';
+export * from './HeaderSearchBar';

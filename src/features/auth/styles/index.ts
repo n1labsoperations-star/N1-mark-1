@@ -5,3 +5,4 @@ export { makeCreateOrganizationFormStyles } from './CreateOrganizationForm.style
 export { makeAuthStepStyles } from './AuthStep.styles';
 export { makeCodeInputStyles } from './CodeInput.styles';
 export { makeVerifyCodeScreenStyles } from './VerifyCodeScreen.styles';
+export { makeAuthMobileShellStyles } from './AuthMobileShell.styles';

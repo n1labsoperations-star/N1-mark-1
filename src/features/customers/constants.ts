@@ -55,7 +55,7 @@ export const CUSTOMER_STRINGS = {
     pinCodePlaceholder: 'e.g. 600032',
     pinCodeInvalid: 'Enter a 6-digit PIN code',
     country: 'Country',
-    countryPlaceholder: 'e.g. India',
+    countryPlaceholder: 'Select country',
     notes: 'Notes',
     notesPlaceholder: 'Anything worth knowing about this account',
   },

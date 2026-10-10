@@ -1,9 +1,12 @@
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, type ReactNode } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import type { DrawerNavigationProp } from '@react-navigation/drawer';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { View } from 'react-native';
 import {
   N1Table,
   N1Text,
+  createN1Styles,
+  useN1Styles,
   type N1TableColumn,
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
@@ -18,7 +21,6 @@ import {
   useQuotes,
   type Quote,
 } from '../../billing';
-import type { AdminDrawerParamList } from '../../dashboard/types';
 import {
   OrderStatusBadge,
   orderTitle,
@@ -26,7 +28,7 @@ import {
   type WorkOrder,
 } from '../../orders';
 import { CUSTOMER_STRINGS } from '../constants';
-import type { Customer } from '../types';
+import type { Customer, CustomersStackParamList } from '../types';
 
 const D = CUSTOMER_STRINGS.details;
 const C = D.columns;
@@ -97,30 +99,109 @@ const QUOTE_COLUMNS: N1TableColumn<Quote>[] = [
   },
 ];
 
-/** Opens an order or quote in its own module; Back returns here. */
+const makeCardStyles = createN1Styles(t => ({
+  // Rows touch; their own lines separate them.
+  list: { gap: 0 },
+  // Phones: a plain row per order or quote, a line underneath.
+  row: {
+    gap: t.spacing.xxs,
+    paddingVertical: t.spacing.md,
+    borderBottomWidth: t.borderWidth.hairline,
+    borderBottomColor: t.colors.border,
+  },
+  bottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.md,
+    marginTop: t.spacing.xs,
+  },
+}));
+
+/**
+ * Phones: the id, the part in grey, then the amount (or due date), the
+ * status and the date, like a simple listing.
+ */
+function HistoryCard({
+  id,
+  status,
+  part,
+  lead,
+  meta,
+  testID,
+}: {
+  id: string;
+  status: ReactNode;
+  part: string;
+  /** Bold at the start of the last line, e.g. the amount. */
+  lead: string;
+  /** Small and grey after the status, e.g. the date. */
+  meta?: string;
+  testID: string;
+}) {
+  const styles = useN1Styles(makeCardStyles);
+  return (
+    <View style={styles.row} testID={testID}>
+      <N1Text weight="bold">{id}</N1Text>
+      <N1Text variant="small" color="secondary" numberOfLines={1}>
+        {part}
+      </N1Text>
+      <View style={styles.bottom}>
+        <N1Text weight="bold">{lead}</N1Text>
+        {/* The badge pins itself to the top; the wrapper centres it. */}
+        <View>{status}</View>
+        {meta ? (
+          <N1Text variant="caption" color="tertiary">
+            {meta}
+          </N1Text>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+const renderOrderCard = (o: WorkOrder) => (
+  <HistoryCard
+    id={`WO #${o.id}`}
+    status={<OrderStatusBadge status={o.status} />}
+    part={orderTitle(o)}
+    lead={`${C.due} ${formatLongDate(o.dueDate)}`}
+    testID={`customer-order-card-${o.id}`}
+  />
+);
+
+const renderQuoteCard = (q: Quote) => (
+  <HistoryCard
+    id={q.id}
+    status={<QuoteStatusBadge status={q.status} />}
+    part={q.partName}
+    lead={formatCurrency(quoteTotal(q))}
+    meta={formatDate(q.createdAt)}
+    testID={`customer-quote-card-${q.id}`}
+  />
+);
+
+/**
+ * Opens an order or quote on the Customers stack (the same screens as in
+ * Orders and Billing), so Back returns to this customer.
+ */
 function useOpenInModule() {
-  const navigation = useNavigation();
-  const drawer =
-    navigation.getParent<DrawerNavigationProp<AdminDrawerParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<CustomersStackParamList>>();
   const openOrder = useCallback(
     (o: WorkOrder) =>
-      drawer?.navigate('Orders', {
-        screen: 'OrderDetails',
-        // Back on the order returns to this customer.
-        params: { orderId: o.id, fromCustomerId: o.customerId },
-        initial: false,
+      navigation.navigate('OrderDetails', {
+        orderId: o.id,
+        fromCustomerId: o.customerId,
       }),
-    [drawer],
+    [navigation],
   );
   const openQuote = useCallback(
     (q: Quote, customerId: string) =>
-      drawer?.navigate('Billing', {
-        screen: 'QuoteDetails',
-        // Back on the quote returns to this customer.
-        params: { quoteId: q.id, fromCustomerId: customerId },
-        initial: false,
+      navigation.navigate('QuoteDetails', {
+        quoteId: q.id,
+        fromCustomerId: customerId,
       }),
-    [drawer],
+    [navigation],
   );
   return { openOrder, openQuote };
 }
@@ -131,6 +212,7 @@ export const CustomerOrdersTable = memo(function CustomerOrdersTableComponent({
 }: {
   customer: Customer;
 }) {
+  const listStyles = useN1Styles(makeCardStyles);
   const orders = useOrders();
   const { openOrder } = useOpenInModule();
   const customerOrders = useMemo(
@@ -146,7 +228,9 @@ export const CustomerOrdersTable = memo(function CustomerOrdersTableComponent({
       data={customerOrders}
       keyExtractor={o => o.id}
       onRowPress={openOrder}
+      renderCompactItem={renderOrderCard}
       emptyText={emptyText(orders.status, D.noOrders)}
+      style={listStyles.list}
       testID="customer-orders"
     />
   );
@@ -161,6 +245,7 @@ export const CustomerQuotesTable = memo(function CustomerQuotesTableComponent({
 }: {
   customer: Customer;
 }) {
+  const listStyles = useN1Styles(makeCardStyles);
   const quotes = useQuotes();
   const { openQuote } = useOpenInModule();
   const sharedQuotes = useMemo(() => {
@@ -178,7 +263,9 @@ export const CustomerQuotesTable = memo(function CustomerQuotesTableComponent({
       data={sharedQuotes}
       keyExtractor={q => q.id}
       onRowPress={q => openQuote(q, customer.id)}
+      renderCompactItem={renderQuoteCard}
       emptyText={emptyText(quotes.status, D.noQuotes)}
+      style={listStyles.list}
       testID="customer-quotes"
     />
   );

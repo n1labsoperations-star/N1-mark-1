@@ -1,11 +1,12 @@
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { useCallback, useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View } from 'react-native';
 import {
+  KeyboardScrollView,
   AdminScreen,
+  AdminScreenBackground,
   AsyncContent,
   DonutChart,
-  DetailHeader,
   EntityHero,
   N1Badge,
   N1Card,
@@ -32,13 +33,59 @@ import {
   type OrganizationSection,
 } from '../organization';
 
+/** Phones: one swipeable page per organization section. */
+const SectionTabs =
+  createMaterialTopTabNavigator<Record<OrganizationSection, undefined>>();
+
+const makeTabLabelStyles = createN1Styles(t => ({
+  label: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs },
+  // Details still to fill in this section, as on the wide side menu.
+  badge: {
+    minWidth: t.iconSize.md,
+    paddingHorizontal: t.spacing.xs,
+    borderRadius: t.radius.pill,
+    alignItems: 'center',
+    backgroundColor: t.colors.tone.warning.background,
+  },
+}));
+
+function SectionTabLabel({
+  title,
+  missing,
+  focused,
+}: {
+  title: string;
+  missing?: number;
+  focused: boolean;
+}) {
+  const styles = useN1Styles(makeTabLabelStyles);
+  return (
+    <View style={styles.label}>
+      <N1Text
+        variant="label"
+        weight={focused ? 'bold' : undefined}
+        color={focused ? 'primary' : 'secondary'}
+      >
+        {title}
+      </N1Text>
+      {missing ? (
+        <View style={styles.badge}>
+          <N1Text variant="caption" weight="bold">
+            {missing}
+          </N1Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+const sectionTabLabel =
+  (title: string, missing?: number) =>
+  ({ focused }: { focused: boolean }) =>
+    <SectionTabLabel title={title} missing={missing} focused={focused} />;
+
 const makeStyles = createN1Styles(t => ({
   hero: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.xl },
-  heroCompact: {
-    flexDirection: 'column',
-    alignItems: 'stretch',
-    gap: t.spacing.lg,
-  },
   heroIdentity: { flex: 1 },
   progress: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.md },
   progressText: { gap: t.spacing.xxs },
@@ -80,7 +127,22 @@ const makeStyles = createN1Styles(t => ({
   },
   placeholderTitle: { width: '40%' },
   placeholderSubtitle: { width: '25%' },
-  compactTabs: { marginBottom: t.spacing.lg },
+  // Phones: the organization above the swipeable section tabs.
+  compactRoot: { flex: 1, backgroundColor: t.colors.surface },
+  compactHero: { padding: t.spacing.lg },
+  compactBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm },
+  tabBar: {
+    backgroundColor: t.colors.surface,
+    elevation: 0,
+    shadowOpacity: 0,
+    borderBottomWidth: t.borderWidth.hairline,
+    borderBottomColor: t.colors.border,
+  },
+  tabItem: { width: 'auto', paddingHorizontal: t.spacing.lg },
+  tabIndicator: {
+    height: t.borderWidth.thick,
+    backgroundColor: t.colors.primary,
+  },
 }));
 
 /**
@@ -92,7 +154,6 @@ export function OrganizationScreen() {
   const styles = useN1Styles(makeStyles);
   const theme = useN1Theme();
   const { isCompact } = useN1Breakpoint();
-  const navigation = useNavigation();
   const { organization, status, error, reload, updateOrganization, saving } =
     useSession();
   const [logoSaving, setLogoSaving] = useState(false);
@@ -114,8 +175,6 @@ export function OrganizationScreen() {
     }
   }, [updateOrganization]);
   useOnSettled(saving, null, () => setLogoSaving(false));
-  const goBack = useCallback(() => navigation.goBack(), [navigation]);
-  const header = <DetailHeader title={S.title} onBack={goBack} />;
 
   const completion = useMemo(
     () => (organization ? organizationCompletion(organization) : null),
@@ -137,19 +196,116 @@ export function OrganizationScreen() {
       tabs={sectionTabs}
       value={tab}
       onChange={changeTab}
-      variant={isCompact ? 'segmented' : 'menu'}
-      scrollable={isCompact}
-      style={isCompact && styles.compactTabs}
+      variant="menu"
       testID="organization-tab"
     />
   );
 
+  // `active`: only the open section's form can be in edit mode.
+  const formFor = (section: OrganizationSection, active: boolean) =>
+    !organization ? (
+      <View style={styles.loading}>
+        <AsyncContent status={status} error={error} onRetry={reload}>
+          {null}
+        </AsyncContent>
+      </View>
+    ) : section === 'gst' ? (
+      <GstSettingsForm
+        organization={organization}
+        editing={active && editing}
+        onEdit={startEdit}
+        onDone={stopEdit}
+      />
+    ) : (
+      <OrganizationSectionForm
+        key={section}
+        section={section}
+        organization={organization}
+        editing={active && editing}
+        onEdit={startEdit}
+        onDone={stopEdit}
+      />
+    );
+
+  // Phones: the organization on top, then Material top tabs: swipe between
+  // the sections or tap a tab, the underline sliding along. Each page
+  // scrolls its own form. No card, and no completion ring.
+  if (isCompact) {
+    return (
+      <AdminScreenBackground.Provider value="surface">
+        <View style={styles.compactRoot} testID="organization-screen">
+          {organization && (
+            <View style={styles.compactHero}>
+              <EntityHero
+                name={organization.name}
+                subtitle={optionLabel(INDUSTRY_OPTIONS, organization.industry)}
+                // Completion beside the code, so the block keeps its height.
+                badges={
+                  <View style={styles.compactBadges}>
+                    <N1Badge label={organization.code} tone="info" />
+                    {completion && (
+                      <N1Badge
+                        label={S.completionShort(completion.percent)}
+                        tone={completion.missing ? 'warning' : 'success'}
+                        testID="organization-completion"
+                      />
+                    )}
+                  </View>
+                }
+                avatarUri={organization.logo?.uri}
+                onAvatarPress={changeLogo}
+                avatarLabel={S.changeLogo}
+                avatarLoading={logoSaving}
+                testID="organization-hero"
+              />
+            </View>
+          )}
+          <SectionTabs.Navigator
+            screenOptions={{
+              tabBarScrollEnabled: true,
+              tabBarStyle: styles.tabBar,
+              tabBarItemStyle: styles.tabItem,
+              tabBarIndicatorStyle: styles.tabIndicator,
+              tabBarPressColor: theme.colors.surfaceMuted,
+            }}
+            // Leaving a section drops its unsaved edits.
+            screenListeners={({ route }) => ({
+              focus: () => changeTab(route.name),
+            })}
+          >
+            {ORGANIZATION_SECTIONS.map(({ key, title }) => {
+              const missing = completion?.missingBySection[key];
+              return (
+                <SectionTabs.Screen
+                  key={key}
+                  name={key}
+                  options={{
+                    title,
+                    tabBarAccessibilityLabel: title,
+                    tabBarButtonTestID: `organization-tab-${key}`,
+                    tabBarLabel: sectionTabLabel(title, missing),
+                  }}
+                >
+                  {() => (
+                    <AdminScreen testID={`organization-${key}`}>
+                      {formFor(key, key === tab)}
+                    </AdminScreen>
+                  )}
+                </SectionTabs.Screen>
+              );
+            })}
+          </SectionTabs.Navigator>
+        </View>
+      </AdminScreenBackground.Provider>
+    );
+  }
+
   return (
-    <AdminScreen header={header} fixed testID="organization-screen">
-      <N1Card radius="sm" style={!isCompact && styles.card}>
+    <AdminScreen fixed testID="organization-screen">
+      <N1Card radius="sm" style={styles.card}>
         {organization && completion ? (
-          <View style={[styles.hero, isCompact && styles.heroCompact]}>
-            <View style={!isCompact && styles.heroIdentity}>
+          <View style={styles.hero}>
+            <View style={styles.heroIdentity}>
               <EntityHero
                 name={organization.name}
                 subtitle={optionLabel(INDUSTRY_OPTIONS, organization.industry)}
@@ -204,40 +360,15 @@ export function OrganizationScreen() {
           </View>
         )}
         <N1Divider spacing="xl" />
-        {isCompact && tabs}
-        <View style={!isCompact && styles.panel}>
-          {!isCompact && <View style={styles.nav}>{tabs}</View>}
-          <ScrollView
+        <View style={styles.panel}>
+          <View style={styles.nav}>{tabs}</View>
+          <KeyboardScrollView
             style={styles.content}
             contentContainerStyle={styles.contentInner}
-            keyboardShouldPersistTaps="handled"
-            scrollEnabled={!isCompact}
             testID={`organization-${tab}`}
           >
-            {!organization ? (
-              <View style={styles.loading}>
-                <AsyncContent status={status} error={error} onRetry={reload}>
-                  {null}
-                </AsyncContent>
-              </View>
-            ) : tab === 'gst' ? (
-              <GstSettingsForm
-                organization={organization}
-                editing={editing}
-                onEdit={startEdit}
-                onDone={stopEdit}
-              />
-            ) : (
-              <OrganizationSectionForm
-                key={tab}
-                section={tab}
-                organization={organization}
-                editing={editing}
-                onEdit={startEdit}
-                onDone={stopEdit}
-              />
-            )}
-          </ScrollView>
+            {formFor(tab, true)}
+          </KeyboardScrollView>
         </View>
       </N1Card>
     </AdminScreen>

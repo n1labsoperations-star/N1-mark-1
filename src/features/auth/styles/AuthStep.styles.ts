@@ -1,13 +1,12 @@
 import { createN1Styles } from '../../../theme';
 
 export const makeAuthStepStyles = createN1Styles(t => ({
-  // Phones: back link pinned to the top, the rest centred in the space below.
+  // Phones: back link, then the step right under it at the top.
   compactRoot: {
     flexGrow: 1,
   },
   compactBody: {
-    flexGrow: 1,
-    justifyContent: 'center',
+    marginTop: t.spacing.xl,
   },
   body: {
     gap: t.spacing.lg,

@@ -1,3 +1,4 @@
+import type { JobCardsStackParamList } from '../jobCards/types';
 import type { DrawerScreenProps } from '@react-navigation/drawer';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type {
@@ -80,6 +81,8 @@ export type OrderFilters = {
 // Stack nested inside the admin drawer's "Orders" item.
 export type OrdersStackParamList = {
   OrdersList: undefined;
+  /** An order's job card; Back returns to the order or the list. */
+  JobCardDetails: JobCardsStackParamList['JobCardDetails'];
   OrderDetails: {
     orderId: string;
     /** Opened from this customer's details: Back returns there. */

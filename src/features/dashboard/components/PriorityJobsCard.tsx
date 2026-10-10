@@ -1,5 +1,11 @@
 import { memo } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import {
   N1Avatar,
   N1Button,
@@ -92,6 +98,7 @@ type Props = {
   onViewAll: () => void;
   /** Fill the parent's height and scroll the list inside the panel. */
   scrollable?: boolean;
+  style?: StyleProp<ViewStyle>;
 };
 
 /** Job cards due soonest, each as a small tile with progress and operator. */
@@ -101,6 +108,7 @@ export const PriorityJobsCard = memo(function PriorityJobsCardComponent({
   onOpenJob,
   onViewAll,
   scrollable = false,
+  style,
 }: Props) {
   const styles = useN1Styles(makeStyles);
   const theme = useN1Theme();
@@ -187,7 +195,7 @@ export const PriorityJobsCard = memo(function PriorityJobsCardComponent({
   );
   return (
     <View
-      style={[styles.card, scrollable && styles.fill]}
+      style={[styles.card, scrollable && styles.fill, style]}
       testID="priority-jobs-card"
     >
       <View style={styles.header}>

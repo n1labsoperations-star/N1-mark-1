@@ -2,12 +2,12 @@ import { useNavigation } from '@react-navigation/native';
 import { useCallback, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import {
+  HeaderSearchBar,
   AdminScreen,
   AsyncContent,
   ListToolbar,
   N1ConfirmDialog,
   N1IconButton,
-  N1PageHeader,
   N1Pagination,
   N1Table,
   N1Text,
@@ -268,9 +268,31 @@ export function JobCardsListScreen() {
   );
 
   return (
-    <AdminScreen testID="job-cards-screen" fixed>
+    <AdminScreen
+      // Phones: search, filter and Add on the black header, under the top
+      // bar that shows this screen's name.
+      header={
+        isCompact ? (
+          <HeaderSearchBar
+            query={query}
+            onQueryChange={setQuery}
+            placeholder={S.search}
+            right={
+              <FilterMenu
+                variant="inverse"
+                groups={filterGroups}
+                value={filters}
+                onApply={applyFilters}
+                testID="job-cards-filter"
+              />
+            }
+          />
+        ) : undefined
+      }
+      testID="job-cards-screen"
+      fixed
+    >
       {/* Wide screens: the title lives in the table's toolbar. */}
-      {isCompact && <N1PageHeader title={S.title} />}
       {isCompact && (
         <StatGrid items={statItems} variant="muted" testID="job-card-stats" />
       )}
@@ -290,28 +312,27 @@ export function JobCardsListScreen() {
           onRowPress={openDetails}
           renderCompactItem={renderCompactItem}
           toolbarTitle={isCompact ? undefined : S.title}
-          toolbar={toolbar}
+          toolbar={isCompact ? undefined : toolbar}
           scrollable={!isCompact}
           emptyText={
             items.length ? COMMON_STRINGS.noResults : COMMON_STRINGS.empty
           }
           footer={
-            (!isCompact || pager.pageCount > 1) && (
-              <N1Pagination
-                summary={COMMON_STRINGS.showing(
-                  pager.shownCount,
-                  pager.total,
-                  S.noun,
-                )}
-                hasPrevious={pager.hasPrevious}
-                hasNext={pager.hasNext}
-                onPrevious={pager.previous}
-                onNext={pager.next}
-                page={pager.page}
-                pageCount={pager.pageCount}
-                onPageChange={pager.goTo}
-              />
-            )
+            // Every page, phones too: after the last card.
+            <N1Pagination
+              summary={COMMON_STRINGS.showing(
+                pager.shownCount,
+                pager.total,
+                S.noun,
+              )}
+              hasPrevious={pager.hasPrevious}
+              hasNext={pager.hasNext}
+              onPrevious={pager.previous}
+              onNext={pager.next}
+              page={pager.page}
+              pageCount={pager.pageCount}
+              onPageChange={pager.goTo}
+            />
           }
           testID="job-cards-table"
         />

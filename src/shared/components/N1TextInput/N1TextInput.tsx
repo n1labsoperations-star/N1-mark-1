@@ -8,6 +8,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { N1Icon, type N1IconName } from '../N1Icon/N1Icon';
+import { useN1Breakpoint } from '../../hooks/useN1Breakpoint';
 import {
   createN1Styles,
   useN1Styles,
@@ -43,13 +44,14 @@ const makeStyles = createN1Styles(t => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: t.spacing.sm,
-    minHeight: t.controlHeight.sm + t.spacing.xs,
+    minHeight: t.fieldHeight.regular,
     paddingHorizontal: t.spacing.md,
     borderRadius: t.radius.sm,
     borderWidth: t.borderWidth.hairline,
     borderColor: t.colors.border,
     backgroundColor: t.colors.surface,
   },
+  fieldCompact: { minHeight: t.fieldHeight.compact },
   multiline: {
     alignItems: 'flex-start',
     paddingVertical: t.spacing.sm,
@@ -103,6 +105,7 @@ export const N1TextInput = React.memo(function N1TextInputComponent({
   const styles = useN1Styles(makeStyles);
   const theme = useN1Theme();
   const labelId = useId();
+  const { isCompact } = useN1Breakpoint();
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(true);
   const editable = !readOnly && !disabled;
@@ -117,6 +120,7 @@ export const N1TextInput = React.memo(function N1TextInputComponent({
       <View
         style={[
           styles.field,
+          isCompact && styles.fieldCompact,
           multiline && styles.multiline,
           variant === 'filled' && styles.filled,
           // Filled fields stay borderless while typing.

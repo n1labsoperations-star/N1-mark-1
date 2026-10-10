@@ -89,7 +89,7 @@ export const USER_STRINGS = {
       pinCodePlaceholder: 'e.g. 600098',
       pinCodeInvalid: 'Enter a 6-digit PIN code',
       country: 'Country',
-      countryPlaceholder: 'e.g. India',
+      countryPlaceholder: 'Select country',
     },
     personalInfo: 'Personal information',
     account: 'Account',

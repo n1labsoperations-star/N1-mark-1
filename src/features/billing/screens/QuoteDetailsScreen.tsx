@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native';
 import {
   AdminScreen,
   AsyncContent,
+  DetailHeader,
   ComingSoon,
   FormFooter,
   FormRow,
@@ -110,6 +111,13 @@ export function QuoteDetailsScreen({
 
   // Back to the customer the quote was opened from, else the Quotes list.
   const goBack = useCallback(() => {
+    // Pushed on another stack (a customer): back to it.
+    const state = navigation.getState();
+    const below = state.routes[state.index - 1];
+    if (below && below.name !== 'BillingHome') {
+      navigation.goBack();
+      return;
+    }
     if (fromCustomerId) {
       navigation.navigate('Customers', {
         screen: 'CustomerDetails',
@@ -164,10 +172,13 @@ export function QuoteDetailsScreen({
     <BillingBackLink label={backLabel} onPress={goBack} testID="quote-back" />
   );
 
+  // Phones: a header with back and the screen's name, in place of the link.
+  const header = <DetailHeader title={Q.title} onBack={goBack} />;
+
   if (!quote || !totals) {
     return (
-      <AdminScreen testID="quote-details-screen">
-        {backLink}
+      <AdminScreen header={header} testID="quote-details-screen">
+        {!isCompact && backLink}
         <AsyncContent status={status} error={error} onRetry={reload}>
           <ComingSoon icon="receipt" title={Q.title} message={Q.notFound} />
         </AsyncContent>
@@ -360,7 +371,8 @@ export function QuoteDetailsScreen({
     <>
       <BillingDetailLayout
         testID="quote-details-screen"
-        back={backLink}
+        header={header}
+        back={!isCompact && backLink}
         title={Q.heading}
         badge={<QuoteStatusBadge status={quote.status} />}
         subtitle={quote.id}

@@ -22,9 +22,23 @@ function leafRoute(path: string) {
 const ADMIN_URLS: [path: string, screen: string, params?: object][] = [
   ['/dashboard', 'DashboardHome'],
   ['/dashboard/users', 'UsersList'],
-  ['/dashboard/users/USR-2', 'UserDetails', { userId: 'USR-2' }],
+  // A job card pushed on the module that opened it keeps that module's URL.
+  ['/dashboard/users/job-cards/1042', 'JobCardDetails', { jobCardId: '1042' }],
+  ['/dashboard/orders/job-cards/1042', 'JobCardDetails', { jobCardId: '1042' }],
+  ['/dashboard/priority-jobs/1042', 'JobCardDetails', { jobCardId: '1042' }],
+  // Employee details: phones swipe between sections, so the leaf is a tab.
+  ['/dashboard/users/USR-2', 'profile'],
+  ['/dashboard/users/USR-2/work', 'work'],
   ['/dashboard/customers', 'CustomersList'],
-  ['/dashboard/customers/CUS-1', 'CustomerDetails', { customerId: 'CUS-1' }],
+  // Customer details: phones swipe between sections, so the leaf is a tab.
+  ['/dashboard/customers/CUS-1', 'info'],
+  ['/dashboard/customers/CUS-1/orders', 'orders'],
+  ['/dashboard/customers/orders/1042', 'OrderDetails', { orderId: '1042' }],
+  [
+    '/dashboard/customers/quotes/QT-2026-0040',
+    'QuoteDetails',
+    { quoteId: 'QT-2026-0040' },
+  ],
   ['/dashboard/orders', 'OrdersList'],
   ['/dashboard/orders/1042', 'OrderDetails', { orderId: '1042' }],
   ['/dashboard/orders/form', 'OrderForm'],
@@ -129,6 +143,22 @@ test.each(CASES)('$path round-trips to the same URL', ({ path }) => {
   const state = getStateFromPath(path, linking.config);
   type PathState = Parameters<typeof getPathFromState>[0];
   expect(getPathFromState(state as PathState, linking.config)).toBe(path);
+});
+
+test('employee details keep the employee id', () => {
+  let state: State = getStateFromPath(
+    '/dashboard/users/USR-2/work',
+    linking.config,
+  ) as State;
+  let details;
+  while (state && !details) {
+    const route = state.routes[state.index ?? state.routes.length - 1];
+    if (route.name === 'UserDetails') {
+      details = route;
+    }
+    state = route.state as State;
+  }
+  expect(details?.params).toEqual({ userId: 'USR-2' });
 });
 
 test('auth screens keep their URLs', () => {

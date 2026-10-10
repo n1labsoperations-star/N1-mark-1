@@ -1,8 +1,12 @@
 import React from 'react';
 import type { ReactNode } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useN1Breakpoint, useN1Styles } from '../../../shared/components';
+import {
+  KeyboardScrollView,
+  useN1Breakpoint,
+  useN1Styles,
+} from '../../../shared/components';
 import { makeAuthLayoutStyles } from '../styles';
 import AuthHero from './AuthHero';
 
@@ -25,13 +29,10 @@ function AuthLayout({ children, footer, wide = false }: Props) {
   if (isCompact) {
     return (
       <SafeAreaView style={styles.compactSafeArea}>
-        <ScrollView
-          contentContainerStyle={styles.compactContent}
-          keyboardShouldPersistTaps="handled"
-        >
+        <KeyboardScrollView contentContainerStyle={styles.compactContent}>
           {children}
           {footer}
-        </ScrollView>
+        </KeyboardScrollView>
       </SafeAreaView>
     );
   }
@@ -39,16 +40,15 @@ function AuthLayout({ children, footer, wide = false }: Props) {
   return (
     <View style={styles.split}>
       <AuthHero />
-      <ScrollView
+      <KeyboardScrollView
         style={styles.formPane}
         contentContainerStyle={styles.formPaneContent}
-        keyboardShouldPersistTaps="handled"
       >
         <View style={[styles.formWidth, wide && styles.wideFormWidth]}>
           {children}
           {footer}
         </View>
-      </ScrollView>
+      </KeyboardScrollView>
     </View>
   );
 }

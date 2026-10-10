@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native';
 import {
   AdminScreen,
   AsyncContent,
+  DetailHeader,
   ComingSoon,
   FormFooter,
   N1Button,
@@ -197,10 +198,13 @@ export function InvoiceDetailsScreen({
     <BillingBackLink label={backLabel} onPress={goBack} testID="invoice-back" />
   );
 
+  // Phones: a header with back and the screen's name, in place of the link.
+  const header = <DetailHeader title={I.title} onBack={goBack} />;
+
   if (!invoice || !totals) {
     return (
-      <AdminScreen testID="invoice-details-screen">
-        {backLink}
+      <AdminScreen header={header} testID="invoice-details-screen">
+        {!isCompact && backLink}
         <AsyncContent status={status} error={error} onRetry={reload}>
           <ComingSoon icon="receipt" title={I.title} message={I.notFound} />
         </AsyncContent>
@@ -430,7 +434,8 @@ export function InvoiceDetailsScreen({
     <>
       <BillingDetailLayout
         testID="invoice-details-screen"
-        back={backLink}
+        header={header}
+        back={!isCompact && backLink}
         title={I.title}
         badge={<InvoiceStatusBadge status={invoice.status} />}
         titleExtra={poAmount}

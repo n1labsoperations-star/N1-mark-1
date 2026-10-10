@@ -1,7 +1,8 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, type ReactNode } from 'react';
 import { View } from 'react-native';
 import {
   EditableSectionHeader,
+  FormFooter,
   FormRow,
   N1DropDown,
   N1Text,
@@ -9,11 +10,13 @@ import {
   createN1Styles,
   useN1Styles,
 } from '../../../shared/components';
+import { COUNTRY_OPTIONS } from '../../../shared/constants';
 import { useForm, useOnSettled, type FormErrors } from '../../../shared/hooks';
 import { isBlank, isPinCode } from '../../../shared/utils';
 import { STATE_OPTIONS, USER_STRINGS } from '../constants';
 import { useUsers } from '../hooks/useUsers';
 import type { AdminUser } from '../types';
+import { COMMON_STRINGS } from '../../../shared/constants';
 
 const D = USER_STRINGS.details;
 const A = D.addressFields;
@@ -51,10 +54,21 @@ type Props = {
   onEdit: () => void;
   /** Cancel, or a successful save: lock the fields again. */
   onDone: () => void;
+  /**
+   * Phones: places the form and its Cancel / Save into a full-screen editor
+   * (a modal sliding up). Without it, the buttons sit beside the title.
+   */
+  layout?: (parts: { form: ReactNode; footer: ReactNode }) => ReactNode;
 };
 
 /** User details → Address details: where the person lives, edited in place. */
-export function UserAddressForm({ user, editing, onEdit, onDone }: Props) {
+export function UserAddressForm({
+  user,
+  editing,
+  onEdit,
+  onDone,
+  layout,
+}: Props) {
   const styles = useN1Styles(makeStyles);
   const { update, saving, saveError } = useUsers();
   const form = useForm<Values>(toValues(user), validate);
@@ -77,13 +91,13 @@ export function UserAddressForm({ user, editing, onEdit, onDone }: Props) {
         city: v.city.trim(),
         state: v.state,
         pinCode: v.pinCode.trim(),
-        country: v.country.trim(),
+        country: v.country,
       }),
     [user.id, update],
   );
 
   const text = (
-    key: 'address' | 'city' | 'pinCode' | 'country',
+    key: 'address' | 'city' | 'pinCode',
     label: string,
     placeholder: string,
     extra?: Partial<React.ComponentProps<typeof N1TextInput>>,
@@ -100,7 +114,7 @@ export function UserAddressForm({ user, editing, onEdit, onDone }: Props) {
     />
   );
 
-  return (
+  const panel = (
     <View style={styles.panel} testID="user-address-form">
       <EditableSectionHeader
         title={D.sections.address}
@@ -112,6 +126,7 @@ export function UserAddressForm({ user, editing, onEdit, onDone }: Props) {
         editLabel={USER_STRINGS.a11y.edit(user.name)}
         editTestID="edit-user-address"
         submitTestID="user-address-submit"
+        actionsInFooter={Boolean(layout)}
       />
       <View style={styles.fields}>
         {text('address', A.address, A.addressPlaceholder, { multiline: true })}
@@ -132,7 +147,15 @@ export function UserAddressForm({ user, editing, onEdit, onDone }: Props) {
             keyboardType: 'number-pad',
             maxLength: 6,
           })}
-          {text('country', A.country, A.countryPlaceholder)}
+          <N1DropDown
+            label={A.country}
+            options={COUNTRY_OPTIONS}
+            value={values.country || null}
+            onChange={bind('country')}
+            placeholder={editing ? A.countryPlaceholder : ''}
+            disabled={locked}
+            testID="user-address-country"
+          />
         </FormRow>
       </View>
       {editing && saveError && (
@@ -142,4 +165,19 @@ export function UserAddressForm({ user, editing, onEdit, onDone }: Props) {
       )}
     </View>
   );
+  if (!layout) {
+    return panel;
+  }
+  return layout({
+    form: panel,
+    footer: (
+      <FormFooter
+        submitLabel={COMMON_STRINGS.save}
+        onSubmit={form.submit(save)}
+        onCancel={onDone}
+        loading={saving}
+        submitTestID="user-address-submit"
+      />
+    ),
+  });
 }

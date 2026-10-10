@@ -2,10 +2,9 @@ import { useNavigation } from '@react-navigation/native';
 import { useCallback, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import {
+  HeaderSearchBar,
   N1Avatar,
   N1Button,
-  N1IconButton,
-  N1PageHeader,
   N1Pagination,
   N1Table,
   N1Text,
@@ -30,13 +29,13 @@ import {
 import { formatCurrency } from '../../../shared/utils';
 import { useOrganizationName } from '../../profile';
 import { CustomerFormModal } from '../components/CustomerFormModal';
-import { CustomerOverview } from '../components/CustomerOverview';
 import { CustomerRow } from '../components/CustomerRow';
 import { DeleteCustomerDialog } from '../components/DeleteCustomerDialog';
 import { CUSTOMER_STRINGS as S } from '../constants';
 import { useCustomers } from '../hooks/useCustomers';
 import type { Customer } from '../types';
 import { customerSearchText, formatAddress, hasAddress } from '../utils';
+import { useTopBarAction } from '../../dashboard/hooks/useTopBarAction';
 
 const makeStyles = createN1Styles(t => ({
   nameCell: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.md },
@@ -139,19 +138,13 @@ export function CustomersListScreen() {
   );
 
   const renderCompactItem = useCallback(
-    (c: Customer) => <CustomerRow customer={c} />,
-    [],
+    (c: Customer) => (
+      <CustomerRow customer={c} onEdit={openEdit} onDelete={requestDelete} />
+    ),
+    [openEdit, requestDelete],
   );
 
-  const addButton = isCompact ? (
-    <N1IconButton
-      icon="plus"
-      variant="primary"
-      accessibilityLabel={S.addA11y}
-      onPress={openCreate}
-      testID="add-customer"
-    />
-  ) : (
+  const addButton = (
     <N1Button
       title={S.add}
       leftIcon="plus"
@@ -164,6 +157,21 @@ export function CustomersListScreen() {
   const firstLoad =
     (status === 'idle' || status === 'loading') && items.length === 0;
 
+  // Phones: Add sits in the top bar, in place of the user's initials.
+  const addAction = useMemo(
+    () =>
+      isCompact
+        ? {
+            icon: 'plus' as const,
+            label: S.addA11y,
+            onPress: openCreate,
+            testID: 'add-customer',
+          }
+        : undefined,
+    [isCompact, openCreate],
+  );
+  useTopBarAction(addAction);
+
   const toolbar = (
     <ListToolbar
       align="end"
@@ -172,14 +180,27 @@ export function CustomersListScreen() {
       onQueryChange={setQuery}
       searchPlaceholder={S.search}
     >
-      {!isCompact && addButton}
+      {addButton}
     </ListToolbar>
   );
 
   return (
-    <AdminScreen testID="customers-screen" fixed>
+    <AdminScreen
+      // Phones: search and filter on the black header, under the top
+      // bar that shows this screen's name.
+      header={
+        isCompact ? (
+          <HeaderSearchBar
+            query={query}
+            onQueryChange={setQuery}
+            placeholder={S.search}
+          />
+        ) : undefined
+      }
+      testID="customers-screen"
+      fixed
+    >
       {/* Wide screens: the title and Add live in the table's toolbar. */}
-      {isCompact && <N1PageHeader title={S.title} right={addButton} />}
       {/* The table shows its own loading state; AsyncContent only takes over
           when the first load fails. */}
       <AsyncContent
@@ -188,11 +209,10 @@ export function CustomersListScreen() {
         onRetry={reload}
         hasData={items.length > 0}
       >
-        {isCompact && <CustomerOverview customerCount={items.length} />}
         <N1Table
           loading={firstLoad}
           toolbarTitle={isCompact ? undefined : S.title}
-          toolbar={toolbar}
+          toolbar={isCompact ? undefined : toolbar}
           scrollable={!isCompact}
           columns={columns}
           data={pager.pageItems}
@@ -203,22 +223,21 @@ export function CustomersListScreen() {
             items.length ? COMMON_STRINGS.noResults : COMMON_STRINGS.empty
           }
           footer={
-            (!isCompact || pager.pageCount > 1) && (
-              <N1Pagination
-                summary={COMMON_STRINGS.showing(
-                  pager.shownCount,
-                  pager.total,
-                  S.noun,
-                )}
-                hasPrevious={pager.hasPrevious}
-                hasNext={pager.hasNext}
-                onPrevious={pager.previous}
-                onNext={pager.next}
-                page={pager.page}
-                pageCount={pager.pageCount}
-                onPageChange={pager.goTo}
-              />
-            )
+            // Every page, phones too: after the last card.
+            <N1Pagination
+              summary={COMMON_STRINGS.showing(
+                pager.shownCount,
+                pager.total,
+                S.noun,
+              )}
+              hasPrevious={pager.hasPrevious}
+              hasNext={pager.hasNext}
+              onPrevious={pager.previous}
+              onNext={pager.next}
+              page={pager.page}
+              pageCount={pager.pageCount}
+              onPageChange={pager.goTo}
+            />
           }
           testID="customers-table"
         />

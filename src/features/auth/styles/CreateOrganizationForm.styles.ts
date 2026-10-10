@@ -20,4 +20,32 @@ export const makeCreateOrganizationFormStyles = createN1Styles(t => ({
   rowItem: {
     flex: 1,
   },
+
+  // Phones: header and submit button stay put while the fields scroll.
+  screen: {
+    flex: 1,
+  },
+  stickyHeader: {
+    paddingHorizontal: t.spacing.lg,
+    paddingTop: t.spacing.none,
+    paddingBottom: t.spacing.lg,
+    borderBottomWidth: t.borderWidth.hairline,
+    borderBottomColor: t.colors.border,
+    backgroundColor: t.colors.surface,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    gap: t.spacing.lg,
+    paddingHorizontal: t.spacing.lg,
+    paddingVertical: t.spacing.xxl,
+  },
+  stickyFooter: {
+    paddingHorizontal: t.spacing.lg,
+    paddingVertical: t.spacing.lg,
+    borderTopWidth: t.borderWidth.hairline,
+    borderTopColor: t.colors.border,
+    backgroundColor: t.colors.surface,
+  },
 }));

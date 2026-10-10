@@ -176,9 +176,12 @@ describe('VerifyCodeScreen', () => {
 });
 
 describe('ResetPasswordScreen', () => {
-  test('has no back link', async () => {
+  test('"Back to log in" returns to Login without saving', async () => {
     const root = await render(<ResetPasswordScreen />, PHONE);
-    expect(allText(root)).not.toContain('Back');
+
+    await press(findText(root, 'Back to log in'));
+
+    expect(mockParent.popTo).toHaveBeenCalledWith('Login');
   });
 
   test('weak or mismatched passwords show errors and stay put', async () => {

@@ -1,21 +1,20 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  N1Avatar,
-  N1IconButton,
-  N1Logo,
-  N1Text,
-  useN1Styles,
-  useN1Theme,
-} from '../../../shared/components';
+import { N1Avatar, N1Text, useN1Styles } from '../../../shared/components';
 import { NAV_STRINGS } from '../../../shared/constants';
+import { useSession } from '../../profile';
 import { ORGANIZATION_STRINGS } from '../../profile/organization';
 import { CURRENT_USER } from '../constants';
 import { makeTopBarStyles } from '../styles';
+import type { TopBarAction } from '../types';
+import CompactTopBar from './CompactTopBar';
 
 type Props = {
   compact: boolean;
+  /** Phones: a screen name in place of the greeting, e.g. "My profile". */
+  title?: string;
+  /** Phones: an action in place of the user's initials. */
+  action?: TopBarAction;
   onMenuPress: () => void;
   /** Opens My profile from the signed-in user. */
   onProfilePress: () => void;
@@ -26,48 +25,29 @@ type Props = {
 
 /**
  * Wide screens: organization name and the signed-in user.
- * Phones: menu button, logo and the user's avatar.
+ * Phones: CompactTopBar, the user's greeting and the menu.
  */
 function TopBar({
   compact,
+  title,
+  action,
   onMenuPress,
   onProfilePress,
   organizationName,
   onOrganizationPress,
 }: Props) {
   const styles = useN1Styles(makeTopBarStyles);
-  const theme = useN1Theme();
-  const insets = useSafeAreaInsets();
+  const { shellUser } = useSession();
 
   if (compact) {
     return (
-      <View
-        style={[
-          styles.bar,
-          styles.compactBar,
-          { paddingTop: insets.top + theme.spacing.md },
-        ]}
-      >
-        <View style={styles.left}>
-          <N1IconButton
-            icon="menu"
-            variant="inverse"
-            size="sm"
-            accessibilityLabel="Open menu"
-            onPress={onMenuPress}
-          />
-          <N1Logo size="sm" color="inverse" />
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={NAV_STRINGS.openProfile}
-          onPress={onProfilePress}
-          style={({ pressed }) => pressed && styles.pressed}
-          testID="open-profile"
-        >
-          <N1Avatar name={CURRENT_USER.name} size="sm" tone="neutral" />
-        </Pressable>
-      </View>
+      <CompactTopBar
+        userName={shellUser?.name ?? CURRENT_USER.name}
+        title={title}
+        action={action}
+        onMenuPress={onMenuPress}
+        onProfilePress={onProfilePress}
+      />
     );
   }
 

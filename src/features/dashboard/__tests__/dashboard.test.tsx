@@ -90,10 +90,18 @@ describe('DashboardNavigation', () => {
     expect(allText(root)).not.toContain('MAIN MENU');
   });
 
-  test('phones show the short menu, the user card and a menu button', async () => {
+  test('phones show the full menu, the user card and a menu button', async () => {
     const root = await renderDashboard(PHONE);
 
-    expect(menuLinks(root)).toEqual(['Dashboard', 'Employees', 'Orders']);
+    expect(menuLinks(root)).toEqual([
+      'Dashboard',
+      'Employees',
+      'Customers',
+      'Orders',
+      'Job Cards',
+      'Machines',
+      'Billing',
+    ]);
     expect(allText(root)).toContain('Admin · ABC Engineering');
     expect(byLabel(root, 'Open menu')).toBeDefined();
     expect(byLabel(root, 'Close menu')).toBeDefined();
