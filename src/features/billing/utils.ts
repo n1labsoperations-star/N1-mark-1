@@ -18,10 +18,14 @@ import type {
 } from './types';
 
 /** Pieces × minutes per piece × rate per minute, to the rupee. */
+/** (pieces × running time + setup time) × rate: setup is once per batch. */
 export const lineAmount = (
-  item: Pick<LineItem, 'minutesPerPiece' | 'ratePerMinute'>,
+  item: Pick<LineItem, 'minutesPerPiece' | 'setupMinutes' | 'ratePerMinute'>,
   quantity: number,
-) => Math.round(quantity * item.minutesPerPiece * item.ratePerMinute);
+) =>
+  Math.round(
+    (quantity * item.minutesPerPiece + item.setupMinutes) * item.ratePerMinute,
+  );
 
 /**
  * GST is charged on the subtotal after discount, at the document's rate:
@@ -66,6 +70,7 @@ export const toDraft = (item: LineItem): LineItemDraft => ({
   operation: item.operation,
   description: item.description,
   minutes: String(item.minutesPerPiece),
+  setup: String(item.setupMinutes),
   rate: String(Number(item.ratePerMinute.toFixed(2))),
   exactRate: item.ratePerMinute,
 });
@@ -75,6 +80,7 @@ export const fromDraft = (draft: LineItemDraft): LineItem => ({
   operation: draft.operation.trim(),
   description: draft.description.trim(),
   minutesPerPiece: toNumber(draft.minutes),
+  setupMinutes: toNumber(draft.setup),
   ratePerMinute:
     draft.exactRate !== undefined &&
     draft.rate === String(Number(draft.exactRate.toFixed(2)))
@@ -87,6 +93,7 @@ export const isEmptyDraft = (d: LineItemDraft) =>
   !d.operation.trim() &&
   !d.description.trim() &&
   !toNumber(d.minutes) &&
+  !toNumber(d.setup) &&
   !toNumber(d.rate);
 
 let draftCounter = 0;
@@ -97,13 +104,17 @@ export const newDraft = (): LineItemDraft => {
     operation: '',
     description: '',
     minutes: '',
+    setup: '',
     rate: '',
   };
 };
 
-/** "150 pcs × 2 min" */
-export const timeQtyLabel = (item: LineItem, quantity: number) =>
-  BILLING_STRINGS.lineItems.perPiece(quantity, item.minutesPerPiece);
+/** "2 min": the operation's running time. */
+export const runningTimeLabel = (item: LineItem) =>
+  BILLING_STRINGS.lineItems.minutes(item.minutesPerPiece);
+/** "15 min": the operation's one-off setup time. */
+export const setupTimeLabel = (item: LineItem) =>
+  BILLING_STRINGS.lineItems.minutes(item.setupMinutes);
 
 /** "₹26.67/min" */
 export const rateLabel = (item: LineItem) =>

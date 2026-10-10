@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { View } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
 import {
   createN1Styles,
@@ -35,8 +35,11 @@ const makeStyles = createN1Styles(t => ({
 /** Simple technical-drawing thumbnail for the order screen. */
 export const DrawingPreview = memo(function DrawingPreviewComponent({
   drawingNumber,
+  style,
 }: {
   drawingNumber: string;
+  /** e.g. a smaller box for a thumbnail. */
+  style?: StyleProp<ViewStyle>;
 }) {
   const styles = useN1Styles(makeStyles);
   const { colors } = useN1Theme();
@@ -48,7 +51,7 @@ export const DrawingPreview = memo(function DrawingPreviewComponent({
   const dimX = PART.x + PART.w + 12;
   return (
     <View
-      style={styles.box}
+      style={[styles.box, style]}
       accessible
       accessibilityRole="image"
       accessibilityLabel={ORDER_STRINGS.details.drawingA11y(drawingNumber)}

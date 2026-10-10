@@ -107,6 +107,7 @@ describe('summarizePeriod', () => {
           operation: 'Turning',
           description: '',
           minutesPerPiece: 1,
+          setupMinutes: 0,
           ratePerMinute: rate,
         },
       ],
@@ -115,15 +116,15 @@ describe('summarizePeriod', () => {
     ({ id, createdAt: createdAt.toISOString() } as unknown as WorkOrder);
 
   const thisWeekPaid = invoice('a', new Date(2026, 9, 14), 'paid', 100);
-  const thisMonthUnpaid = invoice('b', new Date(2026, 9, 3), 'pending', 200);
-  const thisYearUnpaid = invoice('c', new Date(2026, 2, 10), 'pending', 400);
-  const draft = invoice('d', new Date(2026, 9, 15), 'draft', 800);
-  const lastYear = invoice('e', new Date(2025, 11, 30), 'pending', 1600);
+  const thisMonthUnpaid = invoice('b', new Date(2026, 9, 3), 'new', 200);
+  const thisYearUnpaid = invoice('c', new Date(2026, 2, 10), 'overdue', 400);
+  const thisWeekNew = invoice('d', new Date(2026, 9, 15), 'new', 800);
+  const lastYear = invoice('e', new Date(2025, 11, 30), 'new', 1600);
   const invoices = [
     thisWeekPaid,
     thisMonthUnpaid,
     thisYearUnpaid,
-    draft,
+    thisWeekNew,
     lastYear,
   ];
   const total = (...list: Invoice[]) =>
@@ -136,24 +137,24 @@ describe('summarizePeriod', () => {
     order('4', new Date(2025, 5, 1)),
   ];
 
-  test('week: only what happened since Monday; drafts are not billed', () => {
+  test('week: only what happened since Monday; new bills count as billed', () => {
     expect(summarizePeriod(invoices, orders, 'week', NOW)).toEqual({
-      billed: total(thisWeekPaid),
-      outstanding: 0,
+      billed: total(thisWeekPaid, thisWeekNew),
+      outstanding: total(thisWeekNew),
       orders: 1,
     });
   });
   test('month widens to the 1st; outstanding is the unpaid part', () => {
     expect(summarizePeriod(invoices, orders, 'month', NOW)).toEqual({
-      billed: total(thisWeekPaid, thisMonthUnpaid),
-      outstanding: total(thisMonthUnpaid),
+      billed: total(thisWeekPaid, thisMonthUnpaid, thisWeekNew),
+      outstanding: total(thisMonthUnpaid, thisWeekNew),
       orders: 2,
     });
   });
   test('year covers since 1 January, never last year', () => {
     expect(summarizePeriod(invoices, orders, 'year', NOW)).toEqual({
-      billed: total(thisWeekPaid, thisMonthUnpaid, thisYearUnpaid),
-      outstanding: total(thisMonthUnpaid, thisYearUnpaid),
+      billed: total(thisWeekPaid, thisMonthUnpaid, thisYearUnpaid, thisWeekNew),
+      outstanding: total(thisMonthUnpaid, thisYearUnpaid, thisWeekNew),
       orders: 3,
     });
   });

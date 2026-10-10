@@ -42,11 +42,6 @@ const ADMIN_URLS: [path: string, screen: string, params?: object][] = [
     { invoiceId: 'INV-2026-0125' },
   ],
   [
-    '/dashboard/billing/invoices/INV-2026-0125/edit',
-    'InvoiceEdit',
-    { invoiceId: 'INV-2026-0125' },
-  ],
-  [
     '/dashboard/billing/quotes/QT-2026-0042',
     'QuoteDetails',
     { quoteId: 'QT-2026-0042' },

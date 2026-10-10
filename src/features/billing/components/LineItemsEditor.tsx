@@ -1,5 +1,10 @@
-import { memo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { memo, useCallback, useRef } from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  type ScrollViewInstance,
+} from 'react-native';
 import {
   N1Button,
   N1IconButton,
@@ -20,8 +25,9 @@ const L = BILLING_STRINGS.lineItems;
 // Relative column widths, shared by the header and every row.
 const COLS = StyleSheet.create({
   operation: { flex: 1.2 },
-  description: { flex: 2.6 },
-  minutes: { flex: 1.2 },
+  description: { flex: 2.2 },
+  minutes: { flex: 1.1 },
+  setup: { flex: 1.1 },
   rate: { flex: 1.2 },
   amount: { flex: 0.9 },
 });
@@ -33,6 +39,7 @@ const makeStyles = createN1Styles(t => ({
     borderColor: t.colors.border,
     overflow: 'hidden',
   },
+  fill: { flex: 1, minHeight: 0 },
   header: {
     flexDirection: 'row',
     gap: t.spacing.md,
@@ -124,12 +131,23 @@ const LineItemRow = memo(function LineItemRowComponent({
       value={draft.minutes}
       onChangeText={v => onChange(draft.id, 'minutes', v)}
       keyboardType="decimal-pad"
-      accessibilityLabel={L.timeQty}
-      rightElement={
-        compact ? <Unit text={`${L.minutesUnit} × ${quantity}`} /> : undefined
-      }
+      accessibilityLabel={L.runningTime}
+      rightElement={compact ? <Unit text={L.minutesUnit} /> : undefined}
       containerStyle={compact ? styles.grow : COLS.minutes}
       testID={`line-${draft.id}-minutes`}
+    />
+  );
+  const setup = (
+    <N1TextInput
+      value={draft.setup}
+      onChangeText={v => onChange(draft.id, 'setup', v)}
+      keyboardType="decimal-pad"
+      accessibilityLabel={L.setupTime}
+      rightElement={
+        compact ? <Unit text={`${L.minutesUnit} ${L.setupUnit}`} /> : undefined
+      }
+      containerStyle={compact ? styles.grow : COLS.setup}
+      testID={`line-${draft.id}-setup`}
     />
   );
   const rate = (
@@ -154,8 +172,9 @@ const LineItemRow = memo(function LineItemRowComponent({
         {description}
         <View style={styles.cardRow}>
           {minutes}
-          {rate}
+          {setup}
         </View>
+        {rate}
         <View style={styles.amountRow}>
           <N1Text variant="small" color="secondary">
             {L.amount}
@@ -171,6 +190,7 @@ const LineItemRow = memo(function LineItemRowComponent({
       {operation}
       {description}
       {minutes}
+      {setup}
       {rate}
       <N1Text style={COLS.amount} testID={`line-${draft.id}-amount`}>
         {amount}
@@ -180,13 +200,35 @@ const LineItemRow = memo(function LineItemRowComponent({
   );
 });
 
-type Props = { controller: LineItemsController; quantity: number };
+type Props = {
+  controller: LineItemsController;
+  quantity: number;
+  /** Wide screens: fill the parent's height; only the rows scroll. */
+  scrollable?: boolean;
+};
 
-/** Editable process operations (Edit invoice, Add quote). */
-export function LineItemsEditor({ controller, quantity }: Props) {
+/** Editable process operations (invoice edit mode, Add quote). */
+export function LineItemsEditor({
+  controller,
+  quantity,
+  scrollable = false,
+}: Props) {
   const styles = useN1Styles(makeStyles);
   const { isCompact } = useN1Breakpoint();
   const { drafts, change, remove, add } = controller;
+  // Add row scrolls to the new row once it has been laid out.
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  const scrollOnGrow = useRef(false);
+  const addRow = useCallback(() => {
+    scrollOnGrow.current = scrollable;
+    add();
+  }, [add, scrollable]);
+  const onContentSizeChange = useCallback(() => {
+    if (scrollOnGrow.current) {
+      scrollOnGrow.current = false;
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }
+  }, []);
 
   const rows = drafts.map(d => (
     <LineItemRow
@@ -198,13 +240,13 @@ export function LineItemsEditor({ controller, quantity }: Props) {
       onRemove={remove}
     />
   ));
-  const addRow = (
+  const addRowButton = (
     <N1Button
       title={L.addRow}
       leftIcon="plus"
       variant="ghost"
       size="sm"
-      onPress={add}
+      onPress={addRow}
       testID="add-line-item"
     />
   );
@@ -228,23 +270,43 @@ export function LineItemsEditor({ controller, quantity }: Props) {
   const headers = [
     [L.operation, COLS.operation],
     [L.description, COLS.description],
-    [L.minutesHeader(quantity), COLS.minutes],
+    [L.minutesHeader, COLS.minutes],
+    [L.setupHeader, COLS.setup],
     [L.rateHeader, COLS.rate],
     [L.amount, COLS.amount],
   ] as const;
 
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, scrollable && styles.fill]}>
       <View style={styles.header}>
         {headers.map(([title, style]) => (
-          <N1Text key={title} variant="overline" style={style}>
+          // Same small labels as the read-only table.
+          <N1Text
+            key={title}
+            variant="caption"
+            weight="semiBold"
+            color="secondary"
+            style={style}
+          >
             {title}
           </N1Text>
         ))}
         <View style={styles.removeCell} />
       </View>
-      {rows}
-      <View style={styles.footer}>{addRow}</View>
+      {scrollable ? (
+        <ScrollView
+          ref={scrollRef}
+          style={styles.fill}
+          onContentSizeChange={onContentSizeChange}
+          keyboardShouldPersistTaps="handled"
+          testID="line-items-editor-scroll"
+        >
+          {rows}
+        </ScrollView>
+      ) : (
+        rows
+      )}
+      <View style={styles.footer}>{addRowButton}</View>
     </View>
   );
 }

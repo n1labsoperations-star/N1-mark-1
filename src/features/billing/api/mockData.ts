@@ -8,6 +8,7 @@ const SHAFT_OPERATIONS: LineItem[] = [
     operation: 'Facing',
     description: 'OD facing both ends',
     minutesPerPiece: 2,
+    setupMinutes: 0,
     ratePerMinute: 30,
   },
   {
@@ -15,6 +16,7 @@ const SHAFT_OPERATIONS: LineItem[] = [
     operation: 'Turning',
     description: 'Turn to ⌀28 mm',
     minutesPerPiece: 5,
+    setupMinutes: 0,
     ratePerMinute: 20,
   },
   {
@@ -22,6 +24,7 @@ const SHAFT_OPERATIONS: LineItem[] = [
     operation: 'Drilling',
     description: 'Drill ⌀10 mm through',
     minutesPerPiece: 2,
+    setupMinutes: 0,
     ratePerMinute: 80 / 3,
   },
   {
@@ -29,7 +32,54 @@ const SHAFT_OPERATIONS: LineItem[] = [
     operation: 'Grinding',
     description: 'Finish grind OD',
     minutesPerPiece: 2,
+    setupMinutes: 0,
     ratePerMinute: 80 / 3,
+  },
+];
+
+// INV-2026-0125: the shaft route plus finishing steps, so its operations run
+// long enough to scroll inside the invoice card.
+const SHAFT_FULL_OPERATIONS: LineItem[] = [
+  ...SHAFT_OPERATIONS,
+  {
+    id: 'op5',
+    operation: 'Chamfering',
+    description: 'Chamfer both ends 1 × 45°',
+    minutesPerPiece: 1,
+    setupMinutes: 0,
+    ratePerMinute: 20,
+  },
+  {
+    id: 'op6',
+    operation: 'Threading',
+    description: 'Thread M24 × 1.5 one end',
+    minutesPerPiece: 2,
+    setupMinutes: 0,
+    ratePerMinute: 30,
+  },
+  {
+    id: 'op7',
+    operation: 'Keyway milling',
+    description: 'Mill 8 mm keyway',
+    minutesPerPiece: 3,
+    setupMinutes: 0,
+    ratePerMinute: 20,
+  },
+  {
+    id: 'op8',
+    operation: 'Deburring',
+    description: 'Deburr all edges',
+    minutesPerPiece: 1,
+    setupMinutes: 0,
+    ratePerMinute: 10,
+  },
+  {
+    id: 'op9',
+    operation: 'Inspection',
+    description: 'Final dimensional check',
+    minutesPerPiece: 1,
+    setupMinutes: 0,
+    ratePerMinute: 10,
   },
 ];
 
@@ -39,6 +89,7 @@ const BRACKET_OPERATIONS: LineItem[] = [
     operation: 'Cutting',
     description: 'Saw cut to length',
     minutesPerPiece: 1,
+    setupMinutes: 0,
     ratePerMinute: 25,
   },
   {
@@ -46,6 +97,7 @@ const BRACKET_OPERATIONS: LineItem[] = [
     operation: 'Milling',
     description: 'Face and slot',
     minutesPerPiece: 4,
+    setupMinutes: 0,
     ratePerMinute: 30,
   },
   {
@@ -53,6 +105,7 @@ const BRACKET_OPERATIONS: LineItem[] = [
     operation: 'Welding',
     description: 'Tack and full weld',
     minutesPerPiece: 3,
+    setupMinutes: 0,
     ratePerMinute: 35,
   },
 ];
@@ -63,6 +116,7 @@ const FLANGE_OPERATIONS: LineItem[] = [
     operation: 'Turning',
     description: 'Face and bore',
     minutesPerPiece: 6,
+    setupMinutes: 0,
     ratePerMinute: 22,
   },
   {
@@ -70,15 +124,18 @@ const FLANGE_OPERATIONS: LineItem[] = [
     operation: 'Drilling',
     description: 'PCD holes ×6',
     minutesPerPiece: 3,
+    setupMinutes: 0,
     ratePerMinute: 25,
   },
 ];
 
 type InvoiceSeed = Omit<
   Invoice,
-  'discount' | 'notes' | 'lineItems' | 'gstRate' | 'quoteId'
+  'discount' | 'notes' | 'lineItems' | 'gstRate' | 'quoteId' | 'poAmount'
 > &
-  Partial<Pick<Invoice, 'discount' | 'notes' | 'gstRate' | 'quoteId'>> & {
+  Partial<
+    Pick<Invoice, 'discount' | 'notes' | 'gstRate' | 'quoteId' | 'poAmount'>
+  > & {
     lineItems?: LineItem[];
   };
 
@@ -89,6 +146,7 @@ const invoice = (seed: InvoiceSeed): Invoice => ({
   discount: 0,
   gstRate: SEED_GST_RATE,
   quoteId: null,
+  poAmount: null,
   notes: '',
   lineItems: SHAFT_OPERATIONS,
   ...seed,
@@ -104,7 +162,10 @@ export const MOCK_INVOICES: Invoice[] = [
     routeCard: 'RC-2225',
     partName: 'Machined Shaft',
     quantity: 150,
-    status: 'draft',
+    status: 'new',
+    lineItems: SHAFT_FULL_OPERATIONS,
+    // The customer's purchase order value.
+    poAmount: 70000,
     issuedAt: isoAgo(DAY_MS),
   }),
   invoice({
@@ -116,6 +177,8 @@ export const MOCK_INVOICES: Invoice[] = [
     quantity: 35,
     status: 'paid',
     lineItems: BRACKET_OPERATIONS,
+    // The customer's purchase order value.
+    poAmount: 10000,
     issuedAt: isoAgo(3 * DAY_MS),
   }),
   invoice({
@@ -137,6 +200,8 @@ export const MOCK_INVOICES: Invoice[] = [
     quantity: 132,
     status: 'overdue',
     lineItems: FLANGE_OPERATIONS,
+    // The customer's purchase order value.
+    poAmount: 30000,
     issuedAt: isoAgo(40 * DAY_MS),
   }),
   invoice({
@@ -157,7 +222,7 @@ export const MOCK_INVOICES: Invoice[] = [
     routeCard: 'RC-2207',
     partName: 'Housing',
     quantity: 78,
-    status: 'pending',
+    status: 'new',
     issuedAt: isoAgo(10 * DAY_MS),
   }),
   invoice({
@@ -178,7 +243,7 @@ export const MOCK_INVOICES: Invoice[] = [
     routeCard: 'RC-2201',
     partName: 'Bracket',
     quantity: 120,
-    status: 'pending',
+    status: 'new',
     lineItems: BRACKET_OPERATIONS,
     issuedAt: isoAgo(15 * DAY_MS),
   }),
@@ -269,7 +334,7 @@ export const MOCK_QUOTES: Quote[] = [
   quote({
     id: 'QT-2026-0041',
     customerName: 'Sri Metal Works',
-    status: 'accepted',
+    status: 'sent',
     partName: 'Bracket',
     quantity: 80,
     material: 'MS',
@@ -279,14 +344,14 @@ export const MOCK_QUOTES: Quote[] = [
   quote({
     id: 'QT-2026-0040',
     customerName: 'Acme Metalworks',
-    status: 'accepted',
+    status: 'sent',
     quantity: 220,
     createdAt: isoAgo(4 * DAY_MS),
   }),
   quote({
     id: 'QT-2026-0039',
     customerName: 'Bright Steel Co.',
-    status: 'rejected',
+    status: 'sent',
     partName: 'Flange',
     quantity: 100,
     material: 'SS304',
@@ -315,14 +380,14 @@ export const MOCK_QUOTES: Quote[] = [
   quote({
     id: 'QT-2026-0036',
     customerName: 'Meridian Components',
-    status: 'accepted',
+    status: 'sent',
     quantity: 40,
     createdAt: isoAgo(11 * DAY_MS),
   }),
   quote({
     id: 'QT-2026-0035',
     customerName: 'Bright Steel Co.',
-    status: 'rejected',
+    status: 'sent',
     partName: 'Flange',
     quantity: 75,
     material: 'SS304',

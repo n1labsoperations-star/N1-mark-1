@@ -144,12 +144,6 @@ export {
 } from './N1TimelineItem';
 export { N1ScanFrame, type N1ScanFrameProps } from './N1ScanFrame';
 export {
-  N1QrCode,
-  qrCodePath,
-  toUtf8Bytes,
-  type N1QrCodeProps,
-} from './N1QrCode';
-export {
   N1QrScanner,
   useCameraAccess,
   type CameraAccess,

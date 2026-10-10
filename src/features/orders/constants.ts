@@ -44,8 +44,6 @@ export const ORDER_STRINGS = {
   /** Printed pages: the drawing sheet and document sheets. */
   print: {
     drawingJob: (heading: string) => `Drawing · ${heading}`,
-    failedTitle: "Couldn't print",
-    failed: 'The print dialog could not be opened. Please try again.',
   },
   details: {
     title: 'Order details',
@@ -66,7 +64,12 @@ export const ORDER_STRINGS = {
     view: (name: string) => `View ${name}`,
     printFile: (name: string) => `Print ${name}`,
     viewDrawing: 'View drawing',
+    viewDrawingOf: (no: string) => `View drawing ${no}`,
+    noDrawing: 'No drawing attached',
     drawingTitle: (no: string) => `Drawing ${no}`,
+    orderQr: 'Order QR',
+    orderQrA11y: (workOrder: string) => `QR code for ${workOrder}`,
+    orderQrFile: (id: string) => `WO-${id}-QR.png`,
     print: 'Print',
     printAction: 'Printing documents',
     downloadDocument: 'Download',
@@ -86,6 +89,7 @@ export const ORDER_STRINGS = {
     backToOrders: 'Back to orders',
     backToCustomer: 'Back to customer',
     backToJobCard: 'Back to job card',
+    backToInvoice: 'Back to invoice',
     tabs: {
       details: 'Order details',
       material: 'Raw material',
@@ -106,6 +110,9 @@ export const ORDER_STRINGS = {
     openJobCard: (id: string) => `Open job card WO #${id}`,
     overview: 'Overview',
     dispatch: 'Dispatch',
+    billingSection: 'Quotation & billing',
+    quotation: 'Quotation',
+    billing: 'Billing',
     description: 'Description',
     customer: 'Customer details',
     viewCustomer: 'View customer',

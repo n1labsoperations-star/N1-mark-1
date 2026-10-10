@@ -88,12 +88,6 @@ export const scanner = {
   lineHeight: 2,
 } as const;
 
-/** Generated QR codes: rendered size and the light margin (in modules) scanners need. */
-export const qrCode = {
-  size: 128,
-  quietZone: 2,
-} as const;
-
 /** Numbered circles in a process flow. */
 export const stepNumberSize = 26;
 

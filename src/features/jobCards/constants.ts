@@ -76,28 +76,29 @@ export const JOB_CARD_STRINGS = {
       employee: 'Back to employee',
     },
     tabs: { order: 'Order details', machining: 'Machining', qc: 'QC' },
-    jobSection: 'Job',
     orderSection: 'Order',
     order: {
       due: (date: string) => `Due ${date}`,
       open: (id: string) => `Open order WO #${id}`,
     },
-    /** The job's details on the Order details tab. */
+    /** The job's details on the Machining tab, above the route card. */
     info: {
-      material: 'Material',
-      priority: 'Priority',
       due: 'Due date',
       qty: 'Quantity',
       part: 'Part',
-      drawing: 'Drawing',
-      source: 'Material source',
       materialQc: 'Material QC',
-      quotation: 'Quotation',
-      billing: 'Billing',
     },
     start: 'Start Operation',
     pause: 'Pause',
     complete: 'Complete',
+    completeFlow: {
+      title: 'Complete the whole flow?',
+      message: (steps: number) =>
+        `This marks the ${steps} remaining ${
+          steps === 1 ? 'step' : 'steps'
+        } as completed and moves the job to final QC. Completed steps can't be changed.`,
+      confirm: 'Complete all',
+    },
     dispatch: 'Generate Dispatch',
     priority: 'Priority:',
     due: 'Due:',
@@ -187,9 +188,6 @@ export const JOB_OPERATIONS = [
 export const OPERATION_OPTIONS: N1DropDownOption<string>[] = JOB_OPERATIONS.map(
   value => ({ value, label: value }),
 );
-
-/** Width of the drawing thumbnail on a job card's Order details tab. */
-export const DRAWING_THUMB_WIDTH = 280;
 
 /** Steps a new flow starts with (the Create flow design shows three). */
 export const NEW_FLOW_STEPS = 3;

@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import {
   FilterMenu,
   N1Button,
+  N1ConfirmDialog,
   N1IconButton,
   N1Pagination,
   N1Table,
@@ -21,17 +22,21 @@ import {
   StatGrid,
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
-import { useListFilter, usePagination } from '../../../shared/hooks';
-import { notifyUnavailable } from '../../../shared/utils';
+import {
+  useConfirmDelete,
+  useListFilter,
+  usePagination,
+} from '../../../shared/hooks';
+import { formatCurrency } from '../../../shared/utils';
 import { BILLING_STRINGS, QUOTE_STATUS_OPTIONS } from '../constants';
 import { useInvoices, useQuoteStats, useQuotes } from '../hooks/useBilling';
 import { isQuoteMapped } from '../workflow';
-import { useConvertToOrder } from '../hooks/useBillingWorkflow';
 import type { Quote, QuoteFilters } from '../types';
 import {
   INITIAL_QUOTE_FILTERS,
   matchesQuoteFilters,
   quoteSearchText,
+  quoteTotal,
 } from '../utils';
 import { QuoteStatusBadge } from './BillingBadges';
 import { QuoteCard } from './BillingCards';
@@ -50,10 +55,12 @@ type Props = {
 export function QuotesTab({ toolbarStart }: Props) {
   const styles = useN1Styles(makeStyles);
   const navigation = useNavigation<BillingNavigation>();
-  const toOrder = useConvertToOrder();
   const { items: invoices } = useInvoices();
   const { isCompact } = useN1Breakpoint();
-  const { items, status, error, reload } = useQuotes();
+  const { items, status, error, reload, remove, deletingId, deleteError } =
+    useQuotes();
+  const deletion = useConfirmDelete<Quote>(remove, deletingId, deleteError);
+  const requestDelete = deletion.request;
   const stats = useQuoteStats();
   const { query, setQuery, filters, setFilter, filtered } = useListFilter(
     items,
@@ -89,31 +96,26 @@ export function QuotesTab({ toolbarStart }: Props) {
     (q: Quote) => navigation.navigate('QuoteDetails', { quoteId: q.id }),
     [navigation],
   );
-  const exportList = useCallback(
-    () => notifyUnavailable(BILLING_STRINGS.exportAction),
-    [],
+  // Edit opens the quote with its fields already editable.
+  const edit = useCallback(
+    (q: Quote) =>
+      navigation.navigate('QuoteDetails', { quoteId: q.id, edit: true }),
+    [navigation],
   );
 
   const statItems = useMemo(
     () => [
       { key: 'total', label: S.stats.total, value: stats.total },
       {
-        key: 'accepted',
-        label: S.stats.accepted,
-        value: stats.accepted,
-        tone: 'success' as const,
+        key: 'draft',
+        label: S.stats.draft,
+        value: stats.draft,
       },
       {
-        key: 'pending',
-        label: S.stats.pending,
-        value: stats.pending,
-        tone: 'warning' as const,
-      },
-      {
-        key: 'rejected',
-        label: S.stats.rejected,
-        value: stats.rejected,
-        tone: 'danger' as const,
+        key: 'sent',
+        label: S.stats.sent,
+        value: stats.sent,
+        tone: 'info' as const,
       },
     ],
     [stats],
@@ -128,6 +130,15 @@ export function QuotesTab({ toolbarStart }: Props) {
       },
       { key: 'customerName', title: S.columns.customer, flex: 2 },
       {
+        key: 'amount',
+        title: S.columns.amount,
+        render: q => (
+          <N1Text weight="bold" testID={`quote-amount-${q.id}`}>
+            {formatCurrency(quoteTotal(q))}
+          </N1Text>
+        ),
+      },
+      {
         key: 'status',
         title: S.columns.status,
         render: q => <QuoteStatusBadge status={q.status} />,
@@ -139,27 +150,32 @@ export function QuotesTab({ toolbarStart }: Props) {
         render: q => (
           <View style={styles.actions}>
             <N1IconButton
-              icon="eye"
+              icon="edit"
+              variant="primary"
               size="sm"
-              accessibilityLabel={BILLING_STRINGS.a11y.view(q.id)}
-              onPress={() => view(q)}
+              accessibilityLabel={BILLING_STRINGS.a11y.edit(q.id)}
+              onPress={() => edit(q)}
+              testID={`edit-${q.id}`}
             />
-            {!isQuoteMapped(q, invoices) && (
-              <N1IconButton
-                icon="package"
-                variant="primary"
-                size="sm"
-                accessibilityLabel={S.convertA11y(q.id)}
-                disabled={toOrder.convertingId !== null}
-                onPress={() => toOrder.convert(q)}
-                testID={`convert-${q.id}`}
-              />
-            )}
+            {/* Billed or converted quotes stay: an invoice or order uses them. */}
+            <N1IconButton
+              icon="trash"
+              variant="danger"
+              size="sm"
+              accessibilityLabel={
+                isQuoteMapped(q, invoices)
+                  ? S.deleteLocked(q.id)
+                  : BILLING_STRINGS.a11y.delete(q.id)
+              }
+              disabled={isQuoteMapped(q, invoices)}
+              onPress={() => requestDelete(q)}
+              testID={`delete-${q.id}`}
+            />
           </View>
         ),
       },
     ],
-    [view, styles, toOrder, invoices],
+    [edit, styles, invoices, requestDelete],
   );
 
   const renderCompactItem = useCallback(
@@ -184,24 +200,15 @@ export function QuotesTab({ toolbarStart }: Props) {
         onApply={applyFilters}
         testID="quotes-filter"
       />
+      {/* Phones keep Create in the page header. */}
       {!isCompact && (
-        <>
-          <N1Button
-            title={BILLING_STRINGS.export}
-            leftIcon="download"
-            variant="secondary"
-            size="sm"
-            onPress={exportList}
-          />
-          {/* Phones keep Create in the page header. */}
-          <N1Button
-            title={S.create}
-            leftIcon="plus"
-            size="sm"
-            onPress={createQuote}
-            testID="create-quote"
-          />
-        </>
+        <N1Button
+          title={S.create}
+          leftIcon="plus"
+          size="sm"
+          onPress={createQuote}
+          testID="create-quote"
+        />
       )}
     </ListToolbar>
   );
@@ -250,6 +257,18 @@ export function QuotesTab({ toolbarStart }: Props) {
           )
         }
         testID="quotes-table"
+      />
+      <N1ConfirmDialog
+        visible={deletion.target !== null}
+        title={S.delete.title}
+        message={deletion.target ? S.delete.message(deletion.target.id) : ''}
+        confirmLabel={S.delete.confirm}
+        tone="danger"
+        icon="trash"
+        loading={deletion.loading}
+        onConfirm={deletion.confirm}
+        onCancel={deletion.cancel}
+        testID="delete-quote-dialog"
       />
     </AsyncContent>
   );

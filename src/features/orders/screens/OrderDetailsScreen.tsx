@@ -7,7 +7,6 @@ import {
   N1DetailGrid,
   N1Divider,
   N1Icon,
-  N1QrCode,
   N1Tabs,
   N1Text,
   createN1Styles,
@@ -21,16 +20,21 @@ import {
   AsyncContent,
   ComingSoon,
 } from '../../../shared/components';
-import { COMMON_STRINGS } from '../../../shared/constants';
+import { COMMON_STRINGS, DETAIL_COLUMNS } from '../../../shared/constants';
 import { useOnSettled } from '../../../shared/hooks';
 import {
   formatLongDate,
-  notify,
   notifyUnavailable,
 } from '../../../shared/utils';
-import { printHtml } from '../../../services/print';
 import { useCustomers } from '../../customers';
-import { jobCardFromOrder, useJobCards, type JobCard } from '../../jobCards';
+import {
+  BILLING_META,
+  MetaBadge,
+  QUOTATION_META,
+  jobCardFromOrder,
+  useJobCards,
+  type JobCard,
+} from '../../jobCards';
 import { OrderJobCardItem } from '../components/OrderJobCardItem';
 import {
   DocumentViewer,
@@ -40,24 +44,28 @@ import {
   openDocument,
   printDocument,
 } from '../../../services/files/viewDocument';
+import { printOrNotify } from '../../../services/print';
 import type { Attachment } from '../../../shared/types';
 import {
   RawMaterialDialog,
   isRawMaterialMissing,
 } from '../components/RawMaterialDialog';
 import { DocumentList } from '../components/DocumentList';
-import { DrawingPreview } from '../components/DrawingPreview';
+import { DrawingQrSection } from '../components/DrawingQrSection';
 import { OrderStatusBadge, PriorityBadge } from '../components/OrderBadges';
 import { RAW_MATERIAL_FIELDS } from '../components/orderForm';
 import { MATERIAL_SOURCE_OPTIONS, ORDER_STRINGS } from '../constants';
 import { useOrder } from '../hooks/useOrders';
-import { documentPrintHtml, drawingPrintHtml } from '../printing';
+import { documentPrintHtml, drawingPrintHtml, qrPrintHtml } from '../printing';
 import { orderHeading, orderQrValue } from '../utils';
 
 const D = ORDER_STRINGS.details;
 const F = ORDER_STRINGS.form;
 const P = ORDER_STRINGS.print;
 const orDash = (v: string) => v || COMMON_STRINGS.dash;
+// The drawing's and the order QR's rows in the documents list.
+const DRAWING_DOC_ID = 'order-drawing';
+const ORDER_QR_DOC_ID = 'order-qr';
 
 type Tab = 'details' | 'material' | 'documents' | 'jobCard';
 
@@ -102,13 +110,6 @@ const makeStyles = createN1Styles(t => ({
     justifyContent: 'space-between',
     gap: t.spacing.md,
   },
-  drawingMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: t.spacing.md,
-  },
-  drawingActions: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm },
   emptyJobCard: {
     alignItems: 'center',
     gap: t.spacing.sm,
@@ -122,8 +123,8 @@ const makeStyles = createN1Styles(t => ({
 
 /**
  * One work order in a single card: back link, title, badges, Route card and
- * Edit on top, then tabs for the order (customer first), raw material,
- * documents and its job card.
+ * Edit on top, then tabs for the order (customer, then drawing with its QR),
+ * raw material, documents (the drawing included) and its job card.
  */
 export function OrderDetailsScreen({
   route,
@@ -137,11 +138,18 @@ export function OrderDetailsScreen({
   const jobCards = useJobCards();
   const jobCard = jobCards.items.find(c => c.id === route.params.orderId);
 
-  // Back to where the order was opened from: the customer or job card it
-  // was opened on (keeping that page's own Back), else the orders list.
-  const { fromCustomerId, fromJobCardId } = route.params;
+  // Back to where the order was opened from: the customer, job card or
+  // invoice it was opened on (keeping that page's own Back), else the
+  // orders list.
+  const { fromCustomerId, fromJobCardId, fromInvoiceId } = route.params;
   const goBack = useCallback(() => {
-    if (fromJobCardId) {
+    if (fromInvoiceId) {
+      navigation.navigate('Billing', {
+        screen: 'InvoiceDetails',
+        params: { invoiceId: fromInvoiceId },
+        merge: true,
+      });
+    } else if (fromJobCardId) {
       navigation.navigate('JobCards', {
         screen: 'JobCardDetails',
         params: { jobCardId: fromJobCardId },
@@ -156,8 +164,10 @@ export function OrderDetailsScreen({
     } else {
       navigation.popTo('OrdersList');
     }
-  }, [navigation, fromCustomerId, fromJobCardId]);
-  const backLabel = fromJobCardId
+  }, [navigation, fromCustomerId, fromJobCardId, fromInvoiceId]);
+  const backLabel = fromInvoiceId
+    ? D.backToInvoice
+    : fromJobCardId
     ? D.backToJobCard
     : fromCustomerId
     ? D.backToCustomer
@@ -219,26 +229,12 @@ export function OrderDetailsScreen({
       setTab('jobCard');
     }
   });
-  // Printing opens the system print dialog (the browser's, AirPrint, or
-  // Android's print services), where any printer the device reaches is picked.
-  const print = useCallback(
-    (html: string, jobName: string, action: string) =>
-      printHtml(html, jobName).then(
-        shown => {
-          if (!shown) {
-            notifyUnavailable(action);
-          }
-        },
-        () => notify(P.failedTitle, P.failed),
-      ),
-    [],
-  );
   const printDrawing = useCallback(() => {
     if (order) {
       const html = drawingPrintHtml(order, orDash(order.drawingNumber));
-      print(html, P.drawingJob(orderHeading(order)), D.printDrawing);
+      printOrNotify(html, P.drawingJob(orderHeading(order)), D.printDrawing);
     }
-  }, [order, print]);
+  }, [order]);
   const download = useCallback(() => notifyUnavailable(D.downloadAction), []);
   // View / print a document or the drawing. A PDF picked this session on web
   // prints in the browser's own viewer; anything else prints as a page.
@@ -256,15 +252,24 @@ export function OrderDetailsScreen({
         return;
       }
       if (order) {
-        print(documentPrintHtml(order, doc), doc.name, D.printAction);
+        printOrNotify(documentPrintHtml(order, doc), doc.name, D.printAction);
       }
     },
-    [order, print],
+    [order],
   );
+  const printQr = useCallback(() => {
+    if (order) {
+      printOrNotify(qrPrintHtml(order), D.orderQrFile(order.id), D.printAction);
+    }
+  }, [order]);
   const printTarget = useCallback(
     (target: ViewerTarget) =>
-      target.type === 'drawing' ? printDrawing() : printFile(target.doc),
-    [printDrawing, printFile],
+      target.type === 'drawing'
+        ? printDrawing()
+        : target.type === 'qr'
+        ? printQr()
+        : printFile(target.doc),
+    [printDrawing, printQr, printFile],
   );
   const openFile = Platform.OS === 'web' ? openDocument : null;
 
@@ -366,7 +371,7 @@ export function OrderDetailsScreen({
         )}
       </View>
       <N1DetailGrid
-        columns={isCompact ? 2 : 3}
+        columns={isCompact ? 2 : DETAIL_COLUMNS}
         items={[
           { label: D.customerName, value: orDash(order.customerName) },
           {
@@ -379,14 +384,31 @@ export function OrderDetailsScreen({
     </View>
   );
 
+  const drawingNo = orDash(order.drawingNumber);
+  // What the order QR holds; the app's scanner imports the order from it.
+  const qrValue = orderQrValue(order);
+  const viewDrawing = () =>
+    setViewing({ type: 'drawing', drawingNumber: drawingNo });
+  const drawingSection = (
+    <DrawingQrSection
+      drawingNumber={drawingNo}
+      qrValue={qrValue}
+      onViewDrawing={viewDrawing}
+      onPrintDrawing={printDrawing}
+      testID="order"
+    />
+  );
+
   const detailsTab = (
     <>
       {customerSection}
       <N1Divider />
+      {drawingSection}
+      <N1Divider />
       <View style={styles.section}>
         {heading(D.overview)}
         <N1DetailGrid
-          columns={isCompact ? 2 : 3}
+          columns={isCompact ? 2 : DETAIL_COLUMNS}
           items={[
             { label: F.poNumber, value: orDash(order.poNumber) },
             { label: F.partName, value: orDash(order.partName) },
@@ -416,12 +438,39 @@ export function OrderDetailsScreen({
       <View style={styles.section}>
         {heading(D.dispatch)}
         <N1DetailGrid
-          columns={isCompact ? 2 : 3}
+          columns={isCompact ? 2 : DETAIL_COLUMNS}
           items={[
             { label: F.routeCardNo, value: orDash(order.routeCardNo) },
             { label: F.dcNo, value: orDash(order.dcNo) },
             { label: F.dcDate, value: orDash(formatLongDate(order.dcDate)) },
           ]}
+        />
+      </View>
+      <N1Divider />
+      {/* Quotation and billing are tracked on the job card; none yet → dashes. */}
+      <View style={styles.section}>
+        {heading(D.billingSection)}
+        <N1DetailGrid
+          columns={isCompact ? 2 : DETAIL_COLUMNS}
+          items={[
+            {
+              label: D.quotation,
+              value: jobCard ? (
+                <MetaBadge meta={QUOTATION_META[jobCard.quotation]} />
+              ) : (
+                COMMON_STRINGS.dash
+              ),
+            },
+            {
+              label: D.billing,
+              value: jobCard ? (
+                <MetaBadge meta={BILLING_META[jobCard.billing]} />
+              ) : (
+                COMMON_STRINGS.dash
+              ),
+            },
+          ]}
+          testID="order-billing"
         />
       </View>
       {(order.description !== '' || order.notes !== '') && <N1Divider />}
@@ -460,7 +509,7 @@ export function OrderDetailsScreen({
         </N1Text>
       )}
       <N1DetailGrid
-        columns={isCompact ? 2 : 3}
+        columns={isCompact ? 2 : DETAIL_COLUMNS}
         items={[
           {
             label: F.materialSource,
@@ -479,69 +528,48 @@ export function OrderDetailsScreen({
     </View>
   );
 
-  const drawingNo = orDash(order.drawingNumber);
+  // Every file for the order, the drawing included, lives on this tab.
+  const drawingDoc: Attachment | null = order.drawingNumber
+    ? {
+        id: DRAWING_DOC_ID,
+        name: D.drawingTitle(order.drawingNumber),
+        kind: D.drawing,
+        sizeBytes: 0,
+      }
+    : null;
+  const qrDoc: Attachment = {
+    id: ORDER_QR_DOC_ID,
+    name: D.orderQrFile(order.id),
+    kind: D.orderQr,
+    sizeBytes: 0,
+  };
   const documentsTab = (
-    <>
-      <View style={styles.section}>
-        {heading(D.drawing)}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={D.viewDrawing}
-          onPress={() =>
-            setViewing({ type: 'drawing', drawingNumber: drawingNo })
-          }
-          style={({ pressed }) => pressed && styles.pressed}
-          testID="order-drawing"
-        >
-          <DrawingPreview drawingNumber={drawingNo} />
-        </Pressable>
-        <View style={styles.drawingMeta}>
-          <View>
-            <N1Text variant="caption" color="secondary">
-              {D.drawingNo}
-            </N1Text>
-            <N1Text weight="bold">{drawingNo}</N1Text>
-          </View>
-          <N1QrCode
-            value={orderQrValue(order)}
-            accessibilityLabel={D.qrA11y(order.id)}
-            testID="order-qr"
-          />
-        </View>
-        <View style={styles.drawingActions}>
-          <N1Button
-            title={D.viewDrawing}
-            leftIcon="eye"
-            variant="secondary"
-            size="sm"
-            onPress={() =>
-              setViewing({ type: 'drawing', drawingNumber: drawingNo })
-            }
-            testID="order-view-drawing"
-          />
-          <N1Button
-            title={D.printDrawing}
-            leftIcon="printer"
-            variant="secondary"
-            size="sm"
-            onPress={printDrawing}
-          />
-        </View>
-      </View>
-      <N1Divider />
-      <View style={styles.section}>
-        {heading(D.documents)}
-        <DocumentList
-          documents={[
-            ...(order.designFile ? [order.designFile] : []),
-            ...order.documents,
-          ]}
-          onDownload={download}
-          onView={viewDocument}
-          onPrint={printFile}
-        />
-      </View>
-    </>
+    <View style={styles.section}>
+      {heading(D.documents)}
+      <DocumentList
+        documents={[
+          ...(drawingDoc ? [drawingDoc] : []),
+          qrDoc,
+          ...(order.designFile ? [order.designFile] : []),
+          ...order.documents,
+        ]}
+        onDownload={download}
+        onView={doc =>
+          doc.id === DRAWING_DOC_ID
+            ? viewDrawing()
+            : doc.id === ORDER_QR_DOC_ID
+            ? setViewing({ type: 'qr', doc, value: qrValue })
+            : viewDocument(doc)
+        }
+        onPrint={doc =>
+          doc.id === DRAWING_DOC_ID
+            ? printDrawing()
+            : doc.id === ORDER_QR_DOC_ID
+            ? printQr()
+            : printFile(doc)
+        }
+      />
+    </View>
   );
 
   const jobCardTab = (

@@ -120,9 +120,9 @@ test('list is sorted by priority then due date', async () => {
     'WO #1043',
     'WO #1039',
     'WO #1041',
+    'WO #125',
     'WO #1036',
     'WO #1034',
-    'WO #1044',
   ];
   const positions = order.map(id => text.indexOf(id));
   expect(positions).toEqual([...positions].sort((a, b) => a - b));
@@ -137,7 +137,7 @@ test('list is sorted by priority then due date', async () => {
   const hscroll = byTestId(root, 'orders-table-hscroll');
   expect(hscroll.props.horizontal).toBe(true);
   expect(allText(hscroll)).toContain('WO #1042');
-  expect(allText(root)).toContain('Showing 10 of 12 orders');
+  expect(allText(root)).toContain('Showing 10 of 13 orders');
 });
 
 test('only orders with a job card show the job card button', async () => {
@@ -322,8 +322,8 @@ test('wide screens: the page stays put and only the order rows scroll', async ()
   const table = byTestId(root, 'orders-table');
   const scroll = byTestId(table, 'orders-table-scroll');
   expect(allText(scroll)).toContain('WO #1042');
-  expect(allText(scroll)).not.toContain('Showing 10 of 12 orders');
-  expect(allText(table)).toContain('Showing 10 of 12 orders');
+  expect(allText(scroll)).not.toContain('Showing 10 of 13 orders');
+  expect(allText(table)).toContain('Showing 10 of 13 orders');
   // Title and Create live in the toolbar.
   expect(allText(table)).toContain('Orders');
   expect(byTestId(table, 'create-order')).toBeTruthy();
@@ -357,6 +357,10 @@ test('details show the full work order', async () => {
     /PO number.*PO-8842.*Delivery date.*02 Oct 2026/,
   );
   expect(text()).toContain('RC-2210');
+  // Quotation and billing come from the order's job card.
+  expect(allText(byTestId(screen, 'order-billing'))).toBe(
+    'Quotation|Accepted|Billing|Not invoiced',
+  );
   expect(text()).toContain('Rework batch');
   expect(text()).not.toContain('HT-99213');
 
@@ -418,10 +422,6 @@ test('documents and the drawing open in a viewer with Print', async () => {
   await h.navigate('OrderDetails', { orderId: '1042' });
   const screen = byTestId(h.root, 'order-details-screen');
   await press(byTestId(screen, 'order-tab-documents'));
-  // A real QR code of the order sits beside the drawing number.
-  expect(byTestId(screen, 'order-qr').props.accessibilityLabel).toBe(
-    'QR code for WO #1042',
-  );
 
   // Clicking a document views it; this one isn't stored, so it says so.
   await press(byTestId(screen, 'document-po'));
@@ -445,11 +445,44 @@ test('documents and the drawing open in a viewer with Print', async () => {
     'drawing.pdf',
   );
 
-  // The drawing opens in the viewer too.
-  await press(byTestId(screen, 'order-drawing'));
+  // The order QR is a document of its own: view it, then download it.
+  await press(byTestId(screen, 'document-order-qr'));
+  viewer = byTestId(h.root, 'document-viewer');
+  expect(allText(viewer)).toContain('WO-1042-QR.png');
+  expect(hasTestId(viewer, 'document-viewer-qr')).toBe(true);
+  await press(byTestId(viewer, 'document-viewer-download'));
+  expect(alert).toHaveBeenCalledWith(
+    expect.stringContaining('Downloading documents will work once'),
+  );
+  // Its Print prints the QR large, with the order's details.
+  await press(byTestId(viewer, 'document-viewer-print'));
+  expect(mockPrintHtml).toHaveBeenLastCalledWith(
+    expect.stringContaining('aria-label="QR code for WO #1042"'),
+    'WO-1042-QR.png',
+  );
+  // The row's Print buttons print the QR and the drawing too.
+  await press(byLabel(screen, 'Print WO-1042-QR.png'));
+  expect(mockPrintHtml).toHaveBeenLastCalledWith(
+    expect.any(String),
+    'WO-1042-QR.png',
+  );
+  await press(byLabel(screen, 'Print Drawing DRW-1187'));
+  expect(mockPrintHtml.mock.lastCall?.[1]).toMatch(/^Drawing · WO #1042/);
+
+  // The drawing is listed with the documents and opens in the viewer.
+  await press(byTestId(screen, 'document-order-drawing'));
   viewer = byTestId(h.root, 'document-viewer');
   expect(allText(viewer)).toContain('Drawing DRW-1187');
   expect(allText(viewer)).toContain('Print drawing with QR');
+
+  // On the Order details tab, the drawing preview opens it too, with the
+  // Order QR beside it.
+  await press(byTestId(screen, 'order-tab-details'));
+  expect(allText(byTestId(screen, 'order-qr'))).toContain('Order QR');
+  expect(byLabel(screen, 'QR code for WO #1042')).toBeTruthy();
+  await press(byTestId(screen, 'order-drawing'));
+  viewer = byTestId(h.root, 'document-viewer');
+  expect(allText(viewer)).toContain('Drawing DRW-1187');
   Platform.OS = os;
 });
 
@@ -540,7 +573,7 @@ test('documents: the drawing prints with its QR; download is not wired yet', asy
   const h = await renderAdmin('Orders');
   await h.navigate('OrderDetails', { orderId: '1042' });
   const screen = byTestId(h.root, 'order-details-screen');
-  await press(byTestId(screen, 'order-tab-documents'));
+  // Print drawing sits with the drawing on the Order details tab.
   await press(byText(screen, 'Print drawing with QR'));
   const [html, jobName] = mockPrintHtml.mock.calls[0];
   expect(jobName).toMatch(/^Drawing · WO #1042/);
@@ -561,6 +594,8 @@ test('documents: the drawing prints with its QR; download is not wired yet', asy
     expect.stringContaining('The print dialog could not be opened.'),
   );
 
+  await press(byTestId(screen, 'order-tab-documents'));
+  expect(hasTestId(screen, 'order-drawing')).toBe(false);
   await press(byLabel(screen, 'Download PO-8842_project-docs.pdf'));
   expect(alert).toHaveBeenCalledTimes(3);
   Platform.OS = os;
@@ -896,8 +931,8 @@ test('phone: stat tiles, cards and step footer', async () => {
   mockWidth = 390;
   const h = await renderAdmin('Orders');
   expect(allText(h.root)).toContain('Open orders');
-  // 11 open: all but 1035, whose invoice is paid; 5 of them high.
-  expect(allText(byTestId(h.root, 'stat-open'))).toContain('11');
+  // 12 open: all but 1035, whose invoice is paid; 5 of them high.
+  expect(allText(byTestId(h.root, 'stat-open'))).toContain('12');
   expect(allText(byTestId(h.root, 'stat-high'))).toContain('5');
   expect(hasTestId(h.root, 'order-card-1042')).toBe(true);
   await press(byTestId(h.root, 'order-card-1042'));

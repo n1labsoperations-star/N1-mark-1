@@ -9,7 +9,7 @@ import {
 import { formatCurrency } from '../../../shared/utils';
 import { BILLING_STRINGS } from '../constants';
 import type { Invoice, Quote } from '../types';
-import { invoiceTotal } from '../utils';
+import { invoiceTotal, quoteTotal } from '../utils';
 import { InvoiceStatusBadge, QuoteStatusBadge } from './BillingBadges';
 
 const makeStyles = createN1Styles(t => ({
@@ -37,7 +37,6 @@ const makeStyles = createN1Styles(t => ({
     justifyContent: 'space-between',
     gap: t.spacing.md,
   },
-  end: { alignItems: 'flex-end' },
 }));
 
 type InvoiceCardProps = {
@@ -106,7 +105,8 @@ export const QuoteCard = memo(function QuoteCardComponent({
         </View>
         <QuoteStatusBadge status={quote.status} />
       </View>
-      <View style={styles.end}>
+      <View style={styles.bottom}>
+        <N1Text variant="h3">{formatCurrency(quoteTotal(quote))}</N1Text>
         <N1Button
           title={BILLING_STRINGS.view}
           leftIcon="eye"

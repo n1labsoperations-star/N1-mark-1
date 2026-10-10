@@ -19,42 +19,26 @@ import {
   FormRow,
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
-import { useForm, useOnSettled, type FormErrors } from '../../../shared/hooks';
-import { isBlank, isNumeric, toNumber } from '../../../shared/utils';
+import { useForm, useOnSettled } from '../../../shared/hooks';
+import { toNumber } from '../../../shared/utils';
 import { BillingSection } from '../components/BillingSection';
 import { LineItemsEditor } from '../components/LineItemsEditor';
 import { TotalsSummary } from '../components/TotalsSummary';
 import { BILLING_STRINGS, QUOTE_STATUS_OPTIONS } from '../constants';
 import { useQuote } from '../hooks/useBilling';
 import { useLineItems } from '../hooks/useLineItems';
-import type {
-  BillingScreenProps,
-  LineItem,
-  Quote,
-  QuoteStatus,
-} from '../types';
+import {
+  toQuoteValues,
+  validateQuoteValues,
+  type QuoteValues,
+} from '../hooks/useQuoteForm';
+import type { BillingScreenProps, LineItem } from '../types';
 import { calculateTotals } from '../utils';
 import { gstRateOptions, useGst } from '../hooks/useGst';
 
 const Q = BILLING_STRINGS.quote;
 const L = BILLING_STRINGS.lineItems;
 const T = BILLING_STRINGS.totals;
-
-type Values = {
-  customerName: string;
-  partName: string;
-  quantity: string;
-  material: string;
-  status: QuoteStatus;
-};
-
-const EMPTY: Values = {
-  customerName: '',
-  partName: '',
-  quantity: '',
-  material: '',
-  status: 'draft',
-};
 
 // New quotes start with the shop's usual turning sequence, as in the design.
 const STARTER_LINES: LineItem[] = [
@@ -63,6 +47,7 @@ const STARTER_LINES: LineItem[] = [
     operation: 'Facing',
     description: '',
     minutesPerPiece: 0,
+    setupMinutes: 0,
     ratePerMinute: 0,
   },
   {
@@ -70,34 +55,10 @@ const STARTER_LINES: LineItem[] = [
     operation: 'Turning',
     description: '',
     minutesPerPiece: 0,
+    setupMinutes: 0,
     ratePerMinute: 0,
   },
 ];
-
-const toValues = (q?: Quote): Values =>
-  q
-    ? {
-        customerName: q.customerName,
-        partName: q.partName,
-        quantity: String(q.quantity),
-        material: q.material,
-        status: q.status,
-      }
-    : EMPTY;
-
-const validate = (v: Values): FormErrors<Values> => {
-  const errors: FormErrors<Values> = {};
-  if (isBlank(v.customerName)) {
-    errors.customerName = COMMON_STRINGS.required;
-  }
-  if (isBlank(v.partName)) {
-    errors.partName = COMMON_STRINGS.required;
-  }
-  if (!isNumeric(v.quantity) || Number(v.quantity) <= 0) {
-    errors.quantity = COMMON_STRINGS.invalidNumber;
-  }
-  return errors;
-};
 
 const makeStyles = createN1Styles(t => ({
   body: { gap: t.spacing.lg },
@@ -126,7 +87,7 @@ export function QuoteFormScreen({
     saveError,
     clearErrors,
   } = useQuote(quoteId);
-  const form = useForm<Values>(toValues(quote), validate);
+  const form = useForm<QuoteValues>(toQuoteValues(quote), validateQuoteValues);
   const lines = useLineItems(quote?.lineItems ?? STARTER_LINES);
   const { values, errors, bind, submit, reset } = form;
   const gst = useGst(values.customerName);
@@ -141,7 +102,7 @@ export function QuoteFormScreen({
   useEffect(() => {
     if (quote && loadedId.current !== quote.id) {
       loadedId.current = quote.id;
-      reset(toValues(quote));
+      reset(toQuoteValues(quote));
       resetLines(quote.lineItems);
       setPickedRate(quote.gstRate);
     }
@@ -162,7 +123,7 @@ export function QuoteFormScreen({
   const noLines = lines.items.length === 0;
 
   const save = useCallback(
-    (v: Values) => {
+    (v: QuoteValues) => {
       if (lines.items.length === 0) {
         return;
       }
@@ -250,24 +211,17 @@ export function QuoteFormScreen({
           testID="quote-quantity"
         />
       </FormRow>
-      <FormRow>
-        <N1TextInput
-          label={Q.material}
-          placeholder={Q.materialPlaceholder}
-          value={values.material}
-          onChangeText={bind('material')}
-        />
-        {quoteId ? (
+      {quoteId && (
+        <FormRow>
           <N1DropDown
             label={Q.status}
             options={QUOTE_STATUS_OPTIONS}
             value={values.status}
             onChange={bind('status')}
           />
-        ) : (
           <View />
-        )}
-      </FormRow>
+        </FormRow>
+      )}
       {gst.registered && (
         <FormRow>
           <N1DropDown

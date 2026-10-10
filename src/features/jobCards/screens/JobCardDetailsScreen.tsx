@@ -18,6 +18,7 @@ import {
   AsyncContent,
   ComingSoon,
   N1Button,
+  N1ConfirmDialog,
   N1Card,
   N1DetailGrid,
   N1Divider,
@@ -54,18 +55,15 @@ import {
   DocumentViewer,
   type ViewerTarget,
 } from '../../orders/components/DocumentViewer';
-import { DrawingPreview } from '../../orders/components/DrawingPreview';
-import { MATERIAL_SOURCE_OPTIONS, ORDER_STRINGS } from '../../orders/constants';
+import { DrawingQrSection } from '../../orders/components/DrawingQrSection';
+import { printOrNotify } from '../../../services/print';
+import { ORDER_STRINGS } from '../../orders/constants';
+import { drawingPrintHtml } from '../../orders/printing';
+import { orderHeading, orderQrValue } from '../../orders/utils';
 import { COMMON_STRINGS } from '../../../shared/constants';
 import { QcHistory } from '../components/QcHistory';
 import { RouteCard } from '../components/RouteCard';
-import {
-  BILLING_META,
-  DRAWING_THUMB_WIDTH,
-  JOB_CARD_STRINGS,
-  MATERIAL_QC_META,
-  QUOTATION_META,
-} from '../constants';
+import { JOB_CARD_STRINGS, MATERIAL_QC_META } from '../constants';
 import { useJobCardBack } from '../hooks/useJobCardBack';
 import { useJobCard } from '../hooks/useJobCards';
 import type {
@@ -76,12 +74,13 @@ import type {
 } from '../types';
 import {
   attachQcReport,
+  canCompleteFlow,
   canPauseOrComplete,
   canStart,
+  completeFlow,
   jobCardStage,
   redoOperation,
   startBlockedReason,
-  completeOperation,
   jobCardHeading,
   jobProgress,
   materialRejection,
@@ -91,6 +90,8 @@ import {
 } from '../utils';
 
 const S = JOB_CARD_STRINGS;
+/** Part, due date, quantity and material QC side by side on wide screens. */
+const OVERVIEW_COLUMNS = 4;
 const D = S.details;
 const I = D.info;
 const R = D.report;
@@ -121,12 +122,10 @@ const makeStyles = createN1Styles(t => ({
   title: { flexShrink: 1, gap: t.spacing.xxs },
   spacer: { flex: 1 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm },
-  // Order details: the drawing thumbnail on the left, the rest beside it.
-  orderTab: { flexDirection: 'row', gap: t.spacing.xxl },
-  drawingColumn: { width: DRAWING_THUMB_WIDTH, gap: t.spacing.md },
-  detailsColumn: { flex: 1, minWidth: 0, gap: t.spacing.xl },
-  compactOrderTab: { gap: t.spacing.xl },
-  drawingCaption: { gap: t.spacing.xxs },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm },
+  // Machining: the drawing, QR and job facts above the route card.
+  machining: { gap: t.spacing.xl },
+  overview: { gap: t.spacing.xl },
   // Wide screens: the card fills the window. The header and tabs stay put;
   // only the tab's content scrolls.
   card: { gap: t.spacing.lg },
@@ -319,6 +318,7 @@ export function JobCardDetailsScreen({
     }
   });
   const [dispatchOpen, openDispatch, closeDispatch] = useToggle(false);
+  const [completeOpen, openComplete, closeComplete] = useToggle(false);
   // Admin: open the invoice in Billing. Shop-floor roles have no Billing
   // screen, so they're told it was created.
   const showInvoice = useCallback(
@@ -327,8 +327,10 @@ export function JobCardDetailsScreen({
       const drawer = navigation.getParent();
       if (drawer?.getState()?.routeNames.includes('Billing')) {
         navigation.navigate('Billing', {
-          screen: fillRates ? 'InvoiceEdit' : 'InvoiceDetails',
-          params: { invoiceId },
+          screen: 'InvoiceDetails',
+          // Back on the invoice returns to this job card; rates still to
+          // fill in open it in edit mode.
+          params: { invoiceId, fromJobCardId: jobCardId, edit: fillRates },
           initial: false,
         });
       } else {
@@ -338,16 +340,23 @@ export function JobCardDetailsScreen({
         );
       }
     },
-    [closeDispatch, navigation],
+    [closeDispatch, navigation, jobCardId],
   );
-  // The drawing thumbnail opens full size; printing and downloading files
-  // aren't available yet.
+  // The drawing thumbnail opens full size and prints with the order's QR;
+  // downloading files isn't available yet.
   const [viewing, setViewing] = useState<ViewerTarget | null>(null);
   const closeViewer = useCallback(() => setViewing(null), []);
-  const printDrawing = useCallback(
-    () => notifyUnavailable(ORDER_STRINGS.details.printAction),
-    [],
-  );
+  const printDrawing = useCallback(() => {
+    if (!order) {
+      notifyUnavailable(ORDER_STRINGS.details.printDrawing);
+      return;
+    }
+    printOrNotify(
+      drawingPrintHtml(order, order.drawingNumber || D.noDrawing),
+      ORDER_STRINGS.print.drawingJob(orderHeading(order)),
+      ORDER_STRINGS.details.printDrawing,
+    );
+  }, [order]);
   const download = useCallback(
     () => notifyUnavailable(ORDER_STRINGS.details.downloadAction),
     [],
@@ -431,7 +440,14 @@ export function JobCardDetailsScreen({
   const now = () => new Date().toISOString();
   const start = () => update(jobCard.id, startOperation(jobCard, now()));
   const pause = () => update(jobCard.id, pauseOperation(jobCard));
-  const complete = () => update(jobCard.id, completeOperation(jobCard, now()));
+  // Complete finishes the whole flow, not just the running step.
+  const complete = () => {
+    closeComplete();
+    update(jobCard.id, completeFlow(jobCard, now()));
+  };
+  const remainingSteps = jobCard.operations.filter(
+    op => op.status !== 'completed',
+  ).length;
   const running = canPauseOrComplete(jobCard);
   const hasFlow = jobCard.operations.length > 0;
   // The next step waits for RM QC and for the last step's QC to pass.
@@ -462,7 +478,10 @@ export function JobCardDetailsScreen({
             {S.workOrder(jobCard.id)}
           </N1Text>
         </View>
-        <JobCardStatusBadge jobCard={jobCard} />
+        <View style={styles.badges}>
+          <PriorityBadge priority={jobCard.priority} suffix="priority" />
+          <JobCardStatusBadge jobCard={jobCard} />
+        </View>
         <View style={styles.spacer} />
         <View style={styles.actions}>
           <N1Button
@@ -479,94 +498,49 @@ export function JobCardDetailsScreen({
 
   const drawingNumber =
     order?.drawingNumber || jobCard.designFile?.name || D.noDrawing;
-  const drawing = (
-    <View style={isCompact ? styles.section : styles.drawingColumn}>
-      {heading(I.drawing)}
-      {jobCard.designFile ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={D.viewDrawing(drawingNumber)}
-          onPress={() => setViewing({ type: 'drawing', drawingNumber })}
-          style={({ pressed }) => pressed && styles.pressed}
-          testID="job-card-drawing"
-        >
-          <DrawingPreview drawingNumber={drawingNumber} />
-        </Pressable>
-      ) : (
-        <N1Text color="secondary">{D.noDrawing}</N1Text>
-      )}
-      {jobCard.designFile && (
-        <View style={styles.drawingCaption}>
-          <N1Text weight="bold" numberOfLines={1}>
-            {drawingNumber}
-          </N1Text>
-          <N1Text variant="small" color="secondary" numberOfLines={1}>
-            {jobCard.designFile.name}
-          </N1Text>
-        </View>
-      )}
+  // Above the route card: the drawing and Order QR, then part, due date,
+  // quantity and material QC in one row (the QR lines up with material QC).
+  const overview = (
+    <View style={styles.overview} testID="job-card-overview">
+      <DrawingQrSection
+        drawingNumber={drawingNumber}
+        hasDrawing={Boolean(jobCard.designFile)}
+        qrValue={
+          order ? orderQrValue(order) : ORDER_STRINGS.workOrder(jobCard.id)
+        }
+        onViewDrawing={() => setViewing({ type: 'drawing', drawingNumber })}
+        onPrintDrawing={printDrawing}
+        columns={OVERVIEW_COLUMNS}
+        testID="job-card"
+      />
+      <N1DetailGrid
+        columns={isCompact ? 2 : OVERVIEW_COLUMNS}
+        items={[
+          { label: I.part, value: jobCard.partName },
+          { label: I.due, value: formatLongDate(jobCard.dueDate) },
+          { label: I.qty, value: S.quantity(jobCard.quantity) },
+          {
+            label: I.materialQc,
+            value: <MetaBadge meta={MATERIAL_QC_META[jobCard.materialQc]} />,
+          },
+        ]}
+        testID="job-card-facts"
+      />
     </View>
   );
 
+  // Only the order lives here; the job's details are on Machining.
   const orderTab = (
-    <View style={isCompact ? styles.compactOrderTab : styles.orderTab}>
-      {drawing}
-      <View style={isCompact ? styles.compactOrderTab : styles.detailsColumn}>
-        <View style={styles.section}>
-          {heading(D.jobSection)}
-          <N1DetailGrid
-            columns={isCompact ? 2 : 3}
-            items={[
-              {
-                label: I.priority,
-                value: (
-                  <PriorityBadge
-                    priority={jobCard.priority}
-                    suffix="priority"
-                  />
-                ),
-              },
-              { label: I.due, value: formatLongDate(jobCard.dueDate) },
-              { label: I.qty, value: S.quantity(jobCard.quantity) },
-              { label: I.part, value: jobCard.partName },
-              {
-                label: I.source,
-                value:
-                  MATERIAL_SOURCE_OPTIONS.find(
-                    o => o.value === jobCard.materialSource,
-                  )?.label ?? COMMON_STRINGS.dash,
-              },
-              {
-                label: I.materialQc,
-                value: (
-                  <MetaBadge meta={MATERIAL_QC_META[jobCard.materialQc]} />
-                ),
-              },
-              {
-                label: I.quotation,
-                value: <MetaBadge meta={QUOTATION_META[jobCard.quotation]} />,
-              },
-              {
-                label: I.billing,
-                value: <MetaBadge meta={BILLING_META[jobCard.billing]} />,
-              },
-            ]}
-            testID="job-card-info"
-          />
-        </View>
-        {order && (
-          <>
-            <N1Divider />
-            <View style={styles.section}>
-              {heading(D.orderSection)}
-              <LinkedOrderCard
-                order={order}
-                onPress={canOpenOrder ? openOrder : undefined}
-              />
-            </View>
-          </>
-        )}
-      </View>
+    <View style={styles.section} testID="job-card-order-tab">
+      {heading(D.orderSection)}
+      {order ? (
+        <LinkedOrderCard
+          order={order}
+          onPress={canOpenOrder ? openOrder : undefined}
+        />
+      ) : (
+        <N1Text color="secondary">{ORDER_STRINGS.details.notFound}</N1Text>
+      )}
     </View>
   );
 
@@ -580,80 +554,85 @@ export function JobCardDetailsScreen({
       sticky={!isCompact}
     />
   ) : (
-    <StickyHeadPane
-      sticky={!isCompact}
-      testID="job-card-machining"
-      head={
-        <View style={styles.sectionHead}>
-          {heading(D.routeCard)}
-          <N1Button
-            title={
-              hasFlow
-                ? isCompact
-                  ? D.editFlowShort
-                  : D.editFlow
-                : D.createFlow
-            }
-            leftIcon={hasFlow ? 'edit' : 'plus'}
-            variant="secondary"
-            size="sm"
-            onPress={openFlow}
-            testID="open-flow"
-          />
-        </View>
-      }
-    >
-      {hasFlow && (
-        <View style={styles.actions}>
-          <N1Button
-            title={D.start}
-            leftIcon="play"
-            size="sm"
-            onPress={start}
-            disabled={saving || !canStart(jobCard)}
-            testID="start-operation"
-          />
-          <N1Button
-            title={D.pause}
-            leftIcon="pause"
-            variant="secondary"
-            size="sm"
-            onPress={pause}
-            disabled={saving || !running}
-            testID="pause-operation"
-          />
-          <N1Button
-            title={D.complete}
-            leftIcon="check-circle"
-            variant="secondary"
-            size="sm"
-            onPress={complete}
-            disabled={saving || !running}
-            testID="complete-operation"
-          />
-          {failedStep && (
+    // The whole tab scrolls as one: drawing, QR and facts, then the route card.
+    <View style={styles.machining}>
+      {overview}
+      <N1Divider />
+      <StickyHeadPane
+        sticky={false}
+        testID="job-card-machining"
+        head={
+          <View style={styles.sectionHead}>
+            {heading(D.routeCard)}
             <N1Button
-              title={S.stages.redo(failedStep.name)}
-              leftIcon="refresh"
-              variant="danger"
+              title={
+                hasFlow
+                  ? isCompact
+                    ? D.editFlowShort
+                    : D.editFlow
+                  : D.createFlow
+              }
+              leftIcon={hasFlow ? 'edit' : 'plus'}
+              variant="secondary"
               size="sm"
-              onPress={redo}
-              disabled={saving}
-              testID="redo-operation"
+              onPress={openFlow}
+              testID="open-flow"
             />
-          )}
-        </View>
-      )}
-      {hasFlow && blocked && !failedStep && (
-        <N1Text variant="small" color="secondary" testID="start-blocked">
-          {blocked}
-        </N1Text>
-      )}
-      <RouteCard
-        operations={jobCard.operations}
-        progress={jobProgress(jobCard)}
-      />
-    </StickyHeadPane>
+          </View>
+        }
+      >
+        {hasFlow && (
+          <View style={styles.actions}>
+            <N1Button
+              title={D.start}
+              leftIcon="play"
+              size="sm"
+              onPress={start}
+              disabled={saving || !canStart(jobCard)}
+              testID="start-operation"
+            />
+            <N1Button
+              title={D.pause}
+              leftIcon="pause"
+              variant="secondary"
+              size="sm"
+              onPress={pause}
+              disabled={saving || !running}
+              testID="pause-operation"
+            />
+            <N1Button
+              title={D.complete}
+              leftIcon="check-circle"
+              variant="secondary"
+              size="sm"
+              onPress={openComplete}
+              disabled={saving || !canCompleteFlow(jobCard)}
+              testID="complete-operation"
+            />
+            {failedStep && (
+              <N1Button
+                title={S.stages.redo(failedStep.name)}
+                leftIcon="refresh"
+                variant="danger"
+                size="sm"
+                onPress={redo}
+                disabled={saving}
+                testID="redo-operation"
+              />
+            )}
+          </View>
+        )}
+        {hasFlow && blocked && !failedStep && (
+          <N1Text variant="small" color="secondary" testID="start-blocked">
+            {blocked}
+          </N1Text>
+        )}
+        <RouteCard
+          operations={jobCard.operations}
+          progress={jobProgress(jobCard)}
+        />
+      </StickyHeadPane>
+    </View>
   );
 
   const rejection = materialRejection(jobCard);
@@ -719,6 +698,19 @@ export function JobCardDetailsScreen({
     />
   );
 
+  const completeDialog = (
+    <N1ConfirmDialog
+      visible={completeOpen}
+      title={D.completeFlow.title}
+      message={D.completeFlow.message(remainingSteps)}
+      confirmLabel={D.completeFlow.confirm}
+      icon="check-circle"
+      onConfirm={complete}
+      onCancel={closeComplete}
+      testID="complete-flow-dialog"
+    />
+  );
+
   const viewer = (
     <DocumentViewer
       target={viewing}
@@ -739,6 +731,7 @@ export function JobCardDetailsScreen({
           <View style={styles.compactContent}>{content}</View>
         </N1Card>
         {dispatchModal}
+        {completeDialog}
         {viewer}
       </AdminScreen>
     );
@@ -749,9 +742,9 @@ export function JobCardDetailsScreen({
       <N1Card padding="xxl" radius="sm" style={[styles.card, styles.fullCard]}>
         {top}
         {tabs}
-        {/* A new tab starts at the top. Machining keeps its header row on
-            top and scrolls its own steps. */}
-        {tab === 'machining' ? (
+        {/* A new tab starts at the top. The flow editor keeps its header
+            row on top and scrolls its own steps. */}
+        {tab === 'machining' && editingFlow ? (
           <View key={tab} style={styles.scroll}>
             {content}
           </View>
@@ -767,6 +760,7 @@ export function JobCardDetailsScreen({
         )}
       </N1Card>
       {dispatchModal}
+      {completeDialog}
       {viewer}
     </AdminScreen>
   );

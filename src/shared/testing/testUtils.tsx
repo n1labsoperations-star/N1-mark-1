@@ -117,13 +117,7 @@ const DRAWER_STACKS: Record<DrawerRoute, string[]> = {
   Machines: ['MachinesList', 'MachineDetails'],
   Profile: ['MyProfile'],
   Organization: ['Organization'],
-  Billing: [
-    'BillingHome',
-    'InvoiceDetails',
-    'InvoiceEdit',
-    'QuoteDetails',
-    'QuoteForm',
-  ],
+  Billing: ['BillingHome', 'InvoiceDetails', 'QuoteDetails', 'QuoteForm'],
 };
 
 const ROUTE_ALIASES: Record<string, string> = { Dashboard: 'Overview' };

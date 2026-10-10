@@ -1,15 +1,19 @@
 import { lightTheme } from '../../theme';
-import { qrCodePath } from '../../shared/components/N1QrCode';
 import type { Attachment } from '../../shared/types';
+import { ORDER_QR_SIZE } from '../../shared/constants';
 import { formatFileSize, formatLongDate } from '../../shared/utils';
 import { detailList, escapeHtml, printPage } from '../../services/print';
 import { DIM_FONT, DIM_LABELS, PART, VIEW } from './components/DrawingPreview';
+import { qrPath } from './components/QrCode';
 import { ORDER_STRINGS } from './constants';
 import type { WorkOrder } from './types';
 import { materialLine, orderHeading, orderQrValue, orderTitle } from './utils';
 
 const P = ORDER_STRINGS.print;
-const { colors, qrCode } = lightTheme;
+const { colors } = lightTheme;
+
+/** Printed QR codes are larger than on screen: paper is read from further away. */
+const PRINT_QR_SCALE = 1.5;
 
 /** The drawing preview as SVG markup, in print colours. */
 function drawingSvg(): string {
@@ -47,10 +51,11 @@ function drawingSvg(): string {
 }
 
 /** The order's QR code as SVG markup, the same code the screen shows. */
-function qrSvg(order: WorkOrder): string {
-  const { path, modules } = qrCodePath(orderQrValue(order), qrCode.quietZone);
+function qrSvg(order: WorkOrder, scale = PRINT_QR_SCALE): string {
+  const { path, modules } = qrPath(orderQrValue(order));
+  const size = ORDER_QR_SIZE * scale;
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${qrCode.size}" height="${qrCode.size}" ` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" ` +
     `viewBox="0 0 ${modules} ${modules}" shape-rendering="crispEdges" role="img" ` +
     `aria-label="${escapeHtml(ORDER_STRINGS.details.qrA11y(order.id))}">` +
     `<rect width="${modules}" height="${modules}" fill="${colors.qrBackground}"/>` +
@@ -106,5 +111,16 @@ export function documentPrintHtml(order: WorkOrder, doc: Attachment) {
   return printPage(
     doc.name,
     `<h1>${escapeHtml(heading)}</h1>${figure}` + qrRow(order, meta, doc.name),
+  );
+}
+
+/** The order QR on its own, large, to stick on a part or a tote. */
+export function qrPrintHtml(order: WorkOrder) {
+  const heading = orderHeading(order);
+  return printPage(
+    ORDER_STRINGS.details.orderQrFile(order.id),
+    `<h1>${escapeHtml(heading)}</h1>` +
+      `<div class="figure">${qrSvg(order, PRINT_QR_SCALE * 2)}</div>` +
+      `<div class="row">${orderDetails(order)}</div>`,
   );
 }

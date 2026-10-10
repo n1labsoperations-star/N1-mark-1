@@ -3,7 +3,6 @@ import { useCallback, useMemo, type ReactNode } from 'react';
 import { View } from 'react-native';
 import {
   FilterMenu,
-  N1Button,
   N1IconButton,
   N1Pagination,
   N1Table,
@@ -22,11 +21,7 @@ import {
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
 import { useListFilter, usePagination } from '../../../shared/hooks';
-import {
-  formatCompactCurrency,
-  formatCurrency,
-  notifyUnavailable,
-} from '../../../shared/utils';
+import { formatCompactCurrency, formatCurrency } from '../../../shared/utils';
 import { BILLING_STRINGS, INVOICE_STATUS_OPTIONS } from '../constants';
 import { useInvoiceStats, useInvoices } from '../hooks/useBilling';
 import type { Invoice, InvoiceFilters } from '../types';
@@ -86,33 +81,33 @@ export function InvoicesTab({ toolbarStart }: Props) {
     (i: Invoice) => navigation.navigate('InvoiceDetails', { invoiceId: i.id }),
     [navigation],
   );
+  // Edit opens the invoice with its fields already editable.
   const edit = useCallback(
-    (i: Invoice) => navigation.navigate('InvoiceEdit', { invoiceId: i.id }),
+    (i: Invoice) =>
+      navigation.navigate('InvoiceDetails', { invoiceId: i.id, edit: true }),
     [navigation],
-  );
-  const viewQuote = useCallback(
-    (quoteId: string) => navigation.navigate('QuoteDetails', { quoteId }),
-    [navigation],
-  );
-  const exportList = useCallback(
-    () => notifyUnavailable(BILLING_STRINGS.exportAction),
-    [],
   );
 
   const statItems = useMemo(
     () => [
       { key: 'total', label: S.stats.total, value: stats.total },
       {
+        key: 'new',
+        label: S.stats.new,
+        value: stats.new,
+        tone: 'info' as const,
+      },
+      {
+        key: 'overdue',
+        label: S.stats.overdue,
+        value: stats.overdue,
+        tone: 'danger' as const,
+      },
+      {
         key: 'paid',
         label: S.stats.paid,
         value: stats.paid,
         tone: 'success' as const,
-      },
-      {
-        key: 'pending',
-        label: S.stats.pending,
-        value: stats.pending,
-        tone: 'warning' as const,
       },
       {
         key: 'month',
@@ -160,16 +155,6 @@ export function InvoicesTab({ toolbarStart }: Props) {
               accessibilityLabel={BILLING_STRINGS.a11y.view(i.id)}
               onPress={() => view(i)}
             />
-            {i.quoteId && (
-              // Billed against a quote: open it to compare.
-              <N1IconButton
-                icon="file"
-                size="sm"
-                accessibilityLabel={BILLING_STRINGS.a11y.viewQuote(i.quoteId)}
-                onPress={() => viewQuote(i.quoteId as string)}
-                testID={`view-quote-${i.id}`}
-              />
-            )}
             <N1IconButton
               icon="edit"
               variant="primary"
@@ -181,7 +166,7 @@ export function InvoicesTab({ toolbarStart }: Props) {
         ),
       },
     ],
-    [styles, view, edit, viewQuote],
+    [styles, view, edit],
   );
 
   const renderCompactItem = useCallback(
@@ -206,15 +191,6 @@ export function InvoicesTab({ toolbarStart }: Props) {
         onApply={applyFilters}
         testID="invoices-filter"
       />
-      {!isCompact && (
-        <N1Button
-          title={BILLING_STRINGS.export}
-          leftIcon="download"
-          variant="secondary"
-          size="sm"
-          onPress={exportList}
-        />
-      )}
     </ListToolbar>
   );
 

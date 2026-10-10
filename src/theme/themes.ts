@@ -11,7 +11,6 @@ import {
   overlineLetterSpacing,
   palette,
   radius,
-  qrCode,
   scanner,
   shadow,
   sidebarWidth,
@@ -68,7 +67,7 @@ export type N1Colors = {
   scannerLine: string;
   /** Round buttons on the camera screen. */
   scannerControl: string;
-  /** Generated QR codes stay dark on light in both themes so scanners read them. */
+  /** QR codes stay dark on light in both themes, so scanners read them. */
   qrForeground: string;
   qrBackground: string;
   tone: Record<N1Tone, ToneColors>;
@@ -209,7 +208,6 @@ const shared = {
   sidebarWidth,
   statCardMinWidth,
   scanner,
-  qrCode,
   stepNumberSize,
   documentTile,
   shadow,
