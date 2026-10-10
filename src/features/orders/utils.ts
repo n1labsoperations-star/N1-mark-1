@@ -1,4 +1,4 @@
-import { workOrderSearchTerms } from '../../shared/utils';
+import { formatDate, workOrderSearchTerms } from '../../shared/utils';
 import { matchesAny } from '../../shared/hooks';
 import { ORDER_STRINGS, PRIORITY_META } from './constants';
 import type { JobCard } from '../jobCards/types';
@@ -17,6 +17,30 @@ export function orderTitle(
 /** "WO #1042 · Bracket — Job A" */
 export const orderHeading = (o: WorkOrder) =>
   [ORDER_STRINGS.workOrder(o.id), orderTitle(o)].filter(Boolean).join(' · ');
+
+/**
+ * What an order's QR code holds: the WO number on the first line, which is all
+ * the Scan QR screen reads, then the entered details for anyone scanning it
+ * with a phone camera. Blank details are left out.
+ */
+export function orderQrValue(o: WorkOrder): string {
+  const Q = ORDER_STRINGS.qr;
+  const details: [string, string][] = [
+    [Q.customer, o.customerName],
+    [Q.part, orderTitle(o)],
+    [Q.partNumber, o.partNumber],
+    [Q.drawingNumber, o.drawingNumber],
+    [Q.poNumber, o.poNumber],
+    [Q.quantity, o.quantity ? String(o.quantity) : ''],
+    [Q.dueDate, formatDate(o.dueDate)],
+  ];
+  return [
+    ORDER_STRINGS.workOrder(o.id),
+    ...details
+      .filter(([, value]) => value.trim())
+      .map(([label, value]) => `${label}: ${value.trim()}`),
+  ].join('\n');
+}
 
 /** "MS Round Bar · 200 pcs" */
 export const materialLine = (o: WorkOrder) =>

@@ -20,6 +20,8 @@
     "@react-navigation/native-stack": "7.19.2",
     "@reduxjs/toolkit": "2.12.0",
     "axios": "1.20.0",
+    "n1-print": "file:modules/n1-print",
+    "qrcode-generator": "2.0.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.87.1",

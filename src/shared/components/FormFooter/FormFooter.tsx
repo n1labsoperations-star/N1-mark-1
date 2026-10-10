@@ -1,5 +1,6 @@
 import { N1Button, createN1Styles, useN1Styles, type N1IconName } from '..';
 import { COMMON_STRINGS } from '../../constants';
+import { useInBottomBar } from '../N1BottomBar/N1BottomBar';
 
 export type FormFooterProps = {
   submitLabel: string;
@@ -32,7 +33,9 @@ export function FormFooter({
   submitTestID,
 }: FormFooterProps) {
   const styles = useN1Styles(makeStyles);
-  const grow = compact ? undefined : styles.grow;
+  const inBottomBar = useInBottomBar();
+  // Side by side in a modal footer row; a bottom bar shares the width itself.
+  const grow = compact || inBottomBar ? undefined : styles.grow;
   return (
     <>
       {onCancel && (

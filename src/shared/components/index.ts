@@ -111,7 +111,11 @@ export {
   type N1BottomTabBarProps,
   type N1BottomTab,
 } from './N1BottomTabBar';
-export { N1BottomBar, type N1BottomBarProps } from './N1BottomBar';
+export {
+  N1BottomBar,
+  useInBottomBar,
+  type N1BottomBarProps,
+} from './N1BottomBar';
 
 // Job details & workflow (userFlow)
 export {
@@ -139,6 +143,12 @@ export {
   type N1TimelineStatus,
 } from './N1TimelineItem';
 export { N1ScanFrame, type N1ScanFrameProps } from './N1ScanFrame';
+export {
+  N1QrCode,
+  qrCodePath,
+  toUtf8Bytes,
+  type N1QrCodeProps,
+} from './N1QrCode';
 export {
   N1QrScanner,
   useCameraAccess,

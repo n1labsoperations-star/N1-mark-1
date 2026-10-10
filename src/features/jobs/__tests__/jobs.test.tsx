@@ -51,6 +51,8 @@ describe('utils', () => {
     expect(parseJobCode('wo #1042')).toBe('1042');
     expect(parseJobCode(' 1042 ')).toBe('1042');
     expect(parseJobCode('WO-')).toBe('');
+    // An order QR code: only the first line counts, not the details under it.
+    expect(parseJobCode('WO #1042\nPart no: PN-33021\nQty: 200')).toBe('1042');
   });
 
   test('isRawMaterialMissing flags any blank raw material detail', () => {

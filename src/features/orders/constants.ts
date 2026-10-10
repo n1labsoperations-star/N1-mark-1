@@ -29,8 +29,24 @@ export const ORDER_STRINGS = {
   },
   stats: { open: 'Open orders', high: 'High priority' },
   workOrder: (id: string) => `WO #${id}`,
+  /** Labels for the order details encoded under the WO number in its QR code. */
+  qr: {
+    customer: 'Customer',
+    part: 'Part',
+    partNumber: 'Part no',
+    drawingNumber: 'Drawing no',
+    poNumber: 'PO no',
+    quantity: 'Qty',
+    dueDate: 'Due',
+  },
   quantity: (n: number) => `${n} pcs`,
   due: (date: string) => `Due ${date}`,
+  /** Printed pages: the drawing sheet and document sheets. */
+  print: {
+    drawingJob: (heading: string) => `Drawing · ${heading}`,
+    failedTitle: "Couldn't print",
+    failed: 'The print dialog could not be opened. Please try again.',
+  },
   details: {
     title: 'Order details',
     edit: 'Edit order',
@@ -43,6 +59,7 @@ export const ORDER_STRINGS = {
     drawing: 'Drawing',
     drawingNo: 'Drawing no',
     printDrawing: 'Print drawing with QR',
+    qrA11y: (id: string) => `QR code for WO #${id}`,
     documents: 'Documents',
     noDocuments: 'No documents attached.',
     download: (name: string) => `Download ${name}`,

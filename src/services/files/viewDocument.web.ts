@@ -1,4 +1,5 @@
 import type { Attachment } from '../../shared/types';
+import { escapeHtml } from '../print/printPage';
 
 // The project builds without the DOM typings; just what this file touches.
 type Popup = {
@@ -13,12 +14,6 @@ type Browser = {
 const browser = globalThis as unknown as Browser;
 
 const isImage = (doc: Attachment) => Boolean(doc.uri?.startsWith('data:image'));
-
-const escapeHtml = (text: string) =>
-  text.replace(
-    /[&<>"]/g,
-    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!),
-  );
 
 /** Opens the file in a new tab. False when there's nothing to open. */
 export function openDocument(doc: Attachment): boolean {

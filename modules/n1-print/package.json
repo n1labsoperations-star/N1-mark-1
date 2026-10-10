@@ -1,0 +1,25 @@
+{
+  "name": "n1-print",
+  "version": "0.1.0",
+  "description": "Prints an HTML page through the system print dialog (Android print service, iOS AirPrint).",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "src/index.ts",
+  "react-native": "src/index.ts",
+  "peerDependencies": {
+    "react-native": "*"
+  },
+  "codegenConfig": {
+    "name": "N1PrintSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.n1mark1.print"
+    },
+    "ios": {
+      "modulesProvider": {
+        "N1Print": "N1Print"
+      }
+    }
+  }
+}

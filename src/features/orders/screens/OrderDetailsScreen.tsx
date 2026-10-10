@@ -7,6 +7,7 @@ import {
   N1DetailGrid,
   N1Divider,
   N1Icon,
+  N1QrCode,
   N1Tabs,
   N1Text,
   createN1Styles,
@@ -22,7 +23,12 @@ import {
 } from '../../../shared/components';
 import { COMMON_STRINGS } from '../../../shared/constants';
 import { useOnSettled } from '../../../shared/hooks';
-import { formatLongDate, notifyUnavailable } from '../../../shared/utils';
+import {
+  formatLongDate,
+  notify,
+  notifyUnavailable,
+} from '../../../shared/utils';
+import { printHtml } from '../../../services/print';
 import { useCustomers } from '../../customers';
 import { jobCardFromOrder, useJobCards, type JobCard } from '../../jobCards';
 import { OrderJobCardItem } from '../components/OrderJobCardItem';
@@ -42,14 +48,15 @@ import {
 import { DocumentList } from '../components/DocumentList';
 import { DrawingPreview } from '../components/DrawingPreview';
 import { OrderStatusBadge, PriorityBadge } from '../components/OrderBadges';
-import { QrPlaceholder } from '../components/QrPlaceholder';
 import { RAW_MATERIAL_FIELDS } from '../components/orderForm';
 import { MATERIAL_SOURCE_OPTIONS, ORDER_STRINGS } from '../constants';
 import { useOrder } from '../hooks/useOrders';
-import { orderHeading } from '../utils';
+import { documentPrintHtml, drawingPrintHtml } from '../printing';
+import { orderHeading, orderQrValue } from '../utils';
 
 const D = ORDER_STRINGS.details;
 const F = ORDER_STRINGS.form;
+const P = ORDER_STRINGS.print;
 const orDash = (v: string) => v || COMMON_STRINGS.dash;
 
 type Tab = 'details' | 'material' | 'documents' | 'jobCard';
@@ -212,21 +219,48 @@ export function OrderDetailsScreen({
       setTab('jobCard');
     }
   });
-  const printDrawing = useCallback(() => notifyUnavailable(D.printDrawing), []);
+  // Printing opens the system print dialog (the browser's, AirPrint, or
+  // Android's print services), where any printer the device reaches is picked.
+  const print = useCallback(
+    (html: string, jobName: string, action: string) =>
+      printHtml(html, jobName).then(
+        shown => {
+          if (!shown) {
+            notifyUnavailable(action);
+          }
+        },
+        () => notify(P.failedTitle, P.failed),
+      ),
+    [],
+  );
+  const printDrawing = useCallback(() => {
+    if (order) {
+      const html = drawingPrintHtml(order, orDash(order.drawingNumber));
+      print(html, P.drawingJob(orderHeading(order)), D.printDrawing);
+    }
+  }, [order, print]);
   const download = useCallback(() => notifyUnavailable(D.downloadAction), []);
-  // View / print a document or the drawing. Files the app holds (picked
-  // images, and PDFs picked this session on web) open and print for real.
+  // View / print a document or the drawing. A PDF picked this session on web
+  // prints in the browser's own viewer; anything else prints as a page.
   const [viewing, setViewing] = useState<ViewerTarget | null>(null);
   const closeViewer = useCallback(() => setViewing(null), []);
   const viewDocument = useCallback(
     (doc: Attachment) => setViewing({ type: 'document', doc }),
     [],
   );
-  const printFile = useCallback((doc: Attachment) => {
-    if (!printDocument(doc)) {
-      notifyUnavailable(D.printAction);
-    }
-  }, []);
+  const printFile = useCallback(
+    (doc: Attachment) => {
+      const isPickedFile =
+        Platform.OS === 'web' && doc.uri && !doc.uri.startsWith('data:image');
+      if (isPickedFile && printDocument(doc)) {
+        return;
+      }
+      if (order) {
+        print(documentPrintHtml(order, doc), doc.name, D.printAction);
+      }
+    },
+    [order, print],
+  );
   const printTarget = useCallback(
     (target: ViewerTarget) =>
       target.type === 'drawing' ? printDrawing() : printFile(target.doc),
@@ -468,7 +502,11 @@ export function OrderDetailsScreen({
             </N1Text>
             <N1Text weight="bold">{drawingNo}</N1Text>
           </View>
-          <QrPlaceholder />
+          <N1QrCode
+            value={orderQrValue(order)}
+            accessibilityLabel={D.qrA11y(order.id)}
+            testID="order-qr"
+          />
         </View>
         <View style={styles.drawingActions}>
           <N1Button

@@ -28,7 +28,14 @@ import type { JobCard, JobOperation } from '../../jobCards/types';
 import { statusFor } from '../../jobCards/utils';
 import { selectOrderById } from '../store/selectors';
 import type { WorkOrder } from '../types';
-import { compareOrders, materialLine, orderStatus, orderTitle } from '../utils';
+import {
+  compareOrders,
+  materialLine,
+  orderQrValue,
+  orderStatus,
+  orderTitle,
+} from '../utils';
+import { parseJobCode } from '../../jobs/utils';
 
 let mockWidth = 1280;
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
@@ -36,8 +43,17 @@ jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
   default: () => ({ width: mockWidth, height: 900, scale: 1, fontScale: 1 }),
 }));
 
+const mockPrintHtml = jest.fn((_html: string, _jobName: string) =>
+  Promise.resolve(true),
+);
+jest.mock('../../../services/print/printHtml', () => ({
+  printHtml: (html: string, jobName: string) => mockPrintHtml(html, jobName),
+}));
+
 beforeEach(() => {
   mockWidth = 1280;
+  mockPrintHtml.mockClear();
+  mockPrintHtml.mockImplementation(() => Promise.resolve(true));
 });
 afterEach(() => jest.restoreAllMocks());
 
@@ -402,6 +418,10 @@ test('documents and the drawing open in a viewer with Print', async () => {
   await h.navigate('OrderDetails', { orderId: '1042' });
   const screen = byTestId(h.root, 'order-details-screen');
   await press(byTestId(screen, 'order-tab-documents'));
+  // A real QR code of the order sits beside the drawing number.
+  expect(byTestId(screen, 'order-qr').props.accessibilityLabel).toBe(
+    'QR code for WO #1042',
+  );
 
   // Clicking a document views it; this one isn't stored, so it says so.
   await press(byTestId(screen, 'document-po'));
@@ -409,15 +429,21 @@ test('documents and the drawing open in a viewer with Print', async () => {
   expect(allText(viewer)).toContain('PO-8842_project-docs.pdf');
   expect(allText(viewer)).toContain('Purchase order · 640 KB');
   expect(hasTestId(viewer, 'document-viewer-placeholder')).toBe(true);
+  // Its Print opens the print dialog with a sheet naming the file.
   await press(byTestId(viewer, 'document-viewer-print'));
-  expect(alert).toHaveBeenCalledWith(
-    expect.stringContaining('Printing documents will work once'),
+  expect(mockPrintHtml).toHaveBeenLastCalledWith(
+    expect.stringContaining('PO-8842_project-docs.pdf'),
+    'PO-8842_project-docs.pdf',
   );
+  expect(alert).not.toHaveBeenCalled();
 
   // Each row also has its own View and Print buttons.
   expect(byLabel(screen, 'View drawing.pdf')).toBeTruthy();
   await press(byLabel(screen, 'Print drawing.pdf'));
-  expect(alert).toHaveBeenCalledTimes(2);
+  expect(mockPrintHtml).toHaveBeenLastCalledWith(
+    expect.stringContaining('Design file · 480 KB'),
+    'drawing.pdf',
+  );
 
   // The drawing opens in the viewer too.
   await press(byTestId(screen, 'order-drawing'));
@@ -506,7 +532,7 @@ test('raw material shows pending until every detail is in', async () => {
   expect(h.currentRoute()).toBe('Orders');
 });
 
-test('documents: print and download explain they are not wired yet', async () => {
+test('documents: the drawing prints with its QR; download is not wired yet', async () => {
   const alert = jest.fn();
   (globalThis as { alert?: unknown }).alert = alert;
   const os = Platform.OS;
@@ -516,13 +542,27 @@ test('documents: print and download explain they are not wired yet', async () =>
   const screen = byTestId(h.root, 'order-details-screen');
   await press(byTestId(screen, 'order-tab-documents'));
   await press(byText(screen, 'Print drawing with QR'));
-  expect(alert).toHaveBeenCalledWith(
+  const [html, jobName] = mockPrintHtml.mock.calls[0];
+  expect(jobName).toMatch(/^Drawing · WO #1042/);
+  expect(html).toContain('DRW-1187');
+  expect(html).toContain('aria-label="QR code for WO #1042"');
+
+  // A build without a printer module says so; a failed dialog says that.
+  mockPrintHtml.mockImplementation(() => Promise.resolve(false));
+  await press(byText(screen, 'Print drawing with QR'));
+  expect(alert).toHaveBeenLastCalledWith(
     expect.stringContaining(
       'Print drawing with QR will work once the backend is connected.',
     ),
   );
+  mockPrintHtml.mockImplementation(() => Promise.reject(new Error('busy')));
+  await press(byText(screen, 'Print drawing with QR'));
+  expect(alert).toHaveBeenLastCalledWith(
+    expect.stringContaining('The print dialog could not be opened.'),
+  );
+
   await press(byLabel(screen, 'Download PO-8842_project-docs.pdf'));
-  expect(alert).toHaveBeenCalledTimes(2);
+  expect(alert).toHaveBeenCalledTimes(3);
   Platform.OS = os;
   expect(hasTestId(screen, 'view-route-card')).toBe(false);
 });
@@ -885,6 +925,32 @@ test('order helpers', () => {
     }),
   ).toBe('Line one');
   expect(materialLine({ ...first, material: '', quantity: 0 })).toBe('EN8');
+  // The QR code holds the WO number first, then the entered details.
+  const qr = orderQrValue(first);
+  expect(qr.split('\n')).toEqual([
+    'WO #1042',
+    'Customer: Acme Metalworks',
+    'Part: Bracket — Job A',
+    'Part no: PN-33021',
+    'Drawing no: DRW-1187',
+    'PO no: PO-8842',
+    'Qty: 200',
+    'Due: Oct 2, 2026',
+  ]);
+  // The Scan QR screen still finds the order from it.
+  expect(parseJobCode(qr)).toBe('1042');
+  // Blank details are left out.
+  expect(
+    orderQrValue({
+      ...first,
+      customerName: ' ',
+      partNumber: '',
+      drawingNumber: '',
+      poNumber: '',
+      quantity: 0,
+      dueDate: '',
+    }).split('\n'),
+  ).toEqual(['WO #1042', 'Part: Bracket — Job A']);
   const undated = { ...first, id: '1', dueDate: '', priority: 'high' as const };
   expect(compareOrders(first, undated)).toBeLessThan(0);
   expect(compareOrders(undated, first)).toBeGreaterThan(0);

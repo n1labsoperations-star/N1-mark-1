@@ -9,10 +9,16 @@ import {
 import { DRAWING_PREVIEW_HEIGHT } from '../../../shared/constants';
 import { ORDER_STRINGS } from '../constants';
 
-// Placeholder part outline in a 200×120 viewBox, until real drawing thumbnails exist.
-const VIEW = { w: 200, h: 120 } as const;
-const PART = { x: 58, y: 22, w: 84, h: 62, hole: 13 } as const;
-const DIM_FONT = 7;
+// Placeholder part outline in a 200×120 viewBox, until real drawing thumbnails
+// exist. Exported so the printed drawing (printing.ts) draws the same part.
+export const VIEW = { w: 200, h: 120 } as const;
+export const PART = { x: 58, y: 22, w: 84, h: 62, hole: 13 } as const;
+export const DIM_FONT = 7;
+export const DIM_LABELS = {
+  hole: '⌀28',
+  width: '80 mm',
+  height: '60',
+} as const;
 
 const makeStyles = createN1Styles(t => ({
   box: {
@@ -72,7 +78,7 @@ export const DrawingPreview = memo(function DrawingPreviewComponent({
           fill={muted}
           textAnchor="middle"
         >
-          ⌀28
+          {DIM_LABELS.hole}
         </SvgText>
         <Line
           x1={PART.x}
@@ -89,7 +95,7 @@ export const DrawingPreview = memo(function DrawingPreviewComponent({
           fill={muted}
           textAnchor="middle"
         >
-          80 mm
+          {DIM_LABELS.width}
         </SvgText>
         <Line
           x1={dimX}
@@ -100,7 +106,7 @@ export const DrawingPreview = memo(function DrawingPreviewComponent({
           strokeWidth={0.8}
         />
         <SvgText x={dimX + 5} y={cy} fontSize={DIM_FONT - 1} fill={muted}>
-          60
+          {DIM_LABELS.height}
         </SvgText>
       </Svg>
     </View>
