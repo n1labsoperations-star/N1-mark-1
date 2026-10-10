@@ -13,7 +13,10 @@ export type LineItem = {
   id: string;
   operation: string;
   description: string;
+  /** Running time per piece. */
   minutesPerPiece: number;
+  /** One-off setup before the batch runs. */
+  setupMinutes: number;
   ratePerMinute: number;
 };
 
@@ -23,13 +26,16 @@ export type LineItemDraft = {
   operation: string;
   description: string;
   minutes: string;
+  setup: string;
   rate: string;
   /** Unrounded saved rate, kept while the shown (rounded) text is untouched. */
   exactRate?: number;
 };
 
-export type InvoiceStatus = 'draft' | 'pending' | 'paid' | 'overdue';
-export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'rejected';
+/** A bill is New until it's paid; unpaid past its due date, Overdue. */
+export type InvoiceStatus = 'new' | 'overdue' | 'paid';
+/** A quote is a Draft until it's sent to the customer. */
+export type QuoteStatus = 'draft' | 'sent';
 
 export type Invoice = {
   id: string;
@@ -46,6 +52,8 @@ export type Invoice = {
   gstRate: number;
   /** The quote this was billed against, if any (to compare). */
   quoteId: string | null;
+  /** The customer's purchase order value, entered by hand; null until then. */
+  poAmount: number | null;
   notes: string;
   issuedAt: ISODateString;
 };
@@ -90,9 +98,18 @@ export type BillingTab = 'invoices' | 'quotes';
 // Stack nested inside the admin drawer's "Billing" item.
 export type BillingStackParamList = {
   BillingHome: { tab?: BillingTab } | undefined;
-  InvoiceDetails: { invoiceId: string };
-  InvoiceEdit: { invoiceId: string };
-  QuoteDetails: { quoteId: string };
+  /**
+   * fromJobCardId: opened from that job card, so Back returns to it.
+   * edit: open with the invoice already in edit mode.
+   */
+  InvoiceDetails: { invoiceId: string; fromJobCardId?: string; edit?: boolean };
+  /** Opened from a customer: Back returns there. */
+  QuoteDetails: {
+    quoteId: string;
+    /** Open with the quote already in edit mode (the list's Edit). */
+    edit?: boolean;
+    fromCustomerId?: string;
+  };
   /** Without an id the form creates a new quote. */
   QuoteForm: { quoteId?: string } | undefined;
 };

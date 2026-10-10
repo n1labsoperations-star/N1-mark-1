@@ -1,7 +1,6 @@
 // Public API of the Billing feature (invoices and quotes).
 export { BillingScreen } from './screens/BillingScreen';
 export { InvoiceDetailsScreen } from './screens/InvoiceDetailsScreen';
-export { InvoiceEditScreen } from './screens/InvoiceEditScreen';
 export { QuoteDetailsScreen } from './screens/QuoteDetailsScreen';
 export { QuoteFormScreen } from './screens/QuoteFormScreen';
 export { default as BillingNavigation } from './navigation/BillingNavigation';

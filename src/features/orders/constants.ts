@@ -74,6 +74,7 @@ export const ORDER_STRINGS = {
     backToOrders: 'Back to orders',
     backToCustomer: 'Back to customer',
     backToJobCard: 'Back to job card',
+    backToInvoice: 'Back to invoice',
     tabs: {
       details: 'Order details',
       material: 'Raw material',

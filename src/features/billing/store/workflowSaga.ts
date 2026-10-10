@@ -18,7 +18,7 @@ import { workflowActions, type GenerateInvoicePayload } from './workflowSlice';
 const sameName = (a: string, b: string) =>
   a.trim().toLowerCase() === b.trim().toLowerCase();
 
-/** Quote → new work order; the quote is marked accepted and linked to it. */
+/** Quote → new work order; the quote is linked to it (status unchanged). */
 export function* convertQuote(action: PayloadAction<string>) {
   try {
     const quotes: Quote[] = yield call(quotesApi.list);
@@ -39,7 +39,6 @@ export function* convertQuote(action: PayloadAction<string>) {
     yield put(orderActions.saveSuccess(order));
     const updated: Quote = yield call(quotesApi.update, quote.id, {
       orderId: order.id,
-      status: 'accepted',
     });
     yield put(quoteActions.saveSuccess(updated));
     yield put(workflowActions.convertQuoteSuccess(order.id));

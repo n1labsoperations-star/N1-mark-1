@@ -132,11 +132,18 @@ export function OrderDetailsScreen({
   const jobCards = useJobCards();
   const jobCard = jobCards.items.find(c => c.id === route.params.orderId);
 
-  // Back to where the order was opened from: the customer or job card it
-  // was opened on (keeping that page's own Back), else the orders list.
-  const { fromCustomerId, fromJobCardId } = route.params;
+  // Back to where the order was opened from: the customer, job card or
+  // invoice it was opened on (keeping that page's own Back), else the
+  // orders list.
+  const { fromCustomerId, fromJobCardId, fromInvoiceId } = route.params;
   const goBack = useCallback(() => {
-    if (fromJobCardId) {
+    if (fromInvoiceId) {
+      navigation.navigate('Billing', {
+        screen: 'InvoiceDetails',
+        params: { invoiceId: fromInvoiceId },
+        merge: true,
+      });
+    } else if (fromJobCardId) {
       navigation.navigate('JobCards', {
         screen: 'JobCardDetails',
         params: { jobCardId: fromJobCardId },
@@ -151,8 +158,10 @@ export function OrderDetailsScreen({
     } else {
       navigation.popTo('OrdersList');
     }
-  }, [navigation, fromCustomerId, fromJobCardId]);
-  const backLabel = fromJobCardId
+  }, [navigation, fromCustomerId, fromJobCardId, fromInvoiceId]);
+  const backLabel = fromInvoiceId
+    ? D.backToInvoice
+    : fromJobCardId
     ? D.backToJobCard
     : fromCustomerId
     ? D.backToCustomer

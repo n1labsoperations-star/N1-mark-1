@@ -79,7 +79,6 @@ export const linking: LinkingOptions<RootStackParamList> = {
                   // ?tab=quotes opens the Quotes tab.
                   BillingHome: '',
                   InvoiceDetails: 'invoices/:invoiceId',
-                  InvoiceEdit: 'invoices/:invoiceId/edit',
                   // Optional id: blank creates a new quote.
                   QuoteForm: 'quotes/form/:quoteId?',
                   QuoteDetails: 'quotes/:quoteId',

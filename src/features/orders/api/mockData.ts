@@ -248,6 +248,23 @@ export const MOCK_ORDERS: WorkOrder[] = [
     status: 'completed',
     dueDate: '2026-10-14',
   }),
+  // Billed on INV-2026-0125 (job WO-00125): the invoice's job link opens it.
+  // ABC Engineering isn't in Customers, so there's no customer to link.
+  order({
+    id: '125',
+    customerId: '',
+    customerName: 'ABC Engineering',
+    partName: 'Machined Shaft',
+    jobName: 'Job A',
+    material: 'EN8 Round Bar',
+    quantity: 150,
+    priority: 'medium',
+    status: 'completed',
+    dueDate: '2026-10-08',
+    routeCardNo: 'RC-2225',
+    projectId: 'PRJ-25',
+    createdAt: '2026-09-20T09:00:00',
+  }),
   // New orders without a job card yet (Job Cards has none for them).
   order({
     id: '1043',

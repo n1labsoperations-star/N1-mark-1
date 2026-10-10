@@ -11,23 +11,24 @@ export const BILLING_STRINGS = {
   a11y: {
     view: (id: string) => `View ${id}`,
     edit: (id: string) => `Edit ${id}`,
-    viewQuote: (quoteId: string) => `View quote ${quoteId}`,
+    delete: (id: string) => `Delete ${id}`,
   },
   invoices: {
     title: 'Invoices',
     search: 'Search by invoice, customer or WO #',
     noun: 'invoices',
-    /** Pagination bar: "Showing 10 of 12 invoices · 7 paid · …". */
+    /** Pagination bar: "Showing 10 of 13 invoices · 8 paid · 3 new · …". */
     summary: (
       showing: string,
-      s: { paid: number; pending: number },
+      s: { paid: number; new: number; overdue: number },
       thisMonth: string,
     ) =>
-      `${showing} · ${s.paid} paid · ${s.pending} pending · ${thisMonth} this month`,
+      `${showing} · ${s.new} new · ${s.overdue} overdue · ${s.paid} paid · ${thisMonth} this month`,
     stats: {
       total: 'Total Invoices',
+      new: 'New',
+      overdue: 'Overdue',
       paid: 'Paid',
-      pending: 'Pending',
       month: 'This Month',
     },
     columns: {
@@ -47,61 +48,68 @@ export const BILLING_STRINGS = {
     title: 'Quotes',
     search: 'Search by quote, customer or WO #',
     noun: 'quotes',
-    /** Pagination bar: "Showing 10 of 10 quotes · 3 accepted · …". */
-    summary: (
-      showing: string,
-      s: { accepted: number; pending: number; rejected: number },
-    ) =>
-      `${showing} · ${s.accepted} accepted · ${s.pending} pending · ${s.rejected} rejected`,
+    /** Pagination bar: "Showing 8 of 8 quotes · 1 draft · 7 sent". */
+    summary: (showing: string, s: { draft: number; sent: number }) =>
+      `${showing} · ${s.draft} draft · ${s.sent} sent`,
     stats: {
       total: 'Total Quotes',
-      accepted: 'Accepted',
-      pending: 'Pending',
-      rejected: 'Rejected',
+      draft: 'Draft',
+      sent: 'Sent',
     },
     columns: {
       id: 'Quote ID',
       customer: 'Customer',
+      amount: 'Amount',
       status: 'Status',
       actions: 'Actions',
     },
-    convertA11y: (id: string) => `Convert ${id} to order`,
+    delete: {
+      title: 'Delete quote?',
+      message: (id: string) =>
+        `This will permanently remove ${id} and its operations. This can’t be undone.`,
+      confirm: 'Delete quote',
+    },
+    // Billed or converted: the invoice or order still points at it.
+    deleteLocked: (id: string) =>
+      `${id} is used by an invoice or order and can’t be deleted`,
   },
   dispatch: {
-    title: 'Generate dispatch',
-    subtitle: (customer: string) =>
-      `Bill ${customer} for this job. Attach their quote to bill at its rates, or continue without one.`,
-    noQuotes: (customer: string) => `No quotes found for ${customer}.`,
-    noQuote: 'No quote',
-    pick: 'Pick a quote, or No quote.',
-    noQuoteHelp:
-      'Bill from the job’s operations; fill in the rates on the invoice.',
-    quoteLine: (part: string, quantity: number) => `${part} · ${quantity} pcs`,
-    create: 'Create invoice',
+    title: 'Dispatch this order?',
+    billedTitle: 'Already billed',
+    confirm: (job: string, customer: string) =>
+      `${job} goes to billing as a new invoice for ${customer}, from the job’s operations. You can fill in the rates next.`,
+    dispatch: 'Dispatch',
     existing: (invoiceId: string) =>
       `This job is already billed on ${invoiceId}.`,
     open: 'Open invoice',
     created: 'Invoice created',
     createdMessage: (invoiceId: string) =>
-      `${invoiceId} was added to billing as a draft.`,
+      `${invoiceId} was added to billing as a new invoice.`,
   },
   invoice: {
     title: 'Invoice',
+    back: 'Back to billing',
+    backToJobCard: 'Back to job card',
+    openOrder: (jobId: string) => `Open order ${jobId}`,
     quote: 'Quote',
-    viewQuote: 'View Quote',
     subtitle: (id: string, status: string) => `${id} · ${status}`,
-    editTitle: 'Edit Invoice',
     customer: 'Customer',
     jobId: 'Job ID',
+    routeCard: 'Route card',
     partName: 'Part name',
     quantity: 'Quantity',
     status: 'Status',
     additional: 'Additional details',
+    amount: 'Amount details',
     discount: 'Discount',
+    poAmount: 'PO amount',
+    poAmountPlaceholder: 'Enter PO amount',
     notes: 'Notes',
     send: 'Send Invoice',
     sendShort: 'Send',
-    resendAction: 'Re-sending invoices',
+    sendAction: 'Sending invoices',
+    preview: 'Preview Invoice',
+    previewShort: 'Preview',
     downloadPdf: 'Download PDF',
     pdfShort: 'PDF',
     downloadAction: 'Downloading PDFs',
@@ -110,18 +118,16 @@ export const BILLING_STRINGS = {
   },
   quote: {
     title: 'Quote Detail',
+    heading: 'Quote',
+    back: 'Back to quotes',
+    backToCustomer: 'Back to customer',
     addTitle: 'Add Quote',
     newSubtitle: 'New quote',
-    total: 'Total',
-    operations: 'Operations',
-    material: 'Material',
-    materialPlaceholder: 'e.g. EN8',
     status: 'Status',
-    convert: 'Convert to Order',
     order: 'Order',
     orderValue: (orderId: string) => `WO #${orderId}`,
-    // "Add Quote" is the design's label for revising an existing quote.
-    revise: 'Add Quote',
+    preview: 'Preview Quote',
+    previewShort: 'Preview',
     downloadPdf: 'Download PDF',
     pdfShort: 'PDF',
     customer: 'Customer',
@@ -139,21 +145,40 @@ export const BILLING_STRINGS = {
     customizableShort: 'Customizable',
     operation: 'Operation',
     description: 'Description',
-    timeQty: 'Time / Qty',
+    runningTime: 'Running time',
+    setupTime: 'Setup time',
     rate: 'Rate',
     amount: 'Amount',
     addRow: 'Add row',
     remove: (name: string) => `Remove ${name || 'row'}`,
     minutesUnit: 'min',
-    minutesHeader: (qty: number) => `Min / pc × ${qty}`,
+    minutesHeader: 'Running time (min)',
+    setupHeader: 'Setup time (min)',
+    setupUnit: 'setup',
     rateHeader: 'Rate (₹/min)',
     rateUnit: '/min',
     operationPlaceholder: 'e.g. Facing',
     descriptionPlaceholder: 'e.g. OD facing both ends',
-    perPiece: (qty: number, minutes: number) => `${qty} pcs × ${minutes} min`,
+    minutes: (minutes: number) => `${minutes} min`,
     perMinute: (rate: string) => `${rate}/min`,
     none: 'No operations yet.',
     needsOne: 'Add at least one operation',
+  },
+  /** The invoice as it prints (Preview Invoice). */
+  preview: {
+    modalTitle: 'Invoice preview',
+    title: 'INVOICE',
+    number: 'Invoice no.',
+    date: 'Date',
+    gstin: (gstin: string) => `GSTIN ${gstin}`,
+    terms: 'Terms & conditions',
+    thanks: 'Thank you for your business.',
+    print: 'Print',
+    printAction: 'Printing invoices',
+    quoteModalTitle: 'Quote preview',
+    quoteTitle: 'QUOTATION',
+    quoteNumber: 'Quote no.',
+    quotePrintAction: 'Printing quotes',
   },
   totals: {
     subtotal: 'Subtotal',
@@ -175,17 +200,14 @@ export const BILLING_TABS: N1Tab<BillingTab>[] = [
 ];
 
 export const INVOICE_STATUS_META: Record<InvoiceStatus, StatusMeta> = {
-  draft: { label: 'Draft', tone: 'warning' },
-  pending: { label: 'Pending', tone: 'warning' },
-  paid: { label: 'Paid', tone: 'success' },
+  new: { label: 'New', tone: 'info' },
   overdue: { label: 'Overdue', tone: 'danger' },
+  paid: { label: 'Paid', tone: 'success' },
 };
 
 export const QUOTE_STATUS_META: Record<QuoteStatus, StatusMeta> = {
   draft: { label: 'Draft', tone: 'neutral' },
   sent: { label: 'Sent', tone: 'info' },
-  accepted: { label: 'Accepted', tone: 'success' },
-  rejected: { label: 'Rejected', tone: 'danger' },
 };
 
 export const INVOICE_STATUS_OPTIONS: N1DropDownOption<InvoiceStatus>[] = (

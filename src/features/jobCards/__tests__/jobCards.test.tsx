@@ -705,54 +705,61 @@ describe('Job card details', () => {
     ).toEqual(['operations', 'status']);
   });
 
-  test('dispatch against the customer’s quote adds an invoice', async () => {
+  test('dispatch asks to confirm, then bills the job from its operations', async () => {
     const h = await renderAdmin('JobCards');
     await h.navigate('JobCardDetails', { jobCardId: '1042' });
+    const billed = () =>
+      Object.values(h.store.getState().billing.invoices.entities).find(
+        i => i?.jobId === 'WO-01042',
+      );
+
+    // Just a confirmation: no quotes to pick from.
     await press(byTestId(h.root, 'generate-dispatch'));
-
-    // Acme Metalworks' quote, plus "No quote".
     const modal = allText(byTestId(h.root, 'dispatch-modal'));
-    expect(modal).toContain('QT-2026-0040');
-    expect(modal).toContain('No quote');
-    expect(modal).not.toContain('QT-2026-0042');
+    expect(modal).toContain('Dispatch this order?');
+    expect(modal).toContain(
+      'WO-01042 goes to billing as a new invoice for Acme Metalworks',
+    );
+    expect(modal).not.toContain('QT-2026-0040');
+    expect(modal).not.toContain('No quote');
 
-    // Nothing picked yet.
-    await press(byTestId(h.root, 'dispatch-submit'));
-    expect(allText(h.root)).toContain('Pick a quote, or No quote.');
+    // Cancel bills nothing.
+    await press(byText(byTestId(h.root, 'dispatch-modal'), 'Cancel'));
+    expect(billed()).toBeUndefined();
 
-    await press(byTestId(h.root, 'dispatch-quote-QT-2026-0040'));
-    await press(byTestId(h.root, 'dispatch-submit'));
+    await press(byTestId(h.root, 'generate-dispatch'));
+    await press(byText(byTestId(h.root, 'dispatch-modal'), 'Dispatch'));
 
+    // The new invoice opens in edit mode to fill in the rates.
     expect(h.currentRoute()).toBe('InvoiceDetails');
-    // Dispatched: the job card is Done.
+    expect(hasTestId(h.root, 'save-invoice')).toBe(true);
+    expect(billed()).toMatchObject({
+      customerName: 'Acme Metalworks',
+      quoteId: null,
+      status: 'new',
+      quantity: 200,
+    });
+    expect(billed()?.lineItems.length).toBeGreaterThan(0);
+    // No quote is attached to the order.
+    expect(
+      h.store.getState().billing.quotes.entities['QT-2026-0040']?.orderId,
+    ).toBeFalsy();
+    // Dispatched: the job card is Done; Back returns to it.
     expect(h.store.getState().jobCards.entities['1042'].billing).toBe(
       'invoiced',
     );
-    const invoice = Object.values(
-      h.store.getState().billing.invoices.entities,
-    ).find(i => i?.jobId === 'WO-01042');
-    expect(invoice).toMatchObject({
-      customerName: 'Acme Metalworks',
-      quoteId: 'QT-2026-0040',
-      status: 'draft',
-      quantity: 200,
-    });
-    expect(invoice?.lineItems.length).toBeGreaterThan(0);
-    // The quote is now mapped to this order.
-    expect(
-      h.store.getState().billing.quotes.entities['QT-2026-0040']?.orderId,
-    ).toBe('1042');
+    expect(allText(byTestId(h.root, 'invoice-back'))).toBe('Back to job card');
+    await press(byTestId(h.root, 'invoice-back'));
+    expect(h.currentRoute()).toBe('JobCardDetails');
   });
 
-  test('dispatch with no quote lists the job’s operations to price', async () => {
+  test('dispatch lists the job’s operations to price; a billed job opens its invoice', async () => {
     const h = await renderAdmin('JobCards');
     await h.navigate('JobCardDetails', { jobCardId: '1039' });
     await press(byTestId(h.root, 'generate-dispatch'));
-    await press(byTestId(h.root, 'dispatch-no-quote'));
-    await press(byTestId(h.root, 'dispatch-submit'));
+    await press(byText(byTestId(h.root, 'dispatch-modal'), 'Dispatch'));
 
-    // Rates still to fill in: straight to the invoice editor.
-    expect(h.currentRoute()).toBe('InvoiceEdit');
+    expect(h.currentRoute()).toBe('InvoiceDetails');
     const invoice = Object.values(
       h.store.getState().billing.invoices.entities,
     ).find(i => i?.jobId === 'WO-01039');
@@ -765,12 +772,13 @@ describe('Job card details', () => {
       'QC Inspection',
     ]);
 
-    // Dispatching again opens the same invoice instead of a second one.
+    // Dispatching again offers the same invoice instead of a second one.
     await h.navigate('JobCardDetails', { jobCardId: '1039' });
     await press(byTestId(h.root, 'generate-dispatch'));
-    expect(allText(byTestId(h.root, 'dispatch-modal'))).toContain(
-      `already billed on ${invoice?.id}`,
-    );
+    const modal = byTestId(h.root, 'dispatch-modal');
+    expect(allText(modal)).toContain(`already billed on ${invoice?.id}`);
+    await press(byText(modal, 'Open invoice'));
+    expect(h.currentRoute()).toBe('InvoiceDetails');
   });
 
   test('a card without a flow offers Create flow', async () => {

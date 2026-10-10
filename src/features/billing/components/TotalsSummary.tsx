@@ -55,13 +55,16 @@ function Row({
  */
 export const TotalsSummary = memo(function TotalsSummaryComponent({
   totals,
+  fill = false,
 }: {
   totals: Totals;
+  /** Take the full width of its container (e.g. a side panel). */
+  fill?: boolean;
 }) {
   const styles = useN1Styles(makeStyles);
   const { isCompact } = useN1Breakpoint();
   return (
-    <View style={[styles.box, isCompact && styles.compact]}>
+    <View style={[styles.box, (isCompact || fill) && styles.compact]}>
       <Row label={T.subtotal} value={formatCurrency(totals.subtotal)} />
       {totals.discount > 0 && (
         <Row label={T.discount} value={formatCurrency(-totals.discount)} />

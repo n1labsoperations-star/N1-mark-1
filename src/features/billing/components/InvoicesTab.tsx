@@ -81,12 +81,10 @@ export function InvoicesTab({ toolbarStart }: Props) {
     (i: Invoice) => navigation.navigate('InvoiceDetails', { invoiceId: i.id }),
     [navigation],
   );
+  // Edit opens the invoice with its fields already editable.
   const edit = useCallback(
-    (i: Invoice) => navigation.navigate('InvoiceEdit', { invoiceId: i.id }),
-    [navigation],
-  );
-  const viewQuote = useCallback(
-    (quoteId: string) => navigation.navigate('QuoteDetails', { quoteId }),
+    (i: Invoice) =>
+      navigation.navigate('InvoiceDetails', { invoiceId: i.id, edit: true }),
     [navigation],
   );
 
@@ -94,16 +92,22 @@ export function InvoicesTab({ toolbarStart }: Props) {
     () => [
       { key: 'total', label: S.stats.total, value: stats.total },
       {
+        key: 'new',
+        label: S.stats.new,
+        value: stats.new,
+        tone: 'info' as const,
+      },
+      {
+        key: 'overdue',
+        label: S.stats.overdue,
+        value: stats.overdue,
+        tone: 'danger' as const,
+      },
+      {
         key: 'paid',
         label: S.stats.paid,
         value: stats.paid,
         tone: 'success' as const,
-      },
-      {
-        key: 'pending',
-        label: S.stats.pending,
-        value: stats.pending,
-        tone: 'warning' as const,
       },
       {
         key: 'month',
@@ -151,16 +155,6 @@ export function InvoicesTab({ toolbarStart }: Props) {
               accessibilityLabel={BILLING_STRINGS.a11y.view(i.id)}
               onPress={() => view(i)}
             />
-            {i.quoteId && (
-              // Billed against a quote: open it to compare.
-              <N1IconButton
-                icon="file"
-                size="sm"
-                accessibilityLabel={BILLING_STRINGS.a11y.viewQuote(i.quoteId)}
-                onPress={() => viewQuote(i.quoteId as string)}
-                testID={`view-quote-${i.id}`}
-              />
-            )}
             <N1IconButton
               icon="edit"
               variant="primary"
@@ -172,7 +166,7 @@ export function InvoicesTab({ toolbarStart }: Props) {
         ),
       },
     ],
-    [styles, view, edit, viewQuote],
+    [styles, view, edit],
   );
 
   const renderCompactItem = useCallback(
