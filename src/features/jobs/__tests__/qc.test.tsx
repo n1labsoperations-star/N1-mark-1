@@ -90,7 +90,7 @@ test('QC list has Raw Material and Machine QC tabs', async () => {
 
   let text = allText(root);
   expect(text).toContain('QC');
-  expect(text).toContain('2 pending · 5 total');
+  expect(text).toContain('1 pending · 5 total');
   expect(rowText(root, '1039')).toContain('Incoming inspection · SS Plate');
   expect(rowText(root, '1039')).toContain('Pending');
   expect(rowText(root, '1041')).toContain('Failed');
@@ -123,7 +123,7 @@ test('passing raw material QC moves the item to Passed', async () => {
 
   expect(hasTestId(root, 'qc-list-screen')).toBe(true);
   expect(rowText(root, '1039')).toContain('Passed');
-  expect(allText(root)).toContain('1 pending · 5 total');
+  expect(allText(root)).toContain('0 pending · 5 total');
   expect((await card('1039')).materialQc).toBe('accepted');
 });
 

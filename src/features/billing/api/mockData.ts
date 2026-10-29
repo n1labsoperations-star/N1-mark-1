@@ -192,8 +192,6 @@ const invoice = (seed: InvoiceSeed): Invoice => {
         ? {
             paidOn: day,
             receivedAmount: totals.total,
-            tdsAmount: 0,
-            tdsSection: null,
           }
         : null,
     totals,

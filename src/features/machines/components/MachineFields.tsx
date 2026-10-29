@@ -1,7 +1,6 @@
 import { FormRow, N1DropDown, N1TextInput } from '../../../shared/components';
 import type { FormErrors } from '../../../shared/hooks';
 import {
-  MACHINE_OPERATION_OPTIONS,
   MACHINE_SETTABLE_STATUS_OPTIONS,
   MACHINE_STATUS_OPTIONS,
   MACHINE_STRINGS,
@@ -46,17 +45,6 @@ export function MachineFields({
           disabled={locked}
           testID="machine-form-type"
         />
-        <N1DropDown
-          label={F.operation}
-          placeholder={hint(F.operationPlaceholder)}
-          options={MACHINE_OPERATION_OPTIONS}
-          value={values.operation || null}
-          onChange={bind('operation')}
-          disabled={locked}
-          testID="machine-form-operation"
-        />
-      </FormRow>
-      <FormRow>
         <N1TextInput
           label={F.code}
           required={!locked}
@@ -69,6 +57,8 @@ export function MachineFields({
           readOnly={locked}
           testID="machine-form-code"
         />
+      </FormRow>
+      <FormRow>
         <N1TextInput
           label={F.model}
           placeholder={hint(F.modelPlaceholder)}
@@ -77,11 +67,8 @@ export function MachineFields({
           readOnly={locked}
           testID="machine-form-model"
         />
-      </FormRow>
-      <FormRow>
         <N1TextInput
           label={F.location}
-          required={!locked}
           placeholder={hint(F.locationPlaceholder)}
           value={values.location}
           onChangeText={bind('location')}
@@ -89,19 +76,19 @@ export function MachineFields({
           readOnly={locked}
           testID="machine-form-location"
         />
-        {isNew ? null : (
-          <N1DropDown
-            label={F.status}
-            options={
-              running ? MACHINE_STATUS_OPTIONS : MACHINE_SETTABLE_STATUS_OPTIONS
-            }
-            value={values.status}
-            onChange={bind('status')}
-            disabled={locked || running}
-            testID="machine-form-status"
-          />
-        )}
       </FormRow>
+      {isNew ? null : (
+        <N1DropDown
+          label={F.status}
+          options={
+            running ? MACHINE_STATUS_OPTIONS : MACHINE_SETTABLE_STATUS_OPTIONS
+          }
+          value={values.status}
+          onChange={bind('status')}
+          disabled={locked || running}
+          testID="machine-form-status"
+        />
+      )}
       <N1TextInput
         label={F.notes}
         placeholder={hint(F.notesPlaceholder)}

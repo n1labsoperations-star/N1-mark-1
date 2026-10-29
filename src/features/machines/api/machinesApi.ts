@@ -4,11 +4,9 @@ import {
   graphqlRequest,
   toWireEnum,
 } from '../../../services/api';
-import { MACHINE_OPERATION_LABELS } from '../constants';
 import type {
   Machine,
   MachineInput,
-  MachineOperation,
   MachineStatus,
   MachineType,
 } from '../types';
@@ -19,7 +17,7 @@ import type {
 
 const MACHINE_FIELDS = `
   fragment MachineFields on Machine {
-    id name kind code model type location notes status
+    id name code model type location notes status
     currentWork { workOrderId title operator }
     currentAssignment { jobCardId }
   }
@@ -43,17 +41,8 @@ const TYPE_TO_WIRE: Record<MachineType, WireMachineType> = {
 const typeFromWire = (type: WireMachineType): MachineType =>
   type === 'LATHE' ? 'lathe' : type === 'CNC_MILL' ? 'vmc' : 'cnc';
 
-// The API has no operation field yet: it goes in `kind`, the machine's free
-// text "what sort of machine it is". Anything else there reads as none.
-const operationFromKind = (kind: string | null): MachineOperation | '' =>
-  kind && kind in MACHINE_OPERATION_LABELS ? (kind as MachineOperation) : '';
-
-type MachineNode = Omit<
-  Machine,
-  'type' | 'operation' | 'status' | 'currentWork'
-> & {
+type MachineNode = Omit<Machine, 'type' | 'status' | 'currentWork'> & {
   type: WireMachineType;
-  kind: string | null;
   status: Uppercase<MachineStatus>;
   currentWork: { workOrderId: string; title: string; operator: string } | null;
   currentAssignment: { jobCardId: string } | null;
@@ -101,11 +90,10 @@ async function workOrderNumbers(
 }
 
 function toMachine(node: MachineNode, numbers: Map<string, string>): Machine {
-  const { currentAssignment, currentWork, kind, ...rest } = node;
+  const { currentAssignment, currentWork, ...rest } = node;
   return {
     ...rest,
     type: typeFromWire(node.type),
-    operation: operationFromKind(kind),
     status: fromWireEnum<MachineStatus>(node.status),
     currentWork: currentWork && {
       ...currentWork,
@@ -139,10 +127,6 @@ function toWireInput(
   });
   if (input.type !== undefined) {
     fields.type = TYPE_TO_WIRE[input.type];
-  }
-  if (input.operation !== undefined) {
-    // Blank keeps what's there: the API can't clear `kind`.
-    fields.kind = input.operation || null;
   }
   return fields;
 }

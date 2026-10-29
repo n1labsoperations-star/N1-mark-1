@@ -48,6 +48,33 @@ export type JobOperation = {
   completedAt: ISODateString | null;
 };
 
+/**
+ * What the signed-in user may do on a step: start it, pause or stop (finish)
+ * it while it runs, resume it, or record its QC check.
+ */
+export type JobNextAction =
+  | 'none'
+  | 'start'
+  | 'pause'
+  | 'resume'
+  | 'stop'
+  | 'qc';
+
+/**
+ * The server's view of where the job is: the first step that has not passed
+ * its QC, and what the signed-in user may do on it now.
+ */
+export type JobCurrentStep = {
+  /** The step's JobOperation id. */
+  operationId: string;
+  name: string;
+  status: OperationStatus;
+  /** The one thing to offer ('none' when nothing); never 'pause'. */
+  nextAction: JobNextAction;
+  /** Every action allowed now, e.g. pause and stop on a running step. */
+  availableActions: JobNextAction[];
+};
+
 /** Why a running step was paused (pauseJobStep). */
 export type PauseReason =
   | 'tool_change'
@@ -119,6 +146,11 @@ export type JobCard = {
   materialQc: MaterialQc;
   /** The route card, in order. Empty until a flow is created. */
   operations: JobOperation[];
+  /**
+   * From the server: null once every step passed QC or with no route yet.
+   * The in-memory API leaves it out.
+   */
+  currentStep?: JobCurrentStep | null;
   qcHistory: QcEntry[];
   quotation: QuotationStatus;
   billing: BillingState;

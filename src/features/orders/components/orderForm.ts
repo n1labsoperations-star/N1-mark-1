@@ -140,7 +140,6 @@ export const REQUIRED_ORDER_FIELDS = [
   'partName',
   'drawingNumber',
   'deliveryDate',
-  'dcDate',
 ] as const satisfies (keyof OrderFormValues)[];
 
 /** Required fields, then format checks on the rest. */

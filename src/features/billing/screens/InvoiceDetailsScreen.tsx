@@ -551,21 +551,13 @@ export function InvoiceDetailsScreen({
   );
 }
 
-/** A paid invoice: when, what was received, and the TDS withheld. */
+/** A paid invoice: when, and what was received. */
 function PaymentDetails({ payment }: { payment: Payment }) {
   return (
     <BillingSection title={I.paidSummary(formatShortDate(payment.paidOn))}>
       <N1Text>
         {`${I.received} ${formatCurrency(payment.receivedAmount)}`}
       </N1Text>
-      {payment.tdsAmount > 0 && (
-        <N1Text color="secondary">
-          {I.tdsSummary(
-            formatCurrency(payment.tdsAmount),
-            payment.tdsSection ?? '',
-          )}
-        </N1Text>
-      )}
     </BillingSection>
   );
 }

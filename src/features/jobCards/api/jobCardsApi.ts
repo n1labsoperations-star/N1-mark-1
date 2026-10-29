@@ -19,6 +19,8 @@ import type {
   JobCard,
   JobCardCommand,
   JobCardStatus,
+  JobCurrentStep,
+  JobNextAction,
   JobOperation,
   MaterialQc,
   OperationStatus,
@@ -49,6 +51,7 @@ export const JOB_CARD_FIELDS = `
       id seq name status isRework operatorId operatorName
       machineId machineCode machineName quantityStarted startedAt completedAt
     }
+    currentStep { operationId name status nextAction availableActions }
     qcHistory {
       id kind stage result remark inspector recordedByName recordedAt
       jobOperationId
@@ -74,6 +77,14 @@ type OperationNode = {
   quantityStarted: number | null;
   startedAt: string | null;
   completedAt: string | null;
+};
+
+type CurrentStepNode = {
+  operationId: string;
+  name: string;
+  status: Wire<OperationStatus>;
+  nextAction: Wire<JobNextAction>;
+  availableActions: Wire<JobNextAction>[];
 };
 
 type QcRecordNode = {
@@ -115,6 +126,7 @@ export type JobCardNode = {
   quotation: Wire<QuotationStatus>;
   billing: Wire<BillingState>;
   operations: OperationNode[];
+  currentStep: CurrentStepNode | null;
   qcHistory: QcRecordNode[];
 };
 
@@ -131,6 +143,18 @@ function toOperation(node: OperationNode): JobOperation {
     quantityStarted: node.quantityStarted,
     startedAt: node.startedAt,
     completedAt: node.completedAt,
+  };
+}
+
+function toCurrentStep(node: CurrentStepNode): JobCurrentStep {
+  return {
+    operationId: node.operationId,
+    name: node.name,
+    status: fromWireEnum<OperationStatus>(node.status),
+    nextAction: fromWireEnum<JobNextAction>(node.nextAction),
+    availableActions: node.availableActions.map(a =>
+      fromWireEnum<JobNextAction>(a),
+    ),
   };
 }
 
@@ -173,6 +197,7 @@ export function toJobCard(node: JobCardNode): JobCard {
     operations: [...node.operations]
       .sort((a, b) => a.seq - b.seq)
       .map(toOperation),
+    currentStep: node.currentStep && toCurrentStep(node.currentStep),
     qcHistory: node.qcHistory.map(toQcEntry),
     quotation: fromWireEnum<QuotationStatus>(node.quotation),
     billing: fromWireEnum<BillingState>(node.billing),

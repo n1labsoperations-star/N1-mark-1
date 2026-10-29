@@ -15,7 +15,7 @@ import {
   MACHINE_TYPE_LABELS,
 } from '../constants';
 import type { Machine } from '../types';
-import { operationLabel, workTitle } from '../utils';
+import { workTitle } from '../utils';
 import { MachineStatusBadge } from './MachineBadge';
 
 const makeStyles = createN1Styles(t => ({
@@ -65,9 +65,6 @@ export const MachineCard = memo(function MachineCardComponent({
         <N1Avatar name={m.code} size="sm" tone={status.tone} />
         <N1Text weight="bold" style={styles.grow} numberOfLines={1}>
           {m.code}
-        </N1Text>
-        <N1Text variant="small" color="secondary">
-          {operationLabel(m)}
         </N1Text>
       </View>
       <View style={styles.pair}>

@@ -81,11 +81,12 @@ type OrganisationNode = Omit<
   | 'invoiceLogo'
   | 'signature'
 > & {
+  /** Each part may be null: a new shop's signup address can be partial. */
   address: {
-    address: string;
-    city: string;
-    state: string;
-    pinCode: string;
+    address: string | null;
+    city: string | null;
+    state: string | null;
+    pinCode: string | null;
     country: string;
   };
   gstin: string | null;
@@ -168,10 +169,10 @@ async function toOrganization(node: OrganisationNode): Promise<Organization> {
   const { address, gstin, logo, invoiceLogo, signature, ...rest } = node;
   return {
     ...rest,
-    address: address.address,
-    city: address.city,
-    state: address.state,
-    pinCode: address.pinCode,
+    address: address.address ?? '',
+    city: address.city ?? '',
+    state: address.state ?? '',
+    pinCode: address.pinCode ?? '',
     country: address.country,
     gstNumber: gstin ?? '',
     logo: await withImageUri(logo),

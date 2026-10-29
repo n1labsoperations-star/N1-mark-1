@@ -32,7 +32,6 @@ import {
   INITIAL_MACHINE_FILTERS,
   machineSearchText,
   matchesMachineFilters,
-  operationLabel,
 } from '../utils';
 import { useTopBarAction } from '../../dashboard/hooks/useTopBarAction';
 
@@ -100,11 +99,6 @@ export function MachinesListScreen() {
         key: 'type',
         title: S.columns.type,
         render: m => <N1Text>{MACHINE_TYPE_LABELS[m.type]}</N1Text>,
-      },
-      {
-        key: 'operation',
-        title: S.columns.operation,
-        render: m => <N1Text>{operationLabel(m)}</N1Text>,
       },
       { key: 'location', title: S.columns.location, flex: 0.8 },
       {

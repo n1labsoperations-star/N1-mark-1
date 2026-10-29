@@ -412,7 +412,7 @@ export function OrderDetailsScreen({
     );
   }
 
-  const createJobCardButton = !order.jobCardId && (
+  const createJobCardButton = order.canCreateJobCard && (
     <N1Button
       title={D.createJobCard}
       leftIcon="plus"

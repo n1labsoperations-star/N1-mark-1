@@ -80,17 +80,11 @@ async function updateQuote(id: string, changes: Partial<QuoteInput>) {
   return quotes.update(id, { totals: mockQuoteTotals(row) } as never);
 }
 
-async function markPaid(id: string, { paidOn, tds }: PaymentInput) {
+async function markPaid(id: string, { paidOn }: PaymentInput) {
   const row = await invoices.get(id);
-  const tdsAmount = tds?.amount ?? 0;
   return invoices.update(id, {
     status: 'paid',
-    payment: {
-      paidOn,
-      receivedAmount: row.totals.total - tdsAmount,
-      tdsAmount,
-      tdsSection: tds?.section ?? null,
-    },
+    payment: { paidOn, receivedAmount: row.totals.total },
   } as never);
 }
 

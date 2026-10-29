@@ -19,7 +19,6 @@ const EMPTY: MachineInput = {
   code: '',
   model: '',
   type: 'cnc',
-  operation: '',
   location: '',
   status: 'idle',
   notes: '',
@@ -31,7 +30,6 @@ export const toMachineValues = (m?: Machine | null): MachineInput =>
         code: m.code,
         model: m.model,
         type: m.type,
-        operation: m.operation,
         location: m.location,
         status: m.status,
         notes: m.notes,
@@ -63,9 +61,6 @@ export function makeMachineValidator(
       errors.code = COMMON_STRINGS.required;
     } else if (taken.has(normaliseCode(v.code))) {
       errors.code = F.codeTaken;
-    }
-    if (isBlank(v.location)) {
-      errors.location = COMMON_STRINGS.required;
     }
     return errors;
   };

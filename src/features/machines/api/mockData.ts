@@ -1,11 +1,9 @@
 import type { Machine } from '../types';
 
 const m = (
-  machine: Omit<Machine, 'notes' | 'operation'> &
-    Partial<Pick<Machine, 'notes' | 'operation'>>,
+  machine: Omit<Machine, 'notes'> & Partial<Pick<Machine, 'notes'>>,
 ): Machine => ({
   notes: '',
-  operation: '',
   ...machine,
 });
 
@@ -16,7 +14,6 @@ export const MOCK_MACHINES: Machine[] = [
     name: 'Turning Center 1',
     model: 'Haas ST-20',
     type: 'cnc',
-    operation: 'turning',
     location: 'Bay 1',
     status: 'running',
     currentWork: {
