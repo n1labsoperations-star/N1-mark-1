@@ -10,6 +10,11 @@ import {
 } from '../../../shared/utils';
 import { COMMON_STRINGS } from '../../../shared/constants';
 import { ORDER_STRINGS } from '../constants';
+import {
+  drawingsToOrderFiles,
+  orderDrawings,
+  orderOtherDocuments,
+} from '../drawings';
 import type { OrderInput, OrderPriority, WorkOrder } from '../types';
 
 /**
@@ -18,7 +23,8 @@ import type { OrderInput, OrderPriority, WorkOrder } from '../types';
  * job card (FE-007).
  */
 export type OrderFormValues = {
-  designFile: Attachment | null;
+  /** At least one: the first is the order's design file. */
+  designFiles: Attachment[];
   purchaseOrder: Attachment | null;
   /** Set when the name matches a saved customer; blank for a new name. */
   customerId: string;
@@ -42,7 +48,7 @@ export type OrderFormValues = {
 };
 
 export const EMPTY_ORDER_FORM: OrderFormValues = {
-  designFile: null,
+  designFiles: [],
   purchaseOrder: null,
   customerId: '',
   customerName: '',
@@ -76,8 +82,8 @@ export function orderToFormValues(order?: WorkOrder): OrderFormValues {
     return EMPTY_ORDER_FORM;
   }
   return {
-    designFile: order.designFile,
-    purchaseOrder: order.documents[0] ?? null,
+    designFiles: orderDrawings(order),
+    purchaseOrder: orderOtherDocuments(order)[0] ?? null,
     customerId: order.customerId,
     customerName: order.customerName,
     customerEmail: order.customerEmail,
@@ -100,7 +106,7 @@ export function orderToFormValues(order?: WorkOrder): OrderFormValues {
 /** The form's steps, in order, and the fields each one holds. */
 export const ORDER_FORM_STEPS: (keyof OrderFormValues)[][] = [
   [
-    'designFile',
+    'designFiles',
     'purchaseOrder',
     'customerId',
     'customerName',
@@ -124,7 +130,7 @@ export const ORDER_FORM_STEPS: (keyof OrderFormValues)[][] = [
 ];
 
 /**
- * Text fields filled in on every order (the form marks them with *). The
+ * Text fields filled in on every order (the form marks them with *). A
  * design file is required too.
  */
 export const REQUIRED_ORDER_FIELDS = [
@@ -142,8 +148,8 @@ export function validateOrderForm(
   v: OrderFormValues,
 ): FormErrors<OrderFormValues> {
   const errors: FormErrors<OrderFormValues> = {};
-  if (!v.designFile) {
-    errors.designFile = COMMON_STRINGS.required;
+  if (v.designFiles.length === 0) {
+    errors.designFiles = COMMON_STRINGS.required;
   }
   REQUIRED_ORDER_FIELDS.forEach(key => {
     if (isBlank(v[key])) {
@@ -237,11 +243,10 @@ export function formValuesToOrderInput(
     materialSource: existing?.materialSource ?? '',
     quoteId: existing?.quoteId ?? '',
     notes: existing?.notes ?? '',
-    designFile: v.designFile,
     // The form edits the first (purchase order) document; any others are kept.
-    documents: [
+    ...drawingsToOrderFiles(v.designFiles, [
       ...(v.purchaseOrder ? [v.purchaseOrder] : []),
-      ...(existing?.documents.slice(1) ?? []),
-    ],
+      ...(existing ? orderOtherDocuments(existing).slice(1) : []),
+    ]),
   };
 }

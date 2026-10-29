@@ -8,6 +8,7 @@ import {
   useN1Styles,
 } from '../../../shared/components';
 import { isPhone } from '../../../shared/utils';
+import { DEV_LOGIN } from '../constants';
 import { makeLoginFormStyles } from '../styles';
 import { isValidEmail } from '../utils';
 
@@ -47,6 +48,7 @@ type Props = {
   /** Sign-in in flight: the button spins and can't be pressed again. */
   submitting?: boolean;
   onSubmit: (email: string, password: string) => void;
+  /** Left out to hide the "Forgot password?" link. */
   onForgotPassword?: () => void;
 };
 
@@ -61,8 +63,8 @@ function LoginForm({
   onForgotPassword,
 }: Props) {
   const styles = useN1Styles(makeLoginFormStyles);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(DEV_LOGIN.email);
+  const [password, setPassword] = useState(DEV_LOGIN.password);
   const [rememberMe, setRememberMe] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
@@ -121,23 +123,27 @@ function LoginForm({
         autoComplete="password"
         textContentType="password"
       />
-      <View
-        style={[styles.optionsRow, !showRememberMe && styles.optionsRowEnd]}
-      >
-        {showRememberMe ? (
-          <N1Checkbox
-            label="Remember me"
-            checked={rememberMe}
-            onChange={setRememberMe}
-          />
-        ) : null}
-        <N1Button
-          title="Forgot password?"
-          variant="ghost"
-          size="sm"
-          onPress={onForgotPassword}
-        />
-      </View>
+      {showRememberMe || onForgotPassword ? (
+        <View
+          style={[styles.optionsRow, !showRememberMe && styles.optionsRowEnd]}
+        >
+          {showRememberMe ? (
+            <N1Checkbox
+              label="Remember me"
+              checked={rememberMe}
+              onChange={setRememberMe}
+            />
+          ) : null}
+          {onForgotPassword ? (
+            <N1Button
+              title="Forgot password?"
+              variant="ghost"
+              size="sm"
+              onPress={onForgotPassword}
+            />
+          ) : null}
+        </View>
+      ) : null}
       <N1Button
         title="Log in"
         size="lg"
