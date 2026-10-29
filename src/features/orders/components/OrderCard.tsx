@@ -44,6 +44,8 @@ const makeStyles = createN1Styles(t => ({
 
 type Props = {
   order: WorkOrder;
+  /** e.g. "#JOB3", or a dash when the order has no job card yet. */
+  jobCardNo: string;
   onEdit: (order: WorkOrder) => void;
   /** Set only when the order has a job card. */
   jobCard?: { label: string; onPress: () => void };
@@ -51,11 +53,12 @@ type Props = {
 
 /**
  * One work order on the phone list, with the web table's columns: the WO
- * number and part, the customer and due date, the PO and RC numbers, then
+ * number and part, the customer and due date, the PO and job card numbers, then
  * a line, then the priority and status chips with Job card and Edit.
  */
 export const OrderCard = memo(function OrderCardComponent({
   order: o,
+  jobCardNo,
   onEdit,
   jobCard,
 }: Props) {
@@ -87,8 +90,8 @@ export const OrderCard = memo(function OrderCardComponent({
           value={o.poNumber || COMMON_STRINGS.dash}
         />
         <LabeledValue
-          title={S.columns.rcNumber}
-          value={o.routeCardNo || COMMON_STRINGS.dash}
+          title={S.columns.jobCardNo}
+          value={jobCardNo}
           end
         />
       </View>

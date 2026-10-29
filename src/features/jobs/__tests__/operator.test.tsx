@@ -10,6 +10,8 @@ import {
   typeInto,
 } from '../../../shared/testing/testUtils';
 import { jobCardsApi } from '../../jobCards/api/mockJobCardsApi';
+import type { JobCard, JobOperation } from '../../jobCards/types';
+import { isOperatorDone } from '../utils';
 
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
   __esModule: true,
@@ -183,4 +185,52 @@ test('the station’s drawing opens the Drawing screen', async () => {
   expect(allText(drawing)).toMatch(/^Drawing\|DRW-1182\|WO #1037/);
   await press(byLabel(drawing, 'Close'));
   expect(hasTestId(root, 'operator-job-screen')).toBe(true);
+});
+
+describe('isOperatorDone', () => {
+  const step = (
+    operatorId: string,
+    status: JobOperation['status'],
+  ): JobOperation => ({
+    id: `${operatorId}-${status}`,
+    name: 'Turning (Lathe)',
+    machine: '',
+    operator: '',
+    operatorId,
+    status,
+    startedAt: null,
+    completedAt: null,
+  });
+  const job = (
+    operations: JobOperation[],
+    status: JobCard['status'] = 'in_progress',
+  ) => ({ status, operations } as JobCard);
+
+  test('kept while their step is to start, running or paused', () => {
+    expect(isOperatorDone(job([step('me', 'pending')]), 'me')).toBe(false);
+    expect(isOperatorDone(job([step('me', 'running')]), 'me')).toBe(false);
+    expect(isOperatorDone(job([step('me', 'paused')]), 'me')).toBe(false);
+    // Their next step is still to come.
+    expect(
+      isOperatorDone(
+        job([step('me', 'completed'), step('me', 'pending')]),
+        'me',
+      ),
+    ).toBe(false);
+  });
+
+  test('kept when none of its steps are theirs yet (just scanned)', () => {
+    expect(isOperatorDone(job([step('other', 'completed')]), 'me')).toBe(false);
+    expect(isOperatorDone(job([step('', 'pending')]), '')).toBe(false);
+  });
+
+  test('done once every step of theirs is completed, or the card is', () => {
+    expect(
+      isOperatorDone(
+        job([step('me', 'completed'), step('other', 'pending')]),
+        'me',
+      ),
+    ).toBe(true);
+    expect(isOperatorDone(job([], 'completed'), 'me')).toBe(true);
+  });
 });

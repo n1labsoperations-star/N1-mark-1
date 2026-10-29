@@ -1,8 +1,19 @@
-import { PDFDocument, degrees, rgb, type PDFPage } from 'pdf-lib';
+import {
+  PDFDocument,
+  StandardFonts,
+  degrees,
+  rgb,
+  type PDFFont,
+  type PDFPage,
+} from 'pdf-lib';
 import * as pdfjs from 'pdfjs-dist';
+import { OPS, Util } from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs';
 import { lightTheme } from '../../../theme';
-import { fileDownloadUrl } from '../../../services/files/fileStorage';
+import {
+  fileDownloadUrl,
+  uploadTarget,
+} from '../../../services/files/fileStorage';
 import { pickedFile } from '../../../services/files/pickedFiles';
 import type { Attachment } from '../../../shared/types';
 import { DRAWING_QR } from '../constants';
@@ -11,6 +22,7 @@ import {
   clearInk,
   companyAreas,
   joinLines,
+  logoAreas,
   type Box,
   type TextLine,
 } from './companyArea';
@@ -61,13 +73,16 @@ const toRgb = (hex: string) => {
   return rgb(channel(1), channel(3), channel(5));
 };
 
-/** The drawing's bytes: picked this session, or fetched from file storage. */
+/**
+ * The drawing's bytes: picked this session, or fetched from file storage
+ * (through the dev server on localhost, which S3's CORS doesn't allow).
+ */
 async function drawingBlob(doc: Attachment): Promise<BlobLike> {
   const picked = pickedFile(doc.id) as BlobLike | undefined;
   if (picked) {
     return picked;
   }
-  const url = doc.uri ?? (await fileDownloadUrl(doc.id));
+  const url = doc.uri ?? uploadTarget(await fileDownloadUrl(doc.id));
   const response = await browser.fetch(url);
   if (!response.ok) {
     throw new Error('Drawing download failed');
@@ -149,12 +164,62 @@ async function textLines(
   return joinLines(boxes);
 }
 
+const PICTURE_OPS = new Set<number>([
+  OPS.paintImageXObject,
+  OPS.paintInlineImageXObject,
+  OPS.paintImageMaskXObject,
+]);
+
+/** Where the page paints pictures (logos, 3D views), in viewport pixels. */
+async function pictureBoxes(
+  page: pdfjs.PDFPageProxy,
+  viewport: pdfjs.PageViewport,
+): Promise<Box[]> {
+  const { fnArray, argsArray } = await page.getOperatorList();
+  type Matrix = [number, number, number, number, number, number];
+  let ctm: Matrix = [1, 0, 0, 1, 0, 0];
+  const saved: Matrix[] = [];
+  const boxes: Box[] = [];
+  fnArray.forEach((fn, i) => {
+    const args = argsArray[i];
+    if (fn === OPS.save) {
+      saved.push(ctm);
+    } else if (fn === OPS.restore) {
+      ctm = saved.pop() ?? ctm;
+    } else if (fn === OPS.transform) {
+      ctm = Util.transform(ctm, args) as Matrix;
+    } else if (fn === OPS.paintFormXObjectBegin) {
+      saved.push(ctm);
+      ctm = args[0] ? (Util.transform(ctm, args[0]) as Matrix) : ctm;
+    } else if (fn === OPS.paintFormXObjectEnd) {
+      ctm = saved.pop() ?? ctm;
+    } else if (PICTURE_OPS.has(fn)) {
+      // A picture fills the unit square of its matrix.
+      const [x0, y0, x1, y1] = viewport.convertToViewportRectangle(
+        Util.getAxialAlignedBoundingBox([0, 0, 1, 1], ctm),
+      );
+      boxes.push({
+        x0: Math.floor(Math.min(x0, x1)),
+        y0: Math.floor(Math.min(y0, y1)),
+        x1: Math.ceil(Math.max(x0, x1)),
+        y1: Math.ceil(Math.max(y0, y1)),
+      });
+    }
+  });
+  return boxes;
+}
+
 /**
  * Draws the page small, finds the company's details to blank (when a
- * company is given) and room for a QR, in pixels. Blanked areas count as
- * paper, so the QR may go there.
+ * company is given: its name and address, and logos in the title block)
+ * and room for a QR, in pixels. Blanked areas count as paper, so the QR may
+ * go there.
  */
-async function spotOnPage(page: pdfjs.PDFPageProxy, company: string) {
+async function spotOnPage(
+  page: pdfjs.PDFPageProxy,
+  company: string,
+  withLabel: boolean,
+) {
   const { canvas, context, viewport } = await renderPage(
     page,
     DRAWING_QR.mapPixels,
@@ -162,17 +227,22 @@ async function spotOnPage(page: pdfjs.PDFPageProxy, company: string) {
   const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
   const drawn = inkMapFromPixels(data, canvas.width, canvas.height);
   const hidden = company
-    ? companyAreas(drawn, await textLines(page, viewport), company)
+    ? [
+        ...companyAreas(drawn, await textLines(page, viewport), company),
+        ...logoAreas(drawn, await pictureBoxes(page, viewport)),
+      ]
     : [];
   const map = clearInk(drawn, hidden);
   const px = (mm: number) => Math.round(mm * PT_PER_MM * viewport.scale);
+  // A label takes a band on top, so the square grows to keep the QR's size.
+  const band = withLabel ? px(DRAWING_QR.labelMm) : 0;
   const spot = findQrSpot(map, {
-    preferred: px(DRAWING_QR.preferredMm),
-    min: px(DRAWING_QR.minMm),
+    preferred: px(DRAWING_QR.preferredMm) + band,
+    min: px(DRAWING_QR.minMm) + band,
     gap: px(DRAWING_QR.gapMm),
     margin: px(DRAWING_QR.marginMm),
   });
-  return { spot, hidden, viewport };
+  return { spot, band, hidden, viewport };
 }
 
 /** Paints `box` (viewport pixels) white on the PDF page. */
@@ -189,38 +259,96 @@ function blankOut(page: PDFPage, box: Box, viewport: pdfjs.PageViewport) {
 }
 
 /**
- * Draws the QR (on its white quiet zone) where `spot` is on screen. The
- * corners map through the viewport, so a rotated page gets an upright code.
+ * The PDF point at (x, y) on screen, with the PDF points per screen pixel
+ * and the turn that keeps drawings upright on a rotated page.
+ */
+function pdfFrame(viewport: pdfjs.PageViewport, x: number, y: number) {
+  const [x0, y0] = viewport.convertToPdfPoint(x, y);
+  const [x1, y1] = viewport.convertToPdfPoint(x + 1, y);
+  return {
+    x: x0,
+    y: y0,
+    ptPerPx: Math.hypot(x1 - x0, y1 - y0),
+    rotate: degrees((Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI),
+  };
+}
+
+/** A white `w` × `h` box (screen pixels) with its top left at (x, y). */
+function drawPaper(
+  page: PDFPage,
+  viewport: pdfjs.PageViewport,
+  { x, y, w, h }: { x: number; y: number; w: number; h: number },
+) {
+  const { ptPerPx, ...at } = pdfFrame(viewport, x, y);
+  page.drawSvgPath(`M0 0h${w}v${h}h-${w}z`, {
+    ...at,
+    scale: ptPerPx,
+    color: toRgb(lightTheme.colors.qrBackground),
+  });
+}
+
+/**
+ * Draws the QR (on its white quiet zone) `size` pixels square with its top
+ * left at (x, y) on screen, upright however the page is rotated.
  */
 function drawQr(
   page: PDFPage,
-  spot: QrSpot,
   viewport: pdfjs.PageViewport,
+  { x, y, size }: { x: number; y: number; size: number },
   qrValue: string,
 ) {
   const { path, modules } = qrPath(qrValue);
-  const [x0, y0] = viewport.convertToPdfPoint(spot.x, spot.y);
-  const [x1, y1] = viewport.convertToPdfPoint(spot.x + spot.size, spot.y);
-  const side = Math.hypot(x1 - x0, y1 - y0);
-  const options = {
-    x: x0,
-    y: y0,
-    scale: side / modules,
-    rotate: degrees((Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI),
-  };
-  const { colors } = lightTheme;
-  page.drawSvgPath(`M0 0h${modules}v${modules}h-${modules}z`, {
+  const { ptPerPx, ...at } = pdfFrame(viewport, x, y);
+  const options = { ...at, scale: (size * ptPerPx) / modules };
+  drawPaper(page, viewport, { x, y, w: size, h: size });
+  page.drawSvgPath(path, {
     ...options,
-    color: toRgb(colors.qrBackground),
+    color: toRgb(lightTheme.colors.qrForeground),
   });
-  page.drawSvgPath(path, { ...options, color: toRgb(colors.qrForeground) });
+}
+
+/** `label` centred in the `band` pixels at the top of `spot`, on white. */
+function drawLabel(
+  page: PDFPage,
+  viewport: pdfjs.PageViewport,
+  spot: QrSpot,
+  band: number,
+  label: string,
+  font: PDFFont,
+) {
+  drawPaper(page, viewport, { x: spot.x, y: spot.y, w: spot.size, h: band });
+  const { ptPerPx } = pdfFrame(viewport, spot.x, spot.y);
+  const size = Math.min(
+    band * DRAWING_QR.labelFontRatio * ptPerPx,
+    (spot.size * ptPerPx) / font.widthOfTextAtSize(label, 1),
+  );
+  const width = font.widthOfTextAtSize(label, size) / ptPerPx;
+  const baseline = pdfFrame(
+    viewport,
+    spot.x + (spot.size - width) / 2,
+    spot.y + band * DRAWING_QR.labelBaselineRatio,
+  );
+  page.drawText(label, {
+    x: baseline.x,
+    y: baseline.y,
+    rotate: baseline.rotate,
+    size,
+    font,
+    color: toRgb(lightTheme.colors.qrForeground),
+  });
 }
 
 /**
  * The stamped PDF's bytes, or null for files that can't be drawn here.
  * `company`: the customer, whose name, address and logo are blanked.
+ * `label`: printed above the QR, e.g. "WO #13"; blank for none.
  */
-async function stampedBytes(doc: Attachment, qrValue: string, company: string) {
+async function stampedBytes(
+  doc: Attachment,
+  qrValue: string,
+  company: string,
+  label: string,
+) {
   const blob = await drawingBlob(doc);
   const type = typeOf(doc, blob);
   if (!type) {
@@ -234,15 +362,26 @@ async function stampedBytes(doc: Attachment, qrValue: string, company: string) {
   const source = await pdfjs.getDocument({ data: bytes.slice() }).promise;
   const pdf = await PDFDocument.load(bytes);
   const pages = pdf.getPages();
+  const font = label ? await pdf.embedFont(StandardFonts.HelveticaBold) : null;
   const crowdedPages: number[] = [];
   try {
     for (let i = 0; i < pages.length; i++) {
-      const { spot, hidden, viewport } = await spotOnPage(
+      const { spot, band, hidden, viewport } = await spotOnPage(
         await source.getPage(i + 1),
         company,
+        Boolean(font),
       );
       hidden.forEach(box => blankOut(pages[i], box, viewport));
-      drawQr(pages[i], spot, viewport, qrValue);
+      if (font) {
+        drawLabel(pages[i], viewport, spot, band, label, font);
+      }
+      const qrSize = spot.size - band;
+      drawQr(
+        pages[i],
+        viewport,
+        { x: spot.x + band / 2, y: spot.y + band, size: qrSize },
+        qrValue,
+      );
       if (!spot.clear) {
         crowdedPages.push(i + 1);
       }
@@ -255,15 +394,17 @@ async function stampedBytes(doc: Attachment, qrValue: string, company: string) {
 
 /**
  * The drawing with the order QR on every page, each in that page's largest
- * blank area, and the customer's details (`company`) blanked so operators
- * don't see them. Null for files that can't be drawn here (DWG, STEP…).
+ * blank area with `label` (the WO number) above it, and the
+ * customer's details (`company`) blanked so operators don't see them. Null
+ * for files that can't be drawn here (DWG, STEP…).
  */
 export async function stampDrawing(
   doc: Attachment,
   qrValue: string,
   company = '',
+  label = '',
 ): Promise<StampedDrawing | null> {
-  const stamped = await stampedBytes(doc, qrValue, company);
+  const stamped = await stampedBytes(doc, qrValue, company, label);
   if (!stamped) {
     return null;
   }
@@ -280,8 +421,9 @@ export async function stampedPreview(
   doc: Attachment,
   qrValue: string,
   company = '',
+  label = '',
 ): Promise<StampedPreview | null> {
-  const stamped = await stampedBytes(doc, qrValue, company);
+  const stamped = await stampedBytes(doc, qrValue, company, label);
   if (!stamped) {
     return null;
   }

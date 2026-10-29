@@ -3,8 +3,10 @@ import { useAppDispatch, useAppSelector } from '../../../app/store/hooks';
 import type { RootState } from '../../../app/store';
 import { selectJobCardsState } from '../../jobCards/store/selectors';
 import { useEmployeeRole } from '../../profile/context/EmployeeRoleContext';
+import { useEmployeeProfile } from '../../profile/hooks/useEmployeeProfile';
 import { qcQueueKey, type QcQueueEntry } from '../qc';
 import { myJobsActions } from '../store/myJobsSlice';
+import { isOperatorDone } from '../utils';
 import type { WorkOrder } from '../../orders/types';
 import type { RawMaterialInput } from '../types';
 
@@ -20,6 +22,7 @@ export function useMyJobs() {
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectMyJobs);
   const entities = useAppSelector(s => selectJobCardsState(s).entities);
+  const myId = useEmployeeProfile().profile?.id ?? '';
 
   // Load when nothing is loaded yet, or another role's list is.
   const stale = state.status === 'idle' || state.role !== role;
@@ -31,9 +34,17 @@ export function useMyJobs() {
 
   // Another role's list is hidden while this one loads.
   const ids = stale ? NO_IDS : state.ids;
+  // An operator's finished jobs drop off: kept while their step is to
+  // start, running or paused, gone once they complete it.
   const items = useMemo(
-    () => ids.flatMap(id => entities[id] ?? []),
-    [ids, entities],
+    () =>
+      ids.flatMap(id => {
+        const card = entities[id];
+        return card && !(role === 'operator' && isOperatorDone(card, myId))
+          ? card
+          : [];
+      }),
+    [ids, entities, role, myId],
   );
   const stats = useMemo(() => {
     const count = (status: string) =>

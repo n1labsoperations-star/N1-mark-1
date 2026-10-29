@@ -1,45 +1,20 @@
-import { fromPaise, fromWireEnum, graphqlRequest } from '../../../services/api';
+import { fromPaise, graphqlRequest } from '../../../services/api';
 import type { Connection } from '../../../services/api';
-import type { JobCardStatus, JobOperation } from '../../jobCards/types';
+import { jobCardsApi } from '../../jobCards/api/jobCardsApi';
+import { ordersApi } from '../../orders/api/ordersApi';
 import { PRIORITY_JOBS_LIMIT } from '../constants';
 import type {
   DashboardCustomer,
   DashboardData,
   DashboardPeriod,
-  PriorityJob,
 } from '../types';
+import { byDueDate, withRouteCards } from '../utils';
 
 // N1 Core API: dashboard(period) on POST /graphql. The week runs Monday to
 // today (India time); outstanding is everything unpaid now.
-//
-// Two requests side by side: the cost check prices the priority jobs by the
-// customer page size (`first`), whatever `priorityFirst` says, so asking for
-// both in one request only fits about nine customers.
+// Priority jobs come from the job card and order lists instead.
 
 type CustomerNode = Omit<DashboardCustomer, 'percent'> & { percent: number };
-
-type PriorityJobNode = {
-  routeCardNo: string;
-  jobCard: {
-    id: string;
-    code: string;
-    number: string | null;
-    customerName: string;
-    partName: string;
-    quantity: number;
-    dueDate: string;
-    status: string;
-    operations: {
-      id: string;
-      name: string;
-      status: string;
-      operatorName: string | null;
-      machineName: string | null;
-      startedAt: string | null;
-      completedAt: string | null;
-    }[];
-  };
-};
 
 type SummaryData = {
   dashboard: {
@@ -69,59 +44,12 @@ const SUMMARY_QUERY = `
   }
 `;
 
-const PRIORITY_QUERY = `
-  query DashboardPriorityJobs($period: DashboardPeriod!) {
-    dashboard(period: $period, first: 1, priorityFirst: ${PRIORITY_JOBS_LIMIT}) {
-      priorityJobs {
-        totalCount
-        edges {
-          node {
-            routeCardNo
-            jobCard {
-              id code number customerName partName quantity dueDate status
-              operations {
-                id name status operatorName machineName startedAt completedAt
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-`;
-
 const toCustomer = (node: CustomerNode): DashboardCustomer => ({
   ...node,
   percent: Math.round(node.percent),
   totalRevenue: fromPaise(node.totalRevenue),
   outstandingBalance: fromPaise(node.outstandingBalance),
 });
-
-function toPriorityJob({ routeCardNo, jobCard }: PriorityJobNode): PriorityJob {
-  return {
-    id: jobCard.id,
-    code: jobCard.code,
-    customerName: jobCard.customerName,
-    partName: jobCard.partName,
-    quantity: jobCard.quantity,
-    dueDate: jobCard.dueDate,
-    status: fromWireEnum<JobCardStatus>(jobCard.status),
-    operations: jobCard.operations.map(
-      (op): JobOperation => ({
-        id: op.id,
-        name: op.name,
-        machine: op.machineName ?? '',
-        operator: op.operatorName ?? '',
-        status: fromWireEnum<JobOperation['status']>(op.status),
-        startedAt: op.startedAt,
-        completedAt: op.completedAt,
-      }),
-    ),
-    routeCardNo,
-    // "WO-12" → "12": the app writes work orders as "WO #12".
-    workOrderNumber: (jobCard.number ?? '').replace(/^WO-?/i, ''),
-  };
-}
 
 /** Summary figures and every customer row, page by page. */
 async function summary(period: DashboardPeriod) {
@@ -149,23 +77,27 @@ async function summary(period: DashboardPeriod) {
   };
 }
 
-async function priorityJobs(period: DashboardPeriod) {
-  const data = await graphqlRequest<{
-    dashboard: {
-      priorityJobs: Connection<PriorityJobNode> & { totalCount: number };
-    };
-  }>(PRIORITY_QUERY, { period: period.toUpperCase() });
-  const { edges, totalCount } = data.dashboard.priorityJobs;
+/**
+ * Every open job card, soonest delivery first, with its route card number.
+ * Worked out here rather than by dashboard.priorityJobs, which leaves out
+ * cards the dashboard should list (all periods show the same jobs).
+ */
+async function priorityJobs() {
+  const [cards, orders] = await Promise.all([
+    jobCardsApi.list(),
+    ordersApi.list(),
+  ]);
+  const sorted = byDueDate(cards);
   return {
-    jobs: edges.map(edge => toPriorityJob(edge.node)),
-    totalJobs: totalCount,
+    jobs: withRouteCards(sorted.slice(0, PRIORITY_JOBS_LIMIT), orders),
+    totalJobs: sorted.length,
   };
 }
 
 async function get(period: DashboardPeriod): Promise<DashboardData> {
   const [figures, priority] = await Promise.all([
     summary(period),
-    priorityJobs(period),
+    priorityJobs(),
   ]);
   return { ...figures, ...priority };
 }

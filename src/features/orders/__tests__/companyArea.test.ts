@@ -3,6 +3,7 @@ import {
   companyAreas,
   companyWords,
   joinLines,
+  logoAreas,
   namesCompany,
   type Box,
   type TextLine,
@@ -115,4 +116,11 @@ test('blanked areas count as paper', () => {
   expect(map.ink[0]).toBe(1);
   // The page drawn is left as it was.
   expect(sheet.ink[75 * 200 + 120]).toBe(1);
+});
+
+test('a picture in a title block cell is a logo; one out on the sheet stays', () => {
+  const logo = box(130, 65, 170, 85);
+  const view3d = box(20, 20, 80, 70);
+  expect(logoAreas(sheet, [logo, view3d])).toEqual([logo]);
+  expect(logoAreas(sheet, [])).toEqual([]);
 });

@@ -142,7 +142,11 @@ export {
   type N1TimelineItemProps,
   type N1TimelineStatus,
 } from './N1TimelineItem';
-export { N1ScanFrame, type N1ScanFrameProps } from './N1ScanFrame';
+export {
+  N1ScanFrame,
+  type N1ScanFrameProps,
+  type N1ScanState,
+} from './N1ScanFrame';
 export {
   N1QrScanner,
   useCameraAccess,

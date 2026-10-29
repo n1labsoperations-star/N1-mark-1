@@ -9,6 +9,7 @@ export async function stampDrawing(
   _doc: Attachment,
   _qrValue: string,
   _company?: string,
+  _label?: string,
 ): Promise<StampedDrawing | null> {
   return null;
 }
@@ -18,6 +19,7 @@ export async function stampedPreview(
   _doc: Attachment,
   _qrValue: string,
   _company?: string,
+  _label?: string,
 ): Promise<StampedPreview | null> {
   return null;
 }

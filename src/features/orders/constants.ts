@@ -23,7 +23,7 @@ export const ORDER_STRINGS = {
     order: 'Work order / Part',
     customer: 'Customer',
     poNumber: 'PO number',
-    rcNumber: 'RC number',
+    jobCardNo: 'Job card no',
     priority: 'Priority',
     status: 'Status',
     due: 'Due date',
@@ -203,6 +203,7 @@ export const ORDER_STRINGS = {
     datePlaceholder: 'DD/MM/YYYY',
     invalidDate: 'Use DD/MM/YYYY',
     routeCardNo: 'Route card no',
+    jobCardNo: 'Job card no',
     dcNo: 'DC no',
     dcNoPlaceholder: 'e.g. DC-5561',
     dcDate: 'DC date',
@@ -270,6 +271,11 @@ export const DRAWING_QR = {
   /** Below this, phone cameras struggle with a printed code. */
   minMm: 18,
   gapMm: 3,
+  /** The band above the QR for the work order number. */
+  labelMm: 6,
+  /** The label's text height, and its baseline, as parts of the band. */
+  labelFontRatio: 0.6,
+  labelBaselineRatio: 0.75,
   /** Printer margins and the sheet's own frame. */
   marginMm: 10,
   /** Pages are drawn this many pixels on their longer side to find room. */

@@ -80,6 +80,10 @@ export const SCANNER_STRINGS = {
   permissionMessage: 'Allow camera access to scan QR codes.',
   allow: 'Allow camera',
   openSettings: 'Open settings',
+  browserDenied:
+    "Camera is blocked. Allow it in your browser's site settings, then try again.",
   unsupported: "Scanning isn't available here. Enter the code instead.",
+  cameraFailedTitle: 'Camera unavailable',
   cameraFailed: 'The camera could not start.',
+  retry: 'Try again',
 } as const;

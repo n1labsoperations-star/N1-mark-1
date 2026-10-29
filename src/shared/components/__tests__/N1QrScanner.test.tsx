@@ -6,8 +6,6 @@ import {
   useCameraAccess,
   type CameraAccess,
 } from '../N1QrScanner';
-import { N1QrScanner as WebScanner } from '../N1QrScanner/N1QrScanner.web';
-import { useCameraAccess as useWebCameraAccess } from '../N1QrScanner/useCameraAccess.web';
 
 async function mount(onScan: (value: string) => void) {
   let renderer!: ReactTestRenderer.ReactTestRenderer;
@@ -49,13 +47,6 @@ test('reports each code once until the rescan window passes', async () => {
 
   now.mockRestore();
   await ReactTestRenderer.act(() => renderer.unmount());
-});
-
-test('web has no camera: nothing renders and access is unsupported', () => {
-  expect(WebScanner({ active: true, onScan: jest.fn() })).toBeNull();
-  const access = useWebCameraAccess();
-  expect(access.status).toBe('unsupported');
-  expect(access.request()).toBeUndefined();
 });
 
 test('stops the camera in the background and forwards scanner errors', async () => {
@@ -159,5 +150,24 @@ test('a camera without a flash gets no torchMode, which would throw', async () =
   expect(camera.props.torchMode).toBeUndefined();
   expect(onTorchAvailable).toHaveBeenLastCalledWith(false);
   __device.current = backCamera;
+  await ReactTestRenderer.act(() => renderer.unmount());
+});
+
+test('the torch is only set while the camera runs, which Android requires', async () => {
+  let renderer!: ReactTestRenderer.ReactTestRenderer;
+  const scanner = (active: boolean) => (
+    <N1QrScanner active={active} torch onScan={jest.fn()} />
+  );
+  await ReactTestRenderer.act(() => {
+    renderer = ReactTestRenderer.create(scanner(false));
+  });
+  const camera = () => renderer.root.findByProps({ testID: 'qr-camera' });
+  expect(camera().props.torchMode).toBeUndefined();
+
+  await ReactTestRenderer.act(() => renderer.update(scanner(true)));
+  expect(camera().props.torchMode).toBe('on');
+
+  await ReactTestRenderer.act(() => renderer.update(scanner(false)));
+  expect(camera().props.torchMode).toBeUndefined();
   await ReactTestRenderer.act(() => renderer.unmount());
 });

@@ -193,6 +193,14 @@ export function companyAreas(
   );
 }
 
+/**
+ * Logos: pictures inside a title block cell. Pictures out on the sheet are
+ * part of the drawing (a 3D view) and stay.
+ */
+export function logoAreas(map: InkMap, pictures: Box[]): Box[] {
+  return pictures.filter(box => enclosingCell(map, box) !== null);
+}
+
 /** Marks `boxes` as blank paper on the map, so the QR may use them. */
 export function clearInk(map: InkMap, boxes: Box[]): InkMap {
   const ink = map.ink.slice();

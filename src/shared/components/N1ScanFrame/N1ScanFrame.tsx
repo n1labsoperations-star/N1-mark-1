@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ReactNode } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   View,
@@ -8,11 +9,20 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { createN1Styles, useN1Styles } from '../../../theme/N1ThemeProvider';
+import { N1Icon } from '../N1Icon/N1Icon';
 import { N1Text } from '../N1Text/N1Text';
+
+/**
+ * scanning: the scan line runs. checking: a code is being looked up.
+ * success / error: the frame turns green or red with a tick or cross.
+ */
+export type N1ScanState = 'scanning' | 'checking' | 'success' | 'error';
 
 export type N1ScanFrameProps = {
   /** Put the camera preview here; it fills the screen behind the frame. */
   children?: ReactNode;
+  /** Defaults to scanning. */
+  state?: N1ScanState;
   title?: string;
   message?: string;
   /** Shown under the message, e.g. an "Allow camera" button. */
@@ -27,7 +37,8 @@ export type N1ScanFrameProps = {
 const corners = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'] as const;
 
 const makeStyles = createN1Styles(t => {
-  const { frameSize, cornerLength, cornerWidth, lineHeight } = t.scanner;
+  const { frameSize, cornerLength, cornerWidth, lineHeight, badgeSize } =
+    t.scanner;
   const corner = {
     position: 'absolute',
     width: cornerLength,
@@ -80,6 +91,18 @@ const makeStyles = createN1Styles(t => {
       borderRightWidth: cornerWidth,
       borderBottomRightRadius: t.radius.sm,
     },
+    success: { borderColor: t.colors.scannerSuccess },
+    error: { borderColor: t.colors.scannerError },
+    badge: {
+      alignSelf: 'center',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: badgeSize,
+      height: badgeSize,
+      borderRadius: badgeSize / 2,
+    },
+    successBadge: { backgroundColor: t.colors.scannerSuccess },
+    errorBadge: { backgroundColor: t.colors.scannerError },
     line: {
       height: lineHeight,
       marginHorizontal: t.spacing.md,
@@ -95,9 +118,13 @@ const makeStyles = createN1Styles(t => {
   };
 });
 
-/** QR viewfinder: corner brackets, scan line and instructions on black. */
+/**
+ * QR viewfinder: corner brackets, scan line and instructions on black. After
+ * a scan, `state` shows a spinner, or a green tick or red cross in the frame.
+ */
 export const N1ScanFrame = React.memo(function N1ScanFrameComponent({
   children,
+  state = 'scanning',
   title = 'Align the QR code within the frame',
   message,
   accessory,
@@ -107,17 +134,37 @@ export const N1ScanFrame = React.memo(function N1ScanFrameComponent({
   testID,
 }: N1ScanFrameProps) {
   const styles = useN1Styles(makeStyles);
+  const result = state === 'success' || state === 'error' ? state : null;
   return (
     <View testID={testID} style={[styles.screen, style]}>
       {children && <View style={StyleSheet.absoluteFill}>{children}</View>}
       <View style={styles.centre}>
         <View style={styles.frame} accessibilityLabel="Scanner frame">
           {corners.map(c => (
-            <View key={c} style={styles[c]} />
+            <View key={c} style={[styles[c], result && styles[result]]} />
           ))}
-          <View style={styles.line} />
+          {state === 'scanning' && <View style={styles.line} />}
+          {state === 'checking' && (
+            <ActivityIndicator
+              size="large"
+              color={styles.light.color}
+              testID="scan-checking"
+            />
+          )}
+          {result && (
+            <View
+              style={[styles.badge, styles[`${result}Badge`]]}
+              testID={`scan-${result}`}
+            >
+              <N1Icon
+                name={result === 'success' ? 'check' : 'close'}
+                size="xxl"
+                tintColor={styles.light.color}
+              />
+            </View>
+          )}
         </View>
-        <View style={styles.text}>
+        <View style={styles.text} accessibilityLiveRegion="polite">
           <N1Text
             variant="title"
             weight="bold"

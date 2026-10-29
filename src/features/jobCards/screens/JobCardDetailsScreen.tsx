@@ -705,6 +705,7 @@ export function JobCardDetailsScreen({
                   doc,
                   qrValue: orderQrValue(order),
                   company: order.customerName,
+                  label: ORDER_STRINGS.workOrder(order.number),
                 })
             : undefined
         }

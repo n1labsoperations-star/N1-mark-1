@@ -145,7 +145,7 @@ function LoginForm({
         </View>
       ) : null}
       <N1Button
-        title="Log in"
+        title="Sign in"
         size="lg"
         fullWidth
         loading={submitting}

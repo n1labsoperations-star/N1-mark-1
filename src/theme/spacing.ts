@@ -61,6 +61,7 @@ export const iconSize = {
   md: 18,
   lg: 20,
   xl: 24,
+  xxl: 32,
 } as const;
 
 export const avatarSize = {
@@ -95,6 +96,8 @@ export const scanner = {
   cornerLength: 40,
   cornerWidth: 3,
   lineHeight: 2,
+  /** The tick or cross in the frame after a scan. */
+  badgeSize: 72,
 } as const;
 
 /** Numbered circles in a process flow. */

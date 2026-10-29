@@ -54,7 +54,7 @@ function LoginScreen() {
     return (
       <AuthMobileShell
         title="Welcome back"
-        subtitle="Log in to manage your organization and team."
+        subtitle="Sign in to manage your organization and team."
         footer={
           createOrganization ? (
             <AuthPrompt
@@ -89,7 +89,7 @@ function LoginScreen() {
     >
       <LoginForm
         title="Get Started"
-        subtitle="Log in as a user or admin to view your dashboard."
+        subtitle="Sign in as a user or admin to view your dashboard."
         showBrand
         showRememberMe
         errorText={error}

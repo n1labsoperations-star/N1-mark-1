@@ -13,8 +13,8 @@ export const API_BASE_URL = Platform.select({
   default: 'http://127.0.0.1:3000',
 });
 /**
- * Web dev only: the dev server path that forwards presigned file uploads to
- * S3, whose CORS allows only the deployed app (webpack.config.js).
+ * Web dev only: the dev server path that forwards presigned file uploads
+ * (and drawing downloads) to S3, whose CORS allows only the deployed app (webpack.config.js).
  */
 export const UPLOAD_PROXY =
   Platform.OS === 'web' ? process.env.N1_UPLOAD_PROXY || '' : '';

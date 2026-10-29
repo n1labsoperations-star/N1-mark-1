@@ -91,7 +91,7 @@ export async function renderAppAs(
   return app;
 }
 
-/** Fills the login form and presses Log in. */
+/** Fills the login form and presses Sign in. */
 export async function logIn(
   root: ReactTestInstance,
   email: string,
@@ -102,7 +102,7 @@ export async function logIn(
   );
   await typeInto(emailInput, email);
   await typeInto(passwordInput, password);
-  await press(byLabel(root, 'Log in'));
+  await press(byLabel(root, 'Sign in'));
 }
 
 type DrawerRoute = keyof AdminDrawerParamList;

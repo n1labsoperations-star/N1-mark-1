@@ -137,7 +137,8 @@ export function qrPrintHtml(order: OrderSummary) {
 
 /**
  * Prints a drawing file with the order QR in a blank area of every page,
- * the customer's name, address and logo blanked out for the shop floor.
+ * the WO number above it, and the customer's name, address and logo
+ * blanked out for the shop floor.
  * Where it can't be stamped (a DWG, a native build, a failed download) it
  * prints as a sheet naming the file, with the details and QR, as before.
  */
@@ -149,6 +150,7 @@ export async function printDrawingWithQr(
     doc,
     orderQrValue(order),
     order.customerName,
+    ORDER_STRINGS.workOrder(order.number),
   ).catch(() => null);
   if (stamped && (await printPdf(stamped.url))) {
     return;

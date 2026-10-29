@@ -82,7 +82,10 @@ export function uploadIdempotencyKey(entityId: string, docId: string): string {
     : key;
 }
 
-/** The presigned upload URL, through the dev server's S3 proxy when it has one. */
+/**
+ * A presigned S3 URL, through the dev server's S3 proxy when it has one. Used
+ * for uploads, and for downloads the page reads itself (drawing stamping).
+ */
 export function uploadTarget(url: string, proxy = UPLOAD_PROXY): string {
   return proxy ? url.replace(/^https:\/\//, `${proxy}/`) : url;
 }
