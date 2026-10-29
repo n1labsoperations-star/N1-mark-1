@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, StyleSheet } from 'react-native';
 import type {
   Barcode,
@@ -41,6 +41,11 @@ function createScanner({ camera, scanner }: CameraModules) {
       onTorchAvailable?.(hasTorch);
     }, [hasTorch, onTorchAvailable]);
     const appActive = useAppActive();
+    // Android rejects torch changes until the session runs ("Camera is not
+    // active"), so the torch is only set between onStarted and onStopped.
+    const [started, setStarted] = useState(false);
+    const onStarted = useCallback(() => setStarted(true), []);
+    const onStopped = useCallback(() => setStarted(false), []);
     const last = useRef({ value: '', at: 0 });
     const handlers = useRef({ onScan, onError });
     handlers.current = { onScan, onError };
@@ -75,7 +80,9 @@ function createScanner({ camera, scanner }: CameraModules) {
         isActive={active && appActive}
         outputs={[output]}
         // Any torchMode, even 'off', throws on a camera without a flash.
-        torchMode={hasTorch ? (torch ? 'on' : 'off') : undefined}
+        torchMode={hasTorch && started ? (torch ? 'on' : 'off') : undefined}
+        onStarted={onStarted}
+        onStopped={onStopped}
         onError={onError}
       />
     );

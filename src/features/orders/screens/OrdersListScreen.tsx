@@ -24,7 +24,7 @@ import {
 import { COMMON_STRINGS } from '../../../shared/constants';
 import { useListFilter, usePagination } from '../../../shared/hooks';
 import { useAppSelector } from '../../../app/store/hooks';
-import { canEditFlow, useJobCards } from '../../jobCards';
+import { JOB_CARD_STRINGS, canEditFlow, useJobCards } from '../../jobCards';
 import { selectJobCardsState } from '../../jobCards/store/selectors';
 import { formatDayMonth } from '../../../shared/utils';
 import { OrderCard } from '../components/OrderCard';
@@ -79,13 +79,10 @@ const COLUMNS: N1TableColumn<WorkOrder>[] = [
       <N1Text numberOfLines={1}>{o.poNumber || COMMON_STRINGS.dash}</N1Text>
     ),
   },
-  {
-    key: 'routeCardNo',
-    title: S.columns.rcNumber,
-    render: o => (
-      <N1Text numberOfLines={1}>{o.routeCardNo || COMMON_STRINGS.dash}</N1Text>
-    ),
-  },
+];
+
+/** After the Job card no column, which needs the loaded job cards. */
+const TRAILING_COLUMNS: N1TableColumn<WorkOrder>[] = [
   {
     key: 'priority',
     title: S.columns.priority,
@@ -216,10 +213,23 @@ export function OrdersListScreen() {
     },
     [jobCardEntities, openJobCard],
   );
+  // e.g. "#JOB3"; a dash until the order has a job card and it has loaded.
+  const jobCardNo = useCallback(
+    (o: WorkOrder) =>
+      JOB_CARD_STRINGS.jobCardNumber(jobCardEntities[o.jobCardId]?.code ?? '') ||
+      COMMON_STRINGS.dash,
+    [jobCardEntities],
+  );
 
   const columns = useMemo<N1TableColumn<WorkOrder>[]>(
     () => [
       ...COLUMNS,
+      {
+        key: 'jobCardNo',
+        title: S.columns.jobCardNo,
+        render: o => <N1Text numberOfLines={1}>{jobCardNo(o)}</N1Text>,
+      },
+      ...TRAILING_COLUMNS,
       {
         key: 'actions',
         title: S.columns.actions,
@@ -252,16 +262,21 @@ export function OrdersListScreen() {
         },
       },
     ],
-    [styles, jobCardAction, openEdit],
+    [styles, jobCardAction, jobCardNo, openEdit],
   );
 
   // Clicking a card opens the order; the clipboard and pencil open the job
   // card and Edit order.
   const renderCompactItem = useCallback(
     (o: WorkOrder) => (
-      <OrderCard order={o} onEdit={openEdit} jobCard={jobCardAction(o)} />
+      <OrderCard
+        order={o}
+        jobCardNo={jobCardNo(o)}
+        onEdit={openEdit}
+        jobCard={jobCardAction(o)}
+      />
     ),
-    [openEdit, jobCardAction],
+    [openEdit, jobCardAction, jobCardNo],
   );
 
   const createButton = (

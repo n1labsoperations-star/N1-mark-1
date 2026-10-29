@@ -33,3 +33,6 @@ export const NO_AUTOFILL_PASSWORD_PROPS = {
  * again within this window is the same scan, not a new one.
  */
 export const QR_RESCAN_DELAY_MS = 2000;
+
+/** How long a good scan shows its tick before the job opens. */
+export const SCAN_SUCCESS_DELAY_MS = 800;

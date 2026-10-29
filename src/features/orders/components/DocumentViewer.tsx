@@ -81,6 +81,8 @@ export type ViewerTarget =
       qrValue: string;
       /** The customer, whose details are blanked as when printing. */
       company: string;
+      /** Above the QR, e.g. "WO #13"; blank for none. */
+      label: string;
     }
   | { type: 'qr'; doc: Attachment; value: string };
 
@@ -120,6 +122,7 @@ export function DocumentViewer({
     target?.type === 'drawingQr' ? target.doc : undefined,
     target?.type === 'drawingQr' ? target.qrValue : '',
     target?.type === 'drawingQr' ? target.company : '',
+    target?.type === 'drawingQr' ? target.label : '',
   );
 
   const body = () => {

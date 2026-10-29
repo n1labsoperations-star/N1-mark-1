@@ -66,6 +66,9 @@ export type N1Colors = {
   scannerBackground: string;
   scannerForeground: string;
   scannerLine: string;
+  /** The frame and badge after a scan: found, or not. */
+  scannerSuccess: string;
+  scannerError: string;
   /** Round buttons on the camera screen. */
   scannerControl: string;
   /** QR codes stay dark on light in both themes, so scanners read them. */
@@ -99,6 +102,8 @@ const lightColors: N1Colors = {
   scannerBackground: palette.black,
   scannerForeground: palette.white,
   scannerLine: palette.scanLine,
+  scannerSuccess: palette.scanLine,
+  scannerError: palette.red500,
   scannerControl: palette.ink700,
   qrForeground: palette.black,
   qrBackground: palette.white,
@@ -161,6 +166,8 @@ const darkColors: N1Colors = {
   scannerBackground: palette.black,
   scannerForeground: palette.white,
   scannerLine: palette.scanLine,
+  scannerSuccess: palette.scanLine,
+  scannerError: palette.red500,
   scannerControl: palette.ink700,
   qrForeground: palette.black,
   qrBackground: palette.white,

@@ -32,3 +32,18 @@ export const rawMaterialOf = (order: WorkOrder): RawMaterialInput => ({
 /** True when any raw material detail needed for a job card is blank. */
 export const isRawMaterialMissing = (order: WorkOrder) =>
   Object.values(rawMaterialOf(order)).some(isBlank);
+
+/**
+ * Operator: their part of the job is over, so it leaves My Jobs. Either the
+ * whole card is completed, or every step assigned to them is. A card with
+ * none of their steps yet (just scanned) stays.
+ */
+export function isOperatorDone(c: JobCard, operatorId: string): boolean {
+  if (c.status === 'completed') {
+    return true;
+  }
+  const mine = c.operations.filter(
+    op => operatorId && op.operatorId === operatorId,
+  );
+  return mine.length > 0 && mine.every(op => op.status === 'completed');
+}

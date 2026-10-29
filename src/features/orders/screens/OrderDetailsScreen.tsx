@@ -37,6 +37,7 @@ import {
 import { useCustomers } from '../../customers';
 import {
   BILLING_META,
+  JOB_CARD_STRINGS,
   MetaBadge,
   QUOTATION_META,
   useJobCard,
@@ -521,6 +522,7 @@ export function OrderDetailsScreen({
       doc,
       qrValue,
       company: order.customerName,
+      label: ORDER_STRINGS.workOrder(order.number),
     });
   const drawingSection = (
     <DrawingQrSection
@@ -578,7 +580,10 @@ export function OrderDetailsScreen({
         <N1DetailGrid
           columns={isCompact ? 2 : DETAIL_COLUMNS}
           items={[
-            { label: F.routeCardNo, value: orDash(order.routeCardNo) },
+            {
+              label: F.jobCardNo,
+              value: orDash(JOB_CARD_STRINGS.jobCardNumber(jobCard?.code ?? '')),
+            },
             { label: F.dcNo, value: orDash(order.dcNo) },
             { label: F.dcDate, value: orDash(formatLongDate(order.dcDate)) },
           ]}

@@ -11,6 +11,7 @@ import {
   renderAppAs,
   typeInto,
 } from '../../../shared/testing/testUtils';
+import { SCAN_SUCCESS_DELAY_MS } from '../../../shared/constants';
 import { jobCardsApi } from '../../jobCards/api/mockJobCardsApi';
 import { MOCK_ORDERS } from '../../orders/api/mockData';
 import { ordersApi } from '../../orders/api/mockOrdersApi';
@@ -156,33 +157,63 @@ describe('Scan QR code', () => {
     permission.status = 'authorized';
   });
 
-  test('a scanned job code imports the order', async () => {
+  test('a scanned job code shows a tick, then imports the order', async () => {
     const root = await secondAdmin();
     await press(byTestId(root, 'import-job'));
     expect(byTestId(root, 'qr-camera').props.isActive).toBe(true);
 
     await scan(root, 'WO-01036');
+    expect(hasTestId(root, 'scan-success')).toBe(true);
+    expect(allText(root)).toContain('Opening WO #1036…');
+    expect(byTestId(root, 'qr-camera').props.isActive).toBe(false);
+
+    await ReactTestRenderer.act(
+      () => new Promise(resolve => setTimeout(resolve, SCAN_SUCCESS_DELAY_MS)),
+    );
+    await flush();
     expect(allText(root)).toContain('WO #1036 · Coupling — Job G');
   });
 
-  test('a bad code shows its error once, and the flash toggles', async () => {
+  test('a bad code shows a cross until Scan again, and the flash toggles', async () => {
     const root = await secondAdmin();
     await press(byTestId(root, 'import-job'));
 
     await scan(root, 'WO-9999');
-    expect(allText(root)).toContain('No order found for WO-9999');
-    // The same code stays in view; it isn't reported again.
-    await scan(root, 'WO-9999');
-    await scan(root, 'https://example.com');
-    expect(allText(root)).toContain(
-      'No order found for https://example.com',
-    );
+    let text = allText(root);
+    expect(text).toContain("Couldn't open this code");
+    expect(text).toContain('No order found for WO-9999');
+    expect(hasTestId(root, 'scan-error')).toBe(true);
+    // The camera waits for Scan again.
+    expect(byTestId(root, 'qr-camera').props.isActive).toBe(false);
 
+    await press(byText(root, 'Scan again'));
+    expect(hasTestId(root, 'scan-error')).toBe(false);
+    expect(byTestId(root, 'qr-camera').props.isActive).toBe(true);
+    await scan(root, 'https://example.com');
+    text = allText(root);
+    expect(text).toContain('No order found for https://example.com');
+
+    await press(byText(root, 'Scan again'));
     expect(byTestId(root, 'qr-camera').props.torchMode).toBe('off');
     await press(byLabel(root, 'Turn on flash'));
     expect(byTestId(root, 'qr-camera').props.torchMode).toBe('on');
     expect(hasTestId(root, 'scan-flash')).toBe(true);
     byLabel(root, 'Turn off flash');
+  });
+
+  test('a camera that fails to start offers Try again', async () => {
+    const root = await secondAdmin();
+    await press(byTestId(root, 'import-job'));
+
+    await ReactTestRenderer.act(async () =>
+      byTestId(root, 'qr-camera').props.onError(new Error('busy')),
+    );
+    expect(allText(root)).toContain('Camera unavailable');
+    expect(byTestId(root, 'qr-camera').props.isActive).toBe(false);
+
+    await press(byText(root, 'Try again'));
+    expect(allText(root)).not.toContain('Camera unavailable');
+    expect(byTestId(root, 'qr-camera').props.isActive).toBe(true);
   });
 
   test('without camera access it offers Settings and manual entry', async () => {

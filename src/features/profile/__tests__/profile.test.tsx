@@ -268,7 +268,7 @@ test('log out asks first, then returns to the login screen', async () => {
     );
     await typeInto(email, 'admin@n1.com');
     await typeInto(password, 'Admin@123');
-    await press(byLabel(root, 'Log in'));
+    await press(byLabel(root, 'Sign in'));
     // Signing in is a request now; let it finish.
     await flush();
   };

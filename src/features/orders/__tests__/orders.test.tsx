@@ -45,8 +45,10 @@ jest.mock('../../../services/print/printHtml', () => ({
 
 // Native builds can't stamp drawings; tests set what the preview returns.
 const mockStampedPreview = jest.fn();
+const mockStampDrawing = jest.fn();
 jest.mock('../drawingStamp/stampDrawing', () => ({
   ...jest.requireActual('../drawingStamp/stampDrawing'),
+  stampDrawing: (...args: unknown[]) => mockStampDrawing(...args),
   stampedPreview: (...args: unknown[]) => mockStampedPreview(...args),
 }));
 
@@ -54,6 +56,8 @@ beforeEach(() => {
   mockWidth = 1280;
   mockStampedPreview.mockReset();
   mockStampedPreview.mockResolvedValue(null);
+  mockStampDrawing.mockReset();
+  mockStampDrawing.mockResolvedValue(null);
   mockPrintHtml.mockClear();
   mockPrintHtml.mockImplementation(() => Promise.resolve(true));
 });
@@ -122,13 +126,13 @@ test('list is sorted by priority then due date', async () => {
   ];
   const positions = order.map(id => text.indexOf(id));
   expect(positions).toEqual([...positions].sort((a, b) => a - b));
-  // PO and RC numbers in place of material / quantity.
+  // PO and job card numbers in place of material / quantity.
   expect(text).toMatch(
-    /Work order \/ Part.*Customer.*PO number.*RC number.*Priority.*Status.*Due date.*Actions/,
+    /Work order \/ Part.*Customer.*PO number.*Job card no.*Priority.*Status.*Due date.*Actions/,
   );
   expect(text).not.toContain('Material / Qty');
   expect(text).not.toContain('MS Round Bar · 200 pcs');
-  expect(text).toMatch(/WO #1042.*Acme Metalworks.*PO-8842.*RC-2210/);
+  expect(text).toMatch(/WO #1042.*Acme Metalworks.*PO-8842.*#JOB1/);
   // Narrow windows scroll the columns sideways, never squeezing them.
   const hscroll = byTestId(root, 'orders-table-hscroll');
   expect(hscroll.props.horizontal).toBe(true);
@@ -145,7 +149,7 @@ test('only orders with a job card show the job card button', async () => {
   expect(hasTestId(h.root, 'job-card-1044')).toBe(false);
   // Edit is there either way.
   expect(hasTestId(h.root, 'edit-order-1043')).toBe(true);
-  expect(allText(byTestId(h.root, 'orders-table'))).not.toContain('Job card');
+  expect(allText(byTestId(h.root, 'orders-table'))).not.toMatch(/Job card(?! no)/);
   // A job card with its route opens; one without steps opens with Create flow.
   await press(byLabel(h.root, 'Open job card for WO #1042'));
   expect(h.currentRoute()).toBe('JobCardDetails');
@@ -374,7 +378,8 @@ test('details show the full work order', async () => {
   expect(allText(byTestId(screen, 'order-overview'))).toMatch(
     /PO number.*PO-8842.*Delivery date.*02 Oct 2026/,
   );
-  expect(text()).toContain('RC-2210');
+  // Dispatch shows the order's job card number.
+  expect(text()).toContain('Dispatch|Job card no|#JOB1|');
   // Quotation and billing come from the order's job card.
   expect(allText(byTestId(screen, 'order-billing'))).toBe(
     'Quotation|Accepted|Billing|Not invoiced',
@@ -542,12 +547,15 @@ test('Preview with QR shows the drawing as it prints, QR on every page', async (
   await press(byTestId(screen, 'order-preview-qr'));
   await flush();
   let viewer = byTestId(h.root, 'document-viewer');
-  // The customer's details are blanked on the preview, as when printing.
-  expect(mockStampedPreview).toHaveBeenCalledWith(
+  // The customer's details are blanked on the preview, as when printing,
+  // and the WO number goes above the QR.
+  const stampArgs = [
     expect.objectContaining({ name: 'drawing.pdf' }),
     expect.stringContaining('1042'),
     MOCK_ORDERS.find(o => o.id === '1042')?.customerName,
-  );
+    'WO #1042',
+  ];
+  expect(mockStampedPreview).toHaveBeenCalledWith(...stampArgs);
   expect(allText(viewer)).toContain('Drawing DRW-1187 with QR');
   expect(byLabel(viewer, 'Page 1 with the order QR')).toBeTruthy();
   expect(byLabel(viewer, 'Page 2 with the order QR')).toBeTruthy();
@@ -555,6 +563,7 @@ test('Preview with QR shows the drawing as it prints, QR on every page', async (
   expect(allText(viewer)).toContain('No blank area fits the QR on page 2');
   // Print prints that drawing with its QR.
   await press(byTestId(viewer, 'document-viewer-print'));
+  expect(mockStampDrawing).toHaveBeenCalledWith(...stampArgs);
   expect(mockPrintHtml.mock.lastCall?.[1]).toBe('drawing.pdf');
 });
 
@@ -1040,8 +1049,8 @@ test('phone: cards with the table details, actions and step footer', async () =>
     '02 Oct',
     'PO number',
     'PO-8842',
-    'RC number',
-    'RC-2210',
+    'Job card no',
+    '#JOB1',
     'High',
     'In progress',
   ].forEach(part => expect(text).toContain(part));
