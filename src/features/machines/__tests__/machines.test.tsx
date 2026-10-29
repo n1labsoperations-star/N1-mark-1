@@ -31,7 +31,8 @@ test('the totals sit in the pagination bar and the table lists machines', async 
   );
   expect(text).toContain('WO #1036 · Coupling — Job G');
   expect(text).toContain('Divya Ramesh');
-  expect(text).toContain('Turning');
+  // No Operation column.
+  expect(text).not.toContain('Operation');
   expect(text).toContain('VMC');
   expect(text).toContain('Kirloskar Turnmaster');
   // Title and Add live in the toolbar; only the rows scroll.
@@ -65,11 +66,11 @@ test('adds a machine with required fields and a unique code', async () => {
   const { root, store } = await renderAdmin('Machines');
   await press(byTestId(root, 'add-machine'));
   await press(byTestId(root, 'machine-form-submit'));
-  // Code and location; there is no name field (the code is the name).
-  expect(allText(root).split('This field is required').length - 1).toBe(2);
+  // Only the code (location is optional); there is no name field (the code
+  // is the name).
+  expect(allText(root).split('This field is required').length - 1).toBe(1);
   expect(hasTestId(root, 'machine-form-name')).toBe(false);
   await choose(root, 'machine-form-type', 'VMC');
-  await choose(root, 'machine-form-operation', 'Pattern repeating');
   await typeInto(byTestId(root, 'machine-form-code'), 'cnc-01');
   await typeInto(byTestId(root, 'machine-form-location'), 'Bay 1');
   await press(byTestId(root, 'machine-form-submit'));
@@ -84,7 +85,6 @@ test('adds a machine with required fields and a unique code', async () => {
   expect(created).toMatchObject({
     name: 'CNC-05',
     type: 'vmc',
-    operation: 'pattern_repeating',
     status: 'idle',
     currentWork: null,
   });
@@ -182,7 +182,6 @@ test('phone lists machine cards with titled values and an edit button', async ()
   expect(hasTestId(root, 'machine-stats')).toBe(false);
   const row = allText(byTestId(root, 'machine-card-MCH-1'));
   expect(row).toContain('CNC-01');
-  expect(row).toContain('Turning');
   expect(row).toContain('CNC');
   expect(row).toContain('Bay 1');
   expect(row).toContain('Running');
@@ -246,7 +245,7 @@ test('a running machine keeps its status; others choose idle or maintenance', as
   expect(options).toEqual(['Idle', 'Maintenance']);
 });
 
-test('machine types are CNC, Lathe and VMC; operations list the seven', async () => {
+test('machine types are CNC, Lathe and VMC; there is no operation', async () => {
   const { root } = await renderAdmin('Machines');
   await press(byTestId(root, 'add-machine'));
   const menuItems = () =>
@@ -260,14 +259,5 @@ test('machine types are CNC, Lathe and VMC; operations list the seven', async ()
   await press(byTestId(root, 'machine-form-type'));
   expect(menuItems()).toEqual(['CNC', 'Lathe', 'VMC']);
   await choose(root, 'machine-form-type', 'CNC');
-  await press(byTestId(root, 'machine-form-operation'));
-  expect(menuItems()).toEqual([
-    'Facing',
-    'Turning',
-    'Drilling',
-    'Grooving',
-    'Tapping',
-    'Threading',
-    'Pattern repeating',
-  ]);
+  expect(hasTestId(root, 'machine-form-operation')).toBe(false);
 });
