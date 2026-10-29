@@ -45,9 +45,10 @@ export function* convertQuote(action: PayloadAction<ConvertQuotePayload>) {
 }
 
 /**
- * Generate Dispatch → createInvoice for the job card (against the chosen
- * quote, or none). A job that was already billed opens its existing invoice
- * instead of a second one.
+ * Generate Dispatch → dispatchOrder (the order moves to Billing; refused while
+ * production isn't final), then createInvoice for the job card (against the
+ * chosen quote, or none). A job that was already billed opens its existing
+ * invoice instead of a second one.
  */
 export function* generateInvoice(
   action: PayloadAction<GenerateInvoicePayload>,
@@ -61,6 +62,11 @@ export function* generateInvoice(
       return;
     }
     const jobCard: JobCard = yield call(jobCardsApi.get, jobCardId);
+    const dispatched: WorkOrder = yield call(
+      ordersApi.dispatch,
+      jobCardOrderId(jobCard),
+    );
+    yield put(orderActions.saveSuccess(dispatched));
     // The order's PO amount goes on the invoice.
     const orders: WorkOrder[] = yield call(ordersApi.list);
     const quotes: Quote[] = yield select(selectAllQuotes);

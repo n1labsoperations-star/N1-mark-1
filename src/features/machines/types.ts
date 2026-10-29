@@ -7,15 +7,6 @@ import type {
 import type { AdminDrawerParamList } from '../dashboard/types';
 
 export type MachineType = 'cnc' | 'lathe' | 'vmc';
-/** The operation a machine is set up for; '' when none was picked. */
-export type MachineOperation =
-  | 'facing'
-  | 'turning'
-  | 'drilling'
-  | 'grooving'
-  | 'tapping'
-  | 'threading'
-  | 'pattern_repeating';
 export type MachineStatus = 'running' | 'idle' | 'maintenance';
 
 /** The job a machine is working on, as the shop-floor API reports it. */
@@ -34,7 +25,6 @@ export type Machine = {
   name: string;
   model: string;
   type: MachineType;
-  operation: MachineOperation | '';
   location: string;
   status: MachineStatus;
   currentWork: MachineWork | null;
@@ -44,7 +34,7 @@ export type Machine = {
 /** No name on the form: the code is the machine's name (see machinesApi). */
 export type MachineInput = Pick<
   Machine,
-  'code' | 'model' | 'type' | 'operation' | 'location' | 'status' | 'notes'
+  'code' | 'model' | 'type' | 'location' | 'status' | 'notes'
 >;
 
 /** Multi-select list filters; an empty list shows every machine. */

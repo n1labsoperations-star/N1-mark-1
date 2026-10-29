@@ -135,9 +135,6 @@ export const JOBS_STRINGS = {
     importJob: 'Import Order',
     scanInstead: 'Scan QR code instead',
     notFound: (code: string) => `No order found for ${code}`,
-    /** Operators only find orders with a step assigned to them. */
-    notAssigned: (code: string) =>
-      `No order assigned to you matches ${code}. Ask your supervisor to assign you a step on it.`,
     noRoute: (workOrder: string) =>
       `${workOrder} has no route card yet. Ask an admin to create its flow.`,
   },

@@ -199,25 +199,34 @@ test('invoice details: operations, totals, send and mark as paid', async () => {
   ).toBe('new');
   await press(byText(screen, 'Download PDF'));
 
-  // Mark as Paid asks for the day and any TDS withheld.
+  // Mark as Paid asks only for the day (no TDS).
   await press(byTestId(screen, 'mark-paid'));
   const dialog = byTestId(h.root, 'mark-paid-dialog');
   expect(allText(dialog)).toContain('INV-2026-0125 · ₹67,200');
-  await typeInto(byTestId(dialog, 'tds-amount'), '1344');
+  expect(allText(dialog)).not.toContain('TDS');
+  // Only the invoice date to today: earlier is refused here, not by the server.
+  const pickPaidOn = async (date: Date) => {
+    await press(byTestId(dialog, 'paid-on'));
+    const wheels = byTestId(dialog, 'paid-on-wheels');
+    await ReactTestRenderer.act(() => wheels.props.onValueChange({}, date));
+    await press(byTestId(dialog, 'paid-on-done'));
+  };
+  await pickPaidOn(new Date(Date.now() - 10 * 24 * 60 * 60 * 1000));
   await press(byTestId(dialog, 'mark-paid-submit'));
-  expect(allText(dialog)).toContain('Enter the TDS section');
-  await typeInto(byTestId(dialog, 'tds-section'), '194C');
+  expect(allText(dialog)).toMatch(
+    /Pick a day from \d{2}\/\d{2}\/\d{4} to today/,
+  );
+  expect(
+    h.store.getState().billing.invoices.entities['INV-2026-0125'].status,
+  ).toBe('new');
+  await pickPaidOn(new Date());
   await press(byTestId(dialog, 'mark-paid-submit'));
   const paid = h.store.getState().billing.invoices.entities['INV-2026-0125'];
   expect(paid.status).toBe('paid');
-  expect(paid.payment).toMatchObject({
-    receivedAmount: 65856,
-    tdsAmount: 1344,
-    tdsSection: '194C',
-  });
+  expect(paid.payment).toMatchObject({ receivedAmount: 67200 });
   expect(hasTestId(h.root, 'mark-paid-dialog')).toBe(false);
-  expect(allText(screen)).toContain('Received ₹65,856');
-  expect(allText(screen)).toContain('TDS ₹1,344 (194C)');
+  expect(allText(screen)).toContain('Received ₹67,200');
+  expect(allText(screen)).not.toContain('TDS');
   const { props } = byTestId(screen, 'mark-paid');
   expect(props['aria-disabled'] ?? props.accessibilityState?.disabled).toBe(
     true,

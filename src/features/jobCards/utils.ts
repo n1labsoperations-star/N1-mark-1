@@ -254,6 +254,13 @@ export const canStart = (c: JobCard) =>
   c.operations.some(op => !isDone(op)) &&
   !startBlockedReason(c);
 
+/**
+ * Create flow waits for RM QC to pass (not while the material is only
+ * received, or rejected); a card that already has its flow can edit it.
+ */
+export const canEditFlow = (c: JobCard) =>
+  c.operations.length > 0 || c.materialQc === 'accepted';
+
 /** Work has begun on a step; the card can no longer be cancelled. */
 export const hasStarted = (c: JobCard) =>
   c.operations.some(op => op.status !== 'pending' || op.isRework);
@@ -434,7 +441,7 @@ export function optionsFrom(
 }
 
 /**
- * The job card the server opens with a new order: no route card yet,
+ * The job card the server opens for an order: no route card yet,
  * nothing approved. Used by the in-memory API.
  */
 export function jobCardFromOrder(order: WorkOrder): JobCard {

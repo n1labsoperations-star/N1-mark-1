@@ -60,28 +60,28 @@ test("My Jobs shows the operator's jobs as cards", async () => {
   expect(allText(root)).toContain('Resume');
 });
 
-test('a scanned or typed code opens the job (operators open their own)', async () => {
+test('a scanned or typed code opens the job and adds it to My Jobs', async () => {
   const root = await operator();
-  await importCode(root, 'WO-1037');
+  expect(hasTestId(root, 'job-row-1040')).toBe(false);
+  await importCode(root, 'WO-1040');
 
   let text = allText(root);
   expect(text).toContain('Job Detail');
-  expect(text).toContain('WO #1037 · Bracket — Job F');
+  expect(text).toContain('WO #1040 · Bracket — Job B');
   expect(text).toContain('Route card & progress');
 
-  // Their list is their assigned work; opening a job doesn't change it.
+  // Watched (watchJob): until an operator starts a step, only that keeps an
+  // unassigned job on their list and readable by id.
   await press(byLabel(root, 'Back'));
-  text = allText(root);
-  expect(text).toContain('4 in progress · 5 total');
+  expect(hasTestId(root, 'job-row-1040')).toBe(true);
+  expect(allText(root)).toMatch(/· 6 total/);
 });
 
-test('an unknown code tells the operator it may not be assigned to them', async () => {
+test('an unknown code says no order matches', async () => {
   const root = await operator();
   await importCode(root, 'WO-9999');
 
-  expect(allText(root)).toContain(
-    'No order assigned to you matches WO-9999. Ask your supervisor to assign you a step on it.',
-  );
+  expect(allText(root)).toContain('No order found for WO-9999');
 });
 
 test('a job without a route card cannot be imported', async () => {
@@ -91,6 +91,9 @@ test('a job without a route card cannot be imported', async () => {
   expect(allText(root)).toContain(
     'WO #1036 has no route card yet. Ask an admin to create its flow.',
   );
+  // Nor is it added to their list.
+  await press(byLabel(root, 'Back'));
+  expect(hasTestId(root, 'job-row-1036')).toBe(false);
 });
 
 test('pause, resume, complete, then start the next step on a machine', async () => {

@@ -97,7 +97,7 @@ export function useSendByEmail(doc: Doc | undefined) {
   };
 }
 
-/** Mark as Paid, through its dialog (paid on, TDS). */
+/** Mark as Paid, through its dialog (paid on). */
 export function useMarkPaid(invoiceId: string) {
   const [open, setOpen] = useState(false);
   const { workflow, action, begin } = useWorkflowStep(() => setOpen(false));

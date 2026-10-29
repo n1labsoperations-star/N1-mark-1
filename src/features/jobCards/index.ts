@@ -21,6 +21,7 @@ export {
   QUOTATION_META,
 } from './constants';
 export {
+  canEditFlow,
   canPauseOrComplete,
   canStart,
   currentOperation,
@@ -43,6 +44,8 @@ export type {
   JobCard,
   JobCardCommand,
   JobCardStatus,
+  JobCurrentStep,
+  JobNextAction,
   JobOperation,
   RejectedMaterial,
   JobCardsStackParamList,

@@ -48,7 +48,7 @@ const INVOICE_FIELDS = `
     discount
     lines { ...LineFields }
     totals { ...TotalsFields }
-    payment { paidOn receivedAmount tdsAmount tdsSection }
+    payment { paidOn receivedAmount }
   }
   ${BILLING_FIELDS}
 `;
@@ -166,7 +166,6 @@ function toInvoice(node: InvoiceNode): Invoice {
     payment: node.payment && {
       ...node.payment,
       receivedAmount: fromPaise(node.payment.receivedAmount),
-      tdsAmount: fromPaise(node.payment.tdsAmount),
     },
     totals: toTotals(node.totals),
   };
@@ -296,10 +295,10 @@ async function removeInvoice(): Promise<string> {
   throw new Error('Invoices can’t be deleted');
 }
 
-/** Paid on a day, with the TDS the customer withheld (owner and accountant). */
+/** Paid on a day (owner and accountant). */
 async function markInvoicePaid(
   id: string,
-  { paidOn, tds }: PaymentInput,
+  { paidOn }: PaymentInput,
 ): Promise<Invoice> {
   const data = await graphqlRequest<{ markInvoicePaid: InvoiceNode }>(
     `mutation MarkInvoicePaid($id: ID!, $input: PaymentInput!) {
@@ -308,12 +307,7 @@ async function markInvoicePaid(
     ${INVOICE_FIELDS}`,
     {
       id,
-      input: {
-        paidOn,
-        ...(tds && {
-          tds: { amount: toPaise(tds.amount), section: tds.section.trim() },
-        }),
-      },
+      input: { paidOn },
     },
   );
   return toInvoice(data.markInvoicePaid);

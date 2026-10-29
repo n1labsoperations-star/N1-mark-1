@@ -1,6 +1,6 @@
 import type { N1DropDownOption } from '../../shared/components';
 import type { StatusMeta } from '../../shared/types';
-import type { MachineOperation, MachineStatus, MachineType } from './types';
+import type { MachineStatus, MachineType } from './types';
 
 export const MACHINE_STRINGS = {
   title: 'Machines',
@@ -18,7 +18,6 @@ export const MACHINE_STRINGS = {
   columns: {
     code: 'Code',
     type: 'Type',
-    operation: 'Operation',
     location: 'Location',
     work: 'Current work',
     operator: 'Operator',
@@ -38,8 +37,6 @@ export const MACHINE_STRINGS = {
     model: 'Model',
     modelPlaceholder: 'e.g. Haas ST-20',
     type: 'Machine Type',
-    operation: 'Operation',
-    operationPlaceholder: 'Select operation',
     location: 'Location / Bay',
     locationPlaceholder: 'e.g. Bay 1',
     status: 'Status',
@@ -65,16 +62,6 @@ export const MACHINE_TYPE_LABELS: Record<MachineType, string> = {
   vmc: 'VMC',
 };
 
-export const MACHINE_OPERATION_LABELS: Record<MachineOperation, string> = {
-  facing: 'Facing',
-  turning: 'Turning',
-  drilling: 'Drilling',
-  grooving: 'Grooving',
-  tapping: 'Tapping',
-  threading: 'Threading',
-  pattern_repeating: 'Pattern repeating',
-};
-
 export const MACHINE_STATUS_META: Record<MachineStatus, StatusMeta> = {
   running: { label: 'Running', tone: 'info' },
   idle: { label: 'Idle', tone: 'neutral' },
@@ -84,12 +71,6 @@ export const MACHINE_STATUS_META: Record<MachineStatus, StatusMeta> = {
 export const MACHINE_TYPE_OPTIONS: N1DropDownOption<MachineType>[] = (
   Object.keys(MACHINE_TYPE_LABELS) as MachineType[]
 ).map(value => ({ value, label: MACHINE_TYPE_LABELS[value] }));
-
-export const MACHINE_OPERATION_OPTIONS: N1DropDownOption<MachineOperation>[] =
-  (Object.keys(MACHINE_OPERATION_LABELS) as MachineOperation[]).map(value => ({
-    value,
-    label: MACHINE_OPERATION_LABELS[value],
-  }));
 
 export const MACHINE_STATUS_OPTIONS: N1DropDownOption<MachineStatus>[] = (
   Object.keys(MACHINE_STATUS_META) as MachineStatus[]

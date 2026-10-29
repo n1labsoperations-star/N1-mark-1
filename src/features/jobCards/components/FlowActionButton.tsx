@@ -2,8 +2,12 @@ import { memo } from 'react';
 import { N1IconButton } from '../../../shared/components';
 import { JOB_CARD_STRINGS as S } from '../constants';
 import type { JobCard } from '../types';
+import { canEditFlow } from '../utils';
 
-/** "+" opens Create flow for a card with no route yet; the pencil opens Edit flow. */
+/**
+ * "+" opens Create flow for a card with no route yet (once RM QC passed);
+ * the pencil opens Edit flow.
+ */
 export const FlowActionButton = memo(function FlowActionButtonComponent({
   jobCard,
   onPress,
@@ -15,6 +19,9 @@ export const FlowActionButton = memo(function FlowActionButtonComponent({
   appearance?: 'table' | 'card';
 }) {
   const hasFlow = jobCard.operations.length > 0;
+  if (!canEditFlow(jobCard)) {
+    return null;
+  }
   return (
     <N1IconButton
       icon={hasFlow ? 'edit' : 'plus'}

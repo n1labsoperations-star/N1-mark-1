@@ -146,7 +146,7 @@ export const jobCardsApi = {
   getByQr,
   getByOrder,
   run,
-  /** Opens an order's job card (mockOrdersApi.create). */
+  /** Opens an order's job card (mockOrdersApi.update with openJobCard). */
   create: jobCards.create,
   update: jobCards.update,
   remove: jobCards.remove,

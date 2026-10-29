@@ -142,6 +142,15 @@ export function parseDisplayDate(text: string): ISODateString | undefined {
   return valid ? `${yyyy}-${mm}-${dd}` : undefined;
 }
 
+/**
+ * Today on this device's calendar, as YYYY-MM-DD. Not toISOString(), which
+ * is still yesterday in India until 05:30.
+ */
+export function localToday(): ISODateString {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
 /** ISO date → DD/MM/YYYY, for pre-filling date fields. */
 export function toDisplayDate(iso?: ISODateString): string {
   const d = iso ? parse(iso) : null;

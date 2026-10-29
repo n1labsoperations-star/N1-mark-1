@@ -72,8 +72,10 @@ function* orderWithoutCard(code: string, notFound: unknown) {
 }
 
 /**
- * A typed or scanned code → its job (jobCardByQr). Operators open only jobs
- * assigned to them (others aren't found); QC adds the job to their list. A
+ * A typed or scanned code → its job (jobCardByQr). QC and operators then add
+ * it to their list (watchJob): until then the server neither lists an
+ * operator's unassigned job in myJobs nor lets them read it by id. A job
+ * without a route card isn't added for an operator (they can't run it). A
  * supervisor also finds an order that has no job card yet, to import it with
  * its raw material.
  */
@@ -97,7 +99,11 @@ export function* lookupJob(action: PayloadAction<LookupJobPayload>) {
     }
     yield put(jobCardActions.received([card]));
     const found = { jobCardId: card.id, orderId: card.orderId };
-    if (ROLE_JOBS[role].importTo === 'qc') {
+    const { importTo } = ROLE_JOBS[role];
+    if (
+      importTo === 'qc' ||
+      (importTo === 'job' && card.operations.length > 0)
+    ) {
       yield call(myJobsApi.watch, role, card.id);
       const ids: string[] = yield call(withJob, card.id);
       yield put(myJobsActions.lookupSuccess({ found, ids }));
@@ -108,9 +114,7 @@ export function* lookupJob(action: PayloadAction<LookupJobPayload>) {
     yield put(
       myJobsActions.importFailure(
         isNotFound(error)
-          ? ROLE_JOBS[role].importTo === 'job'
-            ? JOBS_STRINGS.code.notAssigned(code.trim())
-            : JOBS_STRINGS.code.notFound(code.trim())
+          ? JOBS_STRINGS.code.notFound(code.trim())
           : errorMessage(error, 'Failed to find the job'),
       ),
     );
@@ -119,18 +123,18 @@ export function* lookupJob(action: PayloadAction<LookupJobPayload>) {
 
 /**
  * Supervisor: saves the raw material on the job card, then lists the job. An
- * order without a card takes the material itself, which opens its card.
+ * order without a card takes the material itself and opens its card
+ * (updateOrder(openJobCard)).
  */
 export function* importJob(action: PayloadAction<ImportJobPayload>) {
   try {
     const { role, orderId, rawMaterial } = action.payload;
     let { jobCardId } = action.payload;
     if (!jobCardId) {
-      const order: WorkOrder = yield call(
-        ordersApi.update,
-        orderId,
-        rawMaterial ?? {},
-      );
+      const order: WorkOrder = yield call(ordersApi.update, orderId, {
+        ...rawMaterial,
+        openJobCard: true,
+      });
       yield put(orderActions.saveSuccess(order));
       if (!order.jobCardId) {
         throw new Error(

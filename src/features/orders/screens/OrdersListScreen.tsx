@@ -24,7 +24,7 @@ import {
 import { COMMON_STRINGS } from '../../../shared/constants';
 import { useListFilter, usePagination } from '../../../shared/hooks';
 import { useAppSelector } from '../../../app/store/hooks';
-import { JOB_CARD_STRINGS, useJobCards } from '../../jobCards';
+import { JOB_CARD_STRINGS, canEditFlow, useJobCards } from '../../jobCards';
 import { selectJobCardsState } from '../../jobCards/store/selectors';
 import { formatDayMonth } from '../../../shared/utils';
 import { OrderCard } from '../components/OrderCard';
@@ -191,16 +191,19 @@ export function OrdersListScreen() {
   const jobCardAction = useCallback(
     (o: WorkOrder) => {
       if (!o.jobCardId) {
-        return {
-          label: S.a11y.createJobCard(o.number),
-          onPress: () => setCardFor(o),
-        };
+        return o.canCreateJobCard
+          ? {
+              label: S.a11y.createJobCard(o.number),
+              onPress: () => setCardFor(o),
+            }
+          : undefined;
       }
       const card = jobCardEntities[o.jobCardId];
       if (!card) {
         return undefined;
       }
-      const createFlow = !card.operations.length;
+      // Straight to Create flow only once RM QC passed; else just the card.
+      const createFlow = !card.operations.length && canEditFlow(card);
       return {
         label: createFlow
           ? S.a11y.createJobCard(o.number)

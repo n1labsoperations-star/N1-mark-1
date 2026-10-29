@@ -6,15 +6,13 @@ import {
   N1Text,
   N1TextInput,
 } from '../../../shared/components';
-import { COMMON_STRINGS } from '../../../shared/constants';
 import {
   formatCurrency,
   isBlank,
   isEmail,
-  isNumeric,
+  localToday,
   parseDisplayDate,
   toDisplayDate,
-  toNumber,
 } from '../../../shared/utils';
 import { BILLING_STRINGS } from '../constants';
 import type { ConvertQuoteInput, Invoice, PaymentInput, Quote } from '../types';
@@ -22,8 +20,6 @@ import type { ConvertQuoteInput, Invoice, PaymentInput, Quote } from '../types';
 const I = BILLING_STRINGS.invoice;
 const Q = BILLING_STRINGS.quote;
 const S = BILLING_STRINGS.sendDialog;
-
-const todayText = () => toDisplayDate(new Date().toISOString().slice(0, 10));
 
 type DialogProps = {
   visible: boolean;
@@ -40,7 +36,10 @@ const ErrorText = ({ error }: { error: string | null }) =>
     </N1Text>
   ) : null;
 
-/** Mark as Paid: the day it was paid, and any TDS the customer withheld. */
+/**
+ * Mark as Paid: the day it was paid, from the invoice date to today (the
+ * server refuses any other). Starts on today, or the invoice date if later.
+ */
 export function MarkPaidDialog({
   visible,
   onClose,
@@ -52,43 +51,33 @@ export function MarkPaidDialog({
   invoice: Invoice;
   onSubmit: (payment: PaymentInput) => void;
 }) {
-  const [paidOn, setPaidOn] = useState(todayText);
-  const [tdsAmount, setTdsAmount] = useState('');
-  const [tdsSection, setTdsSection] = useState('');
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { issuedAt } = invoice;
+  const firstDay = () => {
+    const today = localToday();
+    return toDisplayDate(issuedAt > today ? issuedAt : today);
+  };
+  const [paidOn, setPaidOn] = useState(firstDay);
+  const [paidOnError, setPaidOnError] = useState<string | undefined>();
   useEffect(() => {
     if (visible) {
-      setPaidOn(todayText());
-      setTdsAmount('');
-      setTdsSection('');
-      setErrors({});
+      setPaidOn(firstDay());
+      setPaidOnError(undefined);
     }
-  }, [visible]);
+    // firstDay only reads issuedAt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, issuedAt]);
 
+  const issued = toDisplayDate(issuedAt);
   const submit = () => {
     const day = parseDisplayDate(paidOn);
-    const hasTds = !isBlank(tdsAmount) && toNumber(tdsAmount) !== 0;
-    const next: Record<string, string> = {};
-    if (!day) {
-      next.paidOn = I.paidOnRequired;
-    }
-    if (
-      !isBlank(tdsAmount) &&
-      (!isNumeric(tdsAmount) || Number(tdsAmount) < 0)
-    ) {
-      next.tdsAmount = COMMON_STRINGS.invalidNumber;
-    }
-    if (hasTds && isBlank(tdsSection)) {
-      next.tdsSection = I.tdsSectionRequired;
-    }
-    setErrors(next);
-    if (day && Object.keys(next).length === 0) {
-      onSubmit({
-        paidOn: day,
-        tds: hasTds
-          ? { amount: toNumber(tdsAmount), section: tdsSection.trim() }
-          : null,
-      });
+    const problem = !day
+      ? I.paidOnRequired
+      : day < issuedAt || day > localToday()
+      ? I.paidOnOutOfRange(issued)
+      : undefined;
+    setPaidOnError(problem);
+    if (day && !problem) {
+      onSubmit({ paidOn: day });
     }
   };
 
@@ -118,26 +107,9 @@ export function MarkPaidDialog({
         required
         value={paidOn}
         onChange={setPaidOn}
-        errorText={errors.paidOn}
+        helperText={I.paidOnRange(issued)}
+        errorText={paidOnError}
         testID="paid-on"
-      />
-      <N1TextInput
-        label={I.tdsAmount}
-        value={tdsAmount}
-        onChangeText={setTdsAmount}
-        keyboardType="decimal-pad"
-        helperText={I.tdsAmountHint}
-        errorText={errors.tdsAmount}
-        testID="tds-amount"
-      />
-      <N1TextInput
-        label={I.tdsSection}
-        placeholder={I.tdsSectionPlaceholder}
-        value={tdsSection}
-        onChangeText={setTdsSection}
-        autoCapitalize="characters"
-        errorText={errors.tdsSection}
-        testID="tds-section"
       />
       <ErrorText error={error} />
     </N1Modal>

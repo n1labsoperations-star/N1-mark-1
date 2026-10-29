@@ -324,7 +324,8 @@ const CARDS = [
     priority: 'medium',
     dueDate: '2026-10-12',
     designApproval: 'pending',
-    materialQc: 'pending',
+    // RM QC passed, no flow yet: Create flow is offered.
+    materialQc: 'accepted',
     quotation: 'pending',
   }),
   card({

@@ -46,7 +46,7 @@ test.each([
     'Ravi Kumar',
     '4 in progress · 5 total',
   ],
-  ['qc@n1.com', 'Qc@12345', 'QC', 'Suresh Babu', '2 pending · 5 total'],
+  ['qc@n1.com', 'Qc@12345', 'QC', 'Suresh Babu', '1 pending · 5 total'],
 ])(
   '%s lands on the %s jobs under the home header, and opens their profile',
   async (email, password, role, name, jobsText) => {

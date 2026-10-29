@@ -94,6 +94,7 @@ import type {
   RouteStep,
 } from '../types';
 import {
+  canEditFlow,
   canPauseOrComplete,
   canStart,
   jobCardStage,
@@ -578,6 +579,10 @@ export function JobCardDetailsScreen({
     runningStep && setDialog({ type: 'complete', operation: runningStep });
   const running = canPauseOrComplete(jobCard);
   const hasFlow = jobCard.operations.length > 0;
+  // Create flow only once RM QC passed (see canEditFlow).
+  const flowEditable = canEditFlow(jobCard);
+  // Opened with editFlow before RM QC passed: the card shows without it.
+  const showFlowEditor = editingFlow && flowEditable;
   // The next step waits for RM QC, the design approval and the last step's
   // QC to pass.
   const blocked = running ? undefined : startBlockedReason(jobCard);
@@ -764,7 +769,7 @@ export function JobCardDetailsScreen({
 
   // Phones: the flow editor slides up as a sheet over this page instead.
   const machiningTab =
-    editingFlow && !isCompact ? (
+    showFlowEditor && !isCompact ? (
       <InlineFlowEditor
         jobCard={jobCard}
         saving={saving}
@@ -784,20 +789,22 @@ export function JobCardDetailsScreen({
           head={
             <View style={styles.sectionHead}>
               {heading(D.routeCard)}
-              <N1Button
-                title={
-                  hasFlow
-                    ? isCompact
-                      ? D.editFlowShort
-                      : D.editFlow
-                    : D.createFlow
-                }
-                leftIcon={hasFlow ? 'edit' : 'plus'}
-                variant="secondary"
-                size="sm"
-                onPress={openFlow}
-                testID="open-flow"
-              />
+              {flowEditable && (
+                <N1Button
+                  title={
+                    hasFlow
+                      ? isCompact
+                        ? D.editFlowShort
+                        : D.editFlow
+                      : D.createFlow
+                  }
+                  leftIcon={hasFlow ? 'edit' : 'plus'}
+                  variant="secondary"
+                  size="sm"
+                  onPress={openFlow}
+                  testID="open-flow"
+                />
+              )}
             </View>
           }
         >
@@ -827,6 +834,7 @@ export function JobCardDetailsScreen({
           <RouteCard
             operations={jobCard.operations}
             progress={jobProgress(jobCard)}
+            canCreateFlow={flowEditable}
           />
         </StickyHeadPane>
       </View>
@@ -983,7 +991,7 @@ export function JobCardDetailsScreen({
           )}
         </View>
         <FlowEditorSheet
-          visible={editingFlow}
+          visible={showFlowEditor}
           jobCard={jobCard}
           drawingNumber={drawingNumber}
           onClose={closeFlow}
@@ -1003,7 +1011,7 @@ export function JobCardDetailsScreen({
         {tabs}
         {/* A new tab starts at the top. The flow editor keeps its header
             row on top and scrolls its own steps. */}
-        {tab === 'machining' && editingFlow ? (
+        {tab === 'machining' && showFlowEditor ? (
           <View key={tab} style={styles.scroll}>
             {content}
           </View>
