@@ -64,9 +64,12 @@ function metaFor(op: JobOperation) {
 export const RouteCard = memo(function RouteCardComponent({
   operations,
   progress,
+  canCreateFlow = true,
 }: {
   operations: JobOperation[];
   progress: number;
+  /** False while RM QC hasn't passed: the empty state says it must first. */
+  canCreateFlow?: boolean;
 }) {
   const styles = useN1Styles(makeStyles);
   const current = operations.length ? currentIndex(operations) : -1;
@@ -84,7 +87,11 @@ export const RouteCard = memo(function RouteCardComponent({
   );
 
   if (!operations.length) {
-    return <N1Text color="secondary">{D.noFlow}</N1Text>;
+    return (
+      <N1Text color="secondary">
+        {canCreateFlow ? D.noFlow : D.noFlowUntilRmQc}
+      </N1Text>
+    );
   }
   const nextIndex = operations.findIndex(op => op.status === 'pending');
   // Nothing left to work on once every step is done.

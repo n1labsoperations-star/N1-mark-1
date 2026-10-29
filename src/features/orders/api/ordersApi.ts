@@ -24,17 +24,16 @@ import type {
   OrderStatus,
   WorkOrder,
 } from '../types';
-import { isWorkOrder } from '../utils';
 
-// N1 Core API: orders / order / createOrder / updateOrder on POST /graphql.
-// createOrder or updateOrder opens the order's job card itself, once the
-// order's raw material grade and size are both set (FE-007). Design and
-// PO files go up to file storage against the order, then onto it with
-// updateOrder.
+// N1 Core API: orders / order / createOrder / updateOrder / dispatchOrder on
+// POST /graphql. createOrder makes no job card: updateOrder(openJobCard:
+// true) opens it, once the order's raw material grade and size are both set
+// (FE-007). Design and PO files go up to file storage against the order,
+// then onto it with updateOrder.
 
 const ORDER_FIELDS = `
   fragment OrderFields on Order {
-    id number jobCardId customerId customerName customerEmail
+    id number jobCardId canCreateJobCard customerId customerName customerEmail
     partName jobName description quantity priority status dueDate
     poNumber poAmount routeCardNo dcNo dcDate partNumber drawingNumber
     rmPartNumber shopOrderNumber rawMaterialSize heatNumber projectId
@@ -56,6 +55,7 @@ type OrderNode = {
   id: string;
   number: string | null;
   jobCardId: string | null;
+  canCreateJobCard: boolean;
   customerId: string;
   customerName: string;
   customerEmail: string | null;
@@ -95,6 +95,7 @@ function toOrder(node: OrderNode): WorkOrder {
     id: node.id,
     number: textOrEmpty(node.number),
     jobCardId: textOrEmpty(node.jobCardId),
+    canCreateJobCard: node.canCreateJobCard,
     customerId: node.customerId,
     customerName: node.customerName,
     customerEmail: textOrEmpty(node.customerEmail),
@@ -220,39 +221,43 @@ async function get(id: string): Promise<WorkOrder> {
 
 /**
  * The order with work order number `code` ("WO-12"), card or not: an order
- * gets its job card only once its raw material grade and size are set
- * (FE-007), so jobCardByQr can't find it before then. The search also matches
- * other fields and longer numbers ("WO-120"), so only an exact number counts.
+ * gets its job card only once it's opened with its raw material (FE-007), so
+ * jobCardByQr can't find it before then. The number filter matches exactly
+ * ("WO-12" never finds "WO-120").
  */
 async function findByNumber(code: string): Promise<WorkOrder> {
   const data = await graphqlRequest<{
     orders: { edges: { node: OrderNode }[] };
   }>(
-    `query OrderByNumber($search: String!) {
-      orders(first: ${PAGE_SIZE}, search: $search) {
+    `query OrderByNumber($number: String!) {
+      orders(first: 1, filter: { number: $number }) {
         edges { node { ...OrderFields } }
       }
     }
     ${ORDER_FIELDS}`,
-    { search: code },
+    { number: code },
   );
-  const order = data.orders.edges
-    .map(({ node }) => toOrder(node))
-    .find(o => isWorkOrder(o, code));
-  if (!order) {
+  const node = data.orders.edges[0]?.node;
+  if (!node) {
     throw new ApiError('That order does not exist.', 404, undefined, {
       code: 'ORDER_NOT_FOUND',
     });
   }
-  return order;
+  return toOrder(node);
 }
 
-/** Uploads newly picked files, then puts their references on the order. */
+/**
+ * Uploads newly picked files, then puts their references on the order.
+ * `openJobCard` opens the order's job card in the same save.
+ */
 async function update(
   id: string,
-  { designFile, documents, ...changes }: Partial<OrderInput>,
+  { designFile, documents, openJobCard, ...changes }: Partial<OrderInput>,
 ): Promise<WorkOrder> {
   const input = orderFields(changes);
+  if (openJobCard) {
+    input.openJobCard = true;
+  }
   if (designFile !== undefined) {
     input.designFile = designFile
       ? await uploadAttachment('sales_order', id, designFile)
@@ -275,9 +280,8 @@ async function update(
 }
 
 /**
- * createOrder, which opens the order's job card too when its raw material
- * grade and size are given (FE-007; no second call). It needs an existing
- * customer. Files go up against the new order afterwards.
+ * createOrder. It needs an existing customer and makes no job card (see
+ * update's openJobCard). Files go up against the new order afterwards.
  */
 async function create({
   customerId,
@@ -298,9 +302,35 @@ async function create({
     : order;
 }
 
+/**
+ * dispatchOrder: production is final, so the order moves on to Billing
+ * (payment due). ORDER_NOT_READY_FOR_DISPATCH while steps or QC are open.
+ */
+async function dispatch(id: string): Promise<WorkOrder> {
+  const data = await graphqlRequest<{ dispatchOrder: OrderNode }>(
+    `mutation DispatchOrder($id: ID!) {
+      dispatchOrder(id: $id) {
+        ...OrderFields
+        statusHistory { id label detail at tone }
+      }
+    }
+    ${ORDER_FIELDS}`,
+    { id },
+  );
+  return toOrder(data.dispatchOrder);
+}
+
 /** Orders are never deleted (guide section 9); no screen offers it. */
 function remove(): Promise<string> {
   return Promise.reject(new Error('Orders cannot be deleted'));
 }
 
-export const ordersApi = { list, get, findByNumber, create, update, remove };
+export const ordersApi = {
+  list,
+  get,
+  findByNumber,
+  create,
+  update,
+  dispatch,
+  remove,
+};

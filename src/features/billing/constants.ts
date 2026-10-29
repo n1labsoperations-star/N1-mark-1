@@ -99,19 +99,15 @@ export const BILLING_STRINGS = {
     downloadPdf: 'Download PDF',
     downloadAction: 'Downloading PDFs',
     markPaid: 'Mark as Paid',
-    /** Mark as Paid: the day, and the TDS the customer withheld. */
+    /** Mark as Paid: the day it was paid. */
     paidTitle: 'Mark as paid',
     paidSubtitle: (number: string, total: string) => `${number} · ${total}`,
     paidOn: 'Paid on',
-    tdsAmount: 'TDS withheld (₹)',
-    tdsAmountHint: 'Leave blank if no TDS was deducted',
-    tdsSection: 'TDS section',
-    tdsSectionPlaceholder: 'e.g. 194C',
     paidOnRequired: 'Pick the day it was paid',
-    tdsSectionRequired: 'Enter the TDS section',
+    /** The server takes a day from the invoice date to today. */
+    paidOnRange: (issued: string) => `Between ${issued} and today`,
+    paidOnOutOfRange: (issued: string) => `Pick a day from ${issued} to today`,
     paidSummary: (date: string) => `Paid on ${date}`,
-    tdsSummary: (amount: string, section: string) =>
-      `TDS ${amount}${section ? ` (${section})` : ''}`,
     received: 'Received',
     sent: 'Invoice sent',
     sentMessage: (number: string) => `${number} was emailed to the customer.`,

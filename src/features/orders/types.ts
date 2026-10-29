@@ -34,8 +34,13 @@ export type WorkOrder = {
   id: string;
   /** Work order number from the server, e.g. "WO-12"; never parsed into an id. */
   number: string;
-  /** The job card createOrder opened with it; blank until known. */
+  /** The order's job card; blank until updateOrder(openJobCard) opens it. */
   jobCardId: string;
+  /**
+   * The server's answer to "offer Create job card?": no card yet, the order
+   * isn't finished, and this user may open job cards.
+   */
+  canCreateJobCard: boolean;
   customerId: string;
   customerName: string;
   customerEmail: string;
@@ -91,8 +96,20 @@ export type OrderSummary = Pick<
 /** Everything the Create / Edit order form can set. All optional in the UI. */
 export type OrderInput = Omit<
   WorkOrder,
-  'id' | 'number' | 'jobCardId' | 'status' | 'statusHistory' | 'createdAt'
->;
+  | 'id'
+  | 'number'
+  | 'jobCardId'
+  | 'canCreateJobCard'
+  | 'status'
+  | 'statusHistory'
+  | 'createdAt'
+> & {
+  /**
+   * Update only: open the order's job card in the same save. Needs its raw
+   * material grade and size, and no card yet.
+   */
+  openJobCard?: boolean;
+};
 
 /** Multi-select filters; an empty list shows every order. */
 export type OrderFilters = {

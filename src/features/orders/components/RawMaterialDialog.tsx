@@ -57,8 +57,8 @@ type Props = {
   onClose: () => void;
   /**
    * The order's job card, which the details are saved on. Blank for an order
-   * without one: Create job card saves them on the order (updateOrder), and
-   * the server opens its card (FE-007).
+   * without one: Create job card saves them on the order with
+   * updateOrder(openJobCard), which opens its card (FE-007).
    */
   jobCardId: string;
   /** The details are saved; with the order's job card, new or not. */
@@ -121,7 +121,7 @@ export function RawMaterialDialog({
       };
       if (!jobCardId) {
         if (orderId) {
-          update(orderId, rawMaterial);
+          update(orderId, { ...rawMaterial, openJobCard: true });
         }
       } else {
         run(jobCardId, { type: 'rawMaterial', rawMaterial });

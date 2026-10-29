@@ -6,6 +6,7 @@ import {
   byText,
   byTestId,
   choose,
+  flush,
   hasTestId,
   press,
   renderAdmin,
@@ -18,6 +19,7 @@ import { jobCardActions } from '../store/jobCardsSlice';
 import { MOCK_JOB_CARDS } from '../api/mockData';
 import type { JobCard, JobOperation } from '../types';
 import {
+  canEditFlow,
   canPauseOrComplete,
   canStart,
   completeOperation,
@@ -304,7 +306,7 @@ describe('Job Cards list', () => {
     // Status, not the current operation, after the part name.
     expect(text).toMatch(/Part name\|Status\|Assigned machine/);
     expect(text).not.toContain('Current operation');
-    expect(allText(byTestId(root, 'job-card-stage-1036'))).toBe('RM received');
+    expect(allText(byTestId(root, 'job-card-stage-1036'))).toBe('RM QC passed');
     expect(allText(byTestId(root, 'job-card-stage-1035'))).toBe('Done');
     expect(text).toContain('WO #1042');
     expect(text).toContain('Bracket — Job A');
@@ -797,6 +799,8 @@ describe('Job card details', () => {
 
     await press(byTestId(h.root, 'generate-dispatch'));
     await press(byText(byTestId(h.root, 'dispatch-modal'), 'Dispatch'));
+    // dispatchOrder, then createInvoice.
+    await flush();
 
     // The new invoice opens in edit mode to fill in the rates.
     expect(h.currentRoute()).toBe('InvoiceDetails');
@@ -829,6 +833,8 @@ describe('Job card details', () => {
     await h.navigate('JobCardDetails', { jobCardId: '1039' });
     await press(byTestId(h.root, 'generate-dispatch'));
     await press(byText(byTestId(h.root, 'dispatch-modal'), 'Dispatch'));
+    // dispatchOrder, then createInvoice.
+    await flush();
 
     expect(h.currentRoute()).toBe('InvoiceDetails');
     const invoice = Object.values(
@@ -858,10 +864,33 @@ describe('Job card details', () => {
     const screen = byTestId(h.root, 'job-card-details-screen');
     await press(byTestId(screen, 'job-card-tab-machining'));
     expect(allText(screen)).toContain('No process flow yet');
-    expect(allText(screen)).toContain('RM received');
+    expect(allText(screen)).toContain('RM QC passed');
     await press(byTestId(screen, 'open-flow'));
     expect(h.currentRoute()).toBe('JobCardDetails');
     expect(hasTestId(h.root, 'flow-editor')).toBe(true);
+  });
+
+  test('Create flow waits for RM QC to pass', async () => {
+    const h = await renderAdmin('JobCards');
+    const card = h.store.getState().jobCards.entities['1036'];
+    for (const materialQc of ['pending', 'rejected'] as const) {
+      // The server's copy too: the card is read again when it opens.
+      await jobCardsApi.update('1036', { materialQc } as never);
+      await act(async () => {
+        h.store.dispatch(jobCardActions.saveSuccess({ ...card, materialQc }));
+      });
+      // No + on the list's row.
+      expect(hasTestId(h.root, 'flow-action-1036')).toBe(false);
+      await h.navigate('JobCardDetails', { jobCardId: '1036', editFlow: true });
+      const screen = byTestId(h.root, 'job-card-details-screen');
+      // Opened to edit the flow, it still shows the card without the editor.
+      expect(hasTestId(h.root, 'flow-editor')).toBe(false);
+      expect(hasTestId(screen, 'open-flow')).toBe(false);
+      expect(allText(screen)).toContain('It can be created once RM QC passes.');
+      await h.navigate('JobCardsList');
+    }
+    expect(canEditFlow({ ...card, materialQc: 'pending' })).toBe(false);
+    expect(canEditFlow({ ...card, materialQc: 'accepted' })).toBe(true);
   });
 
   test('a rejected material shows what RM QC rejected; only supervisors re-initiate', async () => {

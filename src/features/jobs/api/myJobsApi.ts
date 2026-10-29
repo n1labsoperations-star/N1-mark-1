@@ -42,7 +42,7 @@ async function qcQueue(): Promise<QcQueueEntry[]> {
 export const myJobsApi = {
   /** The role's jobs, as whole job cards (the server knows whose). */
   list: (_role: EmployeeRole): Promise<JobCard[]> => jobCardsApi.myJobs(),
-  /** Supervisor and QC: adds the job to their own list. */
+  /** Adds the job to the caller's own list (any role). */
   watch: (_role: EmployeeRole, jobCardId: string): Promise<JobCard> =>
     jobCardsApi.run(jobCardId, { type: 'watch' }),
   qcQueue,

@@ -159,6 +159,8 @@ export const JOB_CARD_STRINGS = {
     createFlow: 'Create flow',
     noFlow:
       'No process flow yet. Create one to plan the operations for this job.',
+    noFlowUntilRmQc:
+      'No process flow yet. It can be created once RM QC passes.',
     overall: 'Overall completion',
     nextOperation: 'Next operation',
     upcoming: 'Upcoming',

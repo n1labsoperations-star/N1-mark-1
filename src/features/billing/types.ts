@@ -39,19 +39,16 @@ export type InvoiceStatus = 'new' | 'overdue' | 'paid';
 /** A quote is a Draft until it's sent to the customer. */
 export type QuoteStatus = 'draft' | 'sent';
 
-/** A recorded payment; TDS is what the customer withheld. */
+/** A recorded payment. */
 export type Payment = {
   /** YYYY-MM-DD. */
   paidOn: string;
   receivedAmount: number;
-  tdsAmount: number;
-  tdsSection: string | null;
 };
 
-/** Mark as Paid: the day it was paid, and the TDS withheld if any. */
+/** Mark as Paid: the day it was paid. */
 export type PaymentInput = {
   paidOn: string;
-  tds: { amount: number; section: string } | null;
 };
 
 export type Invoice = {

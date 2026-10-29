@@ -1,3 +1,4 @@
+import { ApiError } from '../../../services/api';
 import {
   createMockCollection,
   nextSequentialId,
@@ -8,22 +9,23 @@ import { jobCardsApi } from '../../jobCards/api/mockJobCardsApi';
 import type { JobCard } from '../../jobCards/types';
 import { jobCardFromOrder } from '../../jobCards/utils';
 import type { OrderInput, WorkOrder } from '../types';
-import { orderStatus } from '../utils';
+import { isWorkOrder, orderStatus } from '../utils';
 import { MOCK_ORDERS } from './mockData';
 
 // In-memory stand-in for ordersApi (Jest and offline work). Like the server,
-// creating an order opens its job card, and an order's status follows its
-// job card and invoice.
+// an order's job card opens with updateOrder(openJobCard), and an order's
+// status follows its job card and invoice.
 const orders = createMockCollection<WorkOrder, OrderInput>({
   seed: MOCK_ORDERS,
   nextId: rows => nextSequentialId(rows, ''),
-  build: (input, id) => {
+  build: ({ openJobCard: _openJobCard, ...input }, id) => {
     const now = new Date().toISOString();
     return {
       ...input,
       id,
       number: id,
-      jobCardId: id,
+      jobCardId: '',
+      canCreateJobCard: true,
       status: 'new',
       createdAt: now,
       statusHistory: [
@@ -43,10 +45,16 @@ async function withStatus(rows: WorkOrder[]): Promise<WorkOrder[]> {
   const paid = new Set(
     invoices.filter(i => i.status === 'paid').map(i => i.jobId),
   );
-  return rows.map(o => ({
-    ...o,
-    status: orderStatus(o, byOrder.get(o.id), paid.has(jobReference(o.id))),
-  }));
+  return rows.map(o => {
+    const card = byOrder.get(o.id);
+    const jobCardId = o.jobCardId || (card?.id ?? '');
+    return {
+      ...o,
+      jobCardId,
+      canCreateJobCard: !jobCardId && o.status !== 'completed',
+      status: orderStatus(o, card, paid.has(jobReference(o.id))),
+    };
+  });
 }
 
 const one = async (order: WorkOrder) => (await withStatus([order]))[0];
@@ -54,13 +62,28 @@ const one = async (order: WorkOrder) => (await withStatus([order]))[0];
 export const ordersApi = {
   list: async () => withStatus(await orders.list()),
   get: async (id: string) => one(await orders.get(id)),
-  create: async (input: OrderInput) => {
-    const order = await orders.create(input);
-    await jobCardsApi.create(jobCardFromOrder(order));
+  findByNumber: async (code: string) => {
+    const order = (await orders.list()).find(o => isWorkOrder(o, code));
+    if (!order) {
+      throw new ApiError('That order does not exist.', 404, undefined, {
+        code: 'ORDER_NOT_FOUND',
+      });
+    }
     return one(order);
   },
-  update: async (id: string, changes: Partial<OrderInput>) =>
-    one(await orders.update(id, changes)),
+  create: async (input: OrderInput) => one(await orders.create(input)),
+  update: async (
+    id: string,
+    { openJobCard, ...changes }: Partial<OrderInput>,
+  ) => {
+    const order = await orders.update(id, changes);
+    if (openJobCard && !(await one(order)).jobCardId) {
+      await jobCardsApi.create(jobCardFromOrder(order));
+    }
+    return one(order);
+  },
+  /** The status follows the card and invoice; dispatch just reads it. */
+  dispatch: async (id: string) => one(await orders.get(id)),
   remove: orders.remove,
   reset: orders.reset,
 };

@@ -727,8 +727,8 @@ test('creates an order over two steps, without raw material', async () => {
   // Priority starts at Low.
   expect(allText(byTestId(form, 'order-form-priority'))).toBe('Low');
   // The required fields stop Create until they're filled (the server needs
-  // a PO number; DC no is optional).
-  expect(allText(form).split('This field is required').length - 1).toBe(5);
+  // a PO number; DC no and DC date are optional).
+  expect(allText(form).split('This field is required').length - 1).toBe(4);
 
   await typeInto(byTestId(form, 'order-form-quantity'), '25');
   await typeInto(byTestId(form, 'order-form-po-amount'), '125000');
@@ -900,7 +900,13 @@ test('an order without a job card: Create job card takes its raw material, then 
   // without a card, as it has no raw material yet (FE-007).
   const order = h.store.getState().orders.entities['1036']!;
   await ReactTestRenderer.act(async () => {
-    h.store.dispatch(orderActions.saveSuccess({ ...order, jobCardId: '' }));
+    h.store.dispatch(
+      orderActions.saveSuccess({
+        ...order,
+        jobCardId: '',
+        canCreateJobCard: true,
+      }),
+    );
   });
   const screen = byTestId(h.root, 'order-details-screen');
   expect(hasTestId(screen, 'order-add-raw-material')).toBe(false);
@@ -1144,13 +1150,15 @@ test('order helpers', () => {
   expect(validateOrderForm({ ...values, customerName: ' ' })).toEqual({
     customerName: 'This field is required',
   });
-  // DC no is optional; the server needs a PO number.
+  // DC no and DC date are optional; the server needs a PO number.
   expect(validateOrderForm({ ...values, dcNo: '' })).toEqual({});
+  expect(validateOrderForm({ ...values, dcDate: '' })).toEqual({});
   expect(validateOrderForm({ ...values, poNumber: '' })).toEqual({
     poNumber: 'This field is required',
   });
   expect(hasStepErrors(1, bad)).toBe(true);
-  expect(hasStepErrors(2, { ...bad, dcDate: '' })).toBe(true);
+  expect(hasStepErrors(2, bad)).toBe(true);
+  expect(hasStepErrors(2, { ...bad, dcDate: '' })).toBe(false);
   expect(hasStepErrors(2, values)).toBe(false);
   expect(firstStepWithErrors(bad)).toBe(1);
   expect(firstStepWithErrors({ ...bad, customerEmail: '' })).toBe(2);
@@ -1199,7 +1207,13 @@ describe('Orders list actions', () => {
     // Stands for an order the server left without a card (FE-007).
     const order = h.store.getState().orders.entities['1036']!;
     await ReactTestRenderer.act(async () => {
-      h.store.dispatch(orderActions.saveSuccess({ ...order, jobCardId: '' }));
+      h.store.dispatch(
+        orderActions.saveSuccess({
+          ...order,
+          jobCardId: '',
+          canCreateJobCard: true,
+        }),
+      );
     });
     await press(byLabel(h.root, 'Create job card for WO #1036'));
     const dialog = byTestId(h.root, 'rm-dialog');
