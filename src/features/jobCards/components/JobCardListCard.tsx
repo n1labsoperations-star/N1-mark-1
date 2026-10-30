@@ -13,7 +13,13 @@ import { DrawingPreview } from '../../orders/components/DrawingPreview';
 import { PriorityBadge } from '../../orders/components/OrderBadges';
 import { JOB_CARD_STRINGS as S } from '../constants';
 import type { JobCard } from '../types';
-import { currentOperation, hasStarted, jobProgress, jobTitle } from '../utils';
+import {
+  assignedMachine,
+  assignedOperator,
+  hasStarted,
+  jobProgress,
+  jobTitle,
+} from '../utils';
 import { FlowActionButton } from './FlowActionButton';
 import { JobCardStatusBadge } from './JobCardBadges';
 import { JobProgress } from './JobProgress';
@@ -86,7 +92,6 @@ export const JobCardListCard = memo(function JobCardListCardComponent({
   onDelete,
 }: Props) {
   const styles = useN1Styles(makeStyles);
-  const op = currentOperation(c);
   return (
     <View style={styles.card} testID={`job-card-${c.id}`}>
       <View style={styles.heading}>
@@ -124,11 +129,11 @@ export const JobCardListCard = memo(function JobCardListCardComponent({
       <View style={styles.pair}>
         <LabeledValue
           title={S.columns.machine}
-          value={op?.machine || COMMON_STRINGS.dash}
+          value={assignedMachine(c) || COMMON_STRINGS.dash}
         />
         <LabeledValue
           title={S.columns.operator}
-          value={op?.operator || COMMON_STRINGS.dash}
+          value={assignedOperator(c) || COMMON_STRINGS.dash}
           end
         />
       </View>

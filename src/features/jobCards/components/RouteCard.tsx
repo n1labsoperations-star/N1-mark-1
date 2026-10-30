@@ -37,8 +37,11 @@ const currentIndex = (operations: JobOperation[]) => {
   return next >= 0 ? next : operations.length - 1;
 };
 
+// A completed step is off its machine, so only its operator shows.
 const assignment = (op: JobOperation) =>
-  [op.machine, op.operator].filter(Boolean).join(' · ');
+  [op.status !== 'completed' && op.machine, op.operator]
+    .filter(Boolean)
+    .join(' · ');
 
 function subtitleFor(op: JobOperation, isNext: boolean) {
   if (op.status === 'pending') {

@@ -12,6 +12,8 @@ import {
   renderAdmin,
   typeInto,
 } from '../../../shared/testing/testUtils';
+import * as fileStorage from '../../../services/files/fileStorage';
+import { machineQc } from '../../jobs/qc';
 import { MOCK_ORDERS } from '../../orders/api/mockData';
 import type { WorkOrder } from '../../orders/types';
 import { jobCardsApi } from '../api/mockJobCardsApi';
@@ -19,6 +21,8 @@ import { jobCardActions } from '../store/jobCardsSlice';
 import { MOCK_JOB_CARDS } from '../api/mockData';
 import type { JobCard, JobOperation } from '../types';
 import {
+  assignedMachine,
+  assignedOperator,
   canEditFlow,
   canPauseOrComplete,
   canStart,
@@ -31,6 +35,7 @@ import {
   stageMeta,
   startBlockedReason,
   jobProgress,
+  matchesJobCardFilters,
   nextJobCardNumber,
   reopenOperation,
   routeInput,
@@ -173,6 +178,23 @@ describe('job card rules', () => {
     expect(steps.map(s => s.name)).toEqual(['', '', '']);
   });
 
+  test('a completed job card is on no machine and with no operator', () => {
+    expect(assignedMachine(cardById('1042'))).toBe('CNC-02');
+    expect(assignedOperator(cardById('1042'))).toBe('Arun Prakash');
+    const done = cardById('1035');
+    expect(done.status).toBe('completed');
+    expect(assignedMachine(done)).toBe('');
+    expect(assignedOperator(done)).toBe('');
+    // Not found by the machine or operator of its last step, either.
+    const filters = { operation: [], operator: [], machine: [] };
+    expect(
+      matchesJobCardFilters(done, { ...filters, machine: ['Pack Station 2'] }),
+    ).toBe(false);
+    expect(
+      matchesJobCardFilters(done, { ...filters, operator: ['Suresh Babu'] }),
+    ).toBe(false);
+  });
+
   test('filter options are distinct and sorted after "All"', () => {
     expect(optionsFrom(['b', 'a', 'b', ''], 'All').map(o => o.label)).toEqual([
       'All',
@@ -255,6 +277,33 @@ describe('job card stage', () => {
     ['Done', { ...twoDone, billing: 'invoiced' }],
   ])('%s', (expected, changes) => {
     expect(stageMeta(jobCardStage(card(changes))).label).toBe(expected);
+  });
+
+  test('a step redone after a failed QC waits for its QC again', () => {
+    const redone = (qcHistory: JobCard['qcHistory']) =>
+      card({
+        operations: [
+          {
+            ...step('Turning', 'completed'),
+            isRework: true,
+            completedAt: '2026-09-25T12:00:00Z',
+          },
+          step('Drilling', 'pending'),
+        ],
+        qcHistory,
+      });
+    const failed = { ...qc('Turning', 'failed'), at: '2026-09-25T10:00:00Z' };
+    const stage = (c: JobCard) => stageMeta(jobCardStage(c)).label;
+    // The check that failed it came before the redo, so it no longer counts.
+    expect(stage(redone([failed]))).toBe('Turning QC');
+    expect(machineQc(redone([failed])).status).toBe('pending');
+    // QC passes the redone step: Drilling is up next.
+    const passed = { ...qc('Turning', 'passed'), at: '2026-09-25T12:30:00Z' };
+    expect(stage(redone([failed, passed]))).toBe('Drilling (up next)');
+    expect(canStart(redone([failed, passed]))).toBe(true);
+    // Failing again sends it back to redo, as the first time.
+    const again = { ...qc('Turning', 'failed'), at: '2026-09-25T12:30:00Z' };
+    expect(stage(redone([failed, again]))).toBe('Turning QC failed');
   });
 
   test('the next step waits for RM QC and the last step’s QC', () => {
@@ -375,6 +424,15 @@ describe('Job Cards list', () => {
     await press(byLabel(root, 'Open drawing for WO #1042'));
     // Numbered by the order's drawing number.
     expect(allText(root)).toContain('Drawing DRW-1187');
+    // The card's design file, not just the placeholder sketch.
+    expect(allText(root)).toContain('Design file · 480 KB');
+    const open = jest
+      .spyOn(fileStorage, 'openStoredFile')
+      .mockResolvedValue(true);
+    await press(byText(root, 'Download'));
+    expect(open).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'drawing.pdf' }),
+    );
     await press(byLabel(root, 'Close'));
     expect(allText(root)).not.toContain('Drawing DRW-1187');
   });
@@ -593,14 +651,22 @@ describe('Job card details', () => {
       expanded: false,
     });
     await press(step('op3'));
+    // A completed step shows its operator, not the machine it ran on.
     expect(allText(byTestId(screen, 'operation-1042-op1'))).toContain(
-      'Saw-01 · Meena Lakshmi',
+      'Meena Lakshmi',
+    );
+    expect(allText(byTestId(screen, 'operation-1042-op1'))).not.toContain(
+      'Saw-01',
     );
     expect(allText(byTestId(screen, 'operation-1042-op1'))).toContain(
       'Completed at: 09:45 AM',
     );
     expect(allText(byTestId(screen, 'operation-1042-op3'))).toContain(
       'Started at: 10:25 AM',
+    );
+    // The running step still shows its machine.
+    expect(allText(byTestId(screen, 'operation-1042-op3'))).toContain(
+      'CNC-02 · Arun Prakash',
     );
     expect(allText(byTestId(screen, 'operation-1042-op4'))).toContain(
       'Next operation',
