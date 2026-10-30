@@ -93,20 +93,27 @@ PlaceholderScreen.displayName = 'PlaceholderScreen';
 type DrawerScreenComponent = React.ComponentType<any>;
 
 /**
- * Remounts a module each time it loses focus, so coming back to it starts
- * fresh: search, filters, page and open dialogs all reset.
+ * Unmounts a module while it's out of focus, so coming back to it starts
+ * fresh (search, filters, page and open dialogs all reset) and nothing it
+ * loads (e.g. the dashboard's figures) is fetched while it's hidden.
  */
 function resetOnBlur(Screen: DrawerScreenComponent): DrawerScreenComponent {
   function ResetOnBlur(props: {
-    navigation: { addListener: (e: 'blur', cb: () => void) => () => void };
+    navigation: {
+      addListener: (e: 'blur' | 'focus', cb: () => void) => () => void;
+    };
   }) {
-    const [mount, setMount] = useState(0);
+    const [hidden, setHidden] = useState(false);
     const { navigation } = props;
-    useEffect(
-      () => navigation.addListener('blur', () => setMount(m => m + 1)),
-      [navigation],
-    );
-    return <Screen key={mount} {...props} />;
+    useEffect(() => {
+      const offBlur = navigation.addListener('blur', () => setHidden(true));
+      const offFocus = navigation.addListener('focus', () => setHidden(false));
+      return () => {
+        offBlur();
+        offFocus();
+      };
+    }, [navigation]);
+    return hidden ? null : <Screen {...props} />;
   }
   ResetOnBlur.displayName = `ResetOnBlur(${
     Screen.displayName ?? Screen.name ?? 'Screen'

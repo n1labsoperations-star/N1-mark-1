@@ -67,6 +67,14 @@ export function currentOperation(c: JobCard): JobOperation | undefined {
   );
 }
 
+/** The machine the job is on; none once the job card is completed. */
+export const assignedMachine = (c: JobCard) =>
+  c.status === 'completed' ? '' : currentOperation(c)?.machine ?? '';
+
+/** Who is working the job; no one once the job card is completed. */
+export const assignedOperator = (c: JobCard) =>
+  c.status === 'completed' ? '' : currentOperation(c)?.operator ?? '';
+
 /** Completed steps count fully, a started step counts half. */
 export function jobProgress(c: JobCard): number {
   const done = c.operations.filter(isDone).length;
@@ -116,8 +124,19 @@ export function normaliseJobCode(code: string): string {
 // ---- Stage: where the job is ----
 
 /** The latest QC check logged against an operation. */
+/**
+ * The step's latest QC check since it was last finished. A check from before
+ * a redo (the one that failed it) no longer counts, so the redone step waits
+ * for its QC again.
+ */
 export const operationQc = (c: JobCard, op: JobOperation) =>
-  [...c.qcHistory].reverse().find(e => e.operationId === op.id);
+  [...c.qcHistory]
+    .reverse()
+    .find(
+      e =>
+        e.operationId === op.id &&
+        (!op.completedAt || Date.parse(e.at) >= Date.parse(op.completedAt)),
+    );
 
 const qcPassed = (e: QcEntry | undefined) =>
   e?.result === 'passed' || e?.result === 'accepted';
@@ -412,17 +431,15 @@ export const jobCardSearchText = (c: JobCard) => {
   const op = currentOperation(c);
   return `${c.code} ${workOrderSearchTerms(
     c.number.replace(/^WO-?/i, ''),
-  )} ${jobTitle(c)} ${c.customerName} ${op?.name ?? ''} ${op?.machine ?? ''} ${
-    op?.operator ?? ''
-  }`;
+  )} ${jobTitle(c)} ${c.customerName} ${op?.name ?? ''} ${assignedMachine(c)} ${assignedOperator(c)}`;
 };
 
 export const matchesJobCardFilters = (c: JobCard, f: JobCardFilters) => {
   const op = currentOperation(c);
   return (
     matchesAny(f.operation, op?.name ?? '') &&
-    matchesAny(f.operator, op?.operator ?? '') &&
-    matchesAny(f.machine, op?.machine ?? '')
+    matchesAny(f.operator, assignedOperator(c)) &&
+    matchesAny(f.machine, assignedMachine(c))
   );
 };
 
