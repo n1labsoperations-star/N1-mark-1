@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { N1ConfirmDialog, N1Text } from '../../../shared/components';
 import { useOnSettled } from '../../../shared/hooks';
 import type { JobCard } from '../../jobCards/types';
@@ -25,13 +25,18 @@ type Props = {
  * Generate Dispatch: a confirmation, then the job goes to billing as a new
  * invoice from its operations. Already billed: the dialog opens that invoice.
  */
-export function GenerateDispatchModal({
-  visible,
-  jobCard,
-  onClose,
-  onInvoice,
-}: Props) {
-  const { items: invoices } = useInvoices();
+export function GenerateDispatchModal(props: Props) {
+  // Invoices and customers load the first time it opens, not with every job
+  // card that could be dispatched; it then stays mounted to fade out.
+  const [opened, setOpened] = useState(props.visible);
+  if (props.visible && !opened) {
+    setOpened(true);
+  }
+  return opened ? <DispatchDialog {...props} /> : null;
+}
+
+function DispatchDialog({ visible, jobCard, onClose, onInvoice }: Props) {
+  const { items: invoices, isLoading: loadingInvoices } = useInvoices();
   const gst = useGst(jobCard.customerName);
   const { generateInvoice, busy, error, invoiceId } = useBillingWorkflow();
   const requested = useRef(false);
@@ -74,7 +79,8 @@ export function GenerateDispatchModal({
       confirmLabel={existing ? S.open : S.dispatch}
       tone="primary"
       icon="package"
-      loading={busy}
+      // Until the invoices load, an already billed job would look unbilled.
+      loading={busy || loadingInvoices}
       onConfirm={confirm}
       onCancel={onClose}
       testID="dispatch-modal"

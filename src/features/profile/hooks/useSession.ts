@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { useAppDispatch, useAppSelector } from '../../../app/store/hooks';
+import {
+  useAppDispatch,
+  useAppSelector,
+  useAppStore,
+} from '../../../app/store/hooks';
 import { profileActions } from '../store/profileSlice';
 import { selectProfileState, selectShellUser } from '../store/selectors';
 import type {
@@ -16,11 +20,14 @@ export function useSession() {
 
   // Logout resets the store to idle and leaves the admin area, so the next
   // admin screen to mount (after signing in again) reloads the session.
+  // Read the store, not this render's status: the sidebar, top bar and
+  // screen mount together, and only the first of them should load.
+  const store = useAppStore();
   useEffect(() => {
-    if (state.status === 'idle') {
+    if (selectProfileState(store.getState()).status === 'idle') {
       dispatch(profileActions.fetchSessionRequest());
     }
-  }, [dispatch, state.status]);
+  }, [dispatch, state.status, store]);
 
   const reload = useCallback(
     () => dispatch(profileActions.fetchSessionRequest()),
