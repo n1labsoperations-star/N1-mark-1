@@ -85,3 +85,6 @@ ios/Podfile.lock
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
+
+# Claude Code personal settings
+.claude/settings.local.json

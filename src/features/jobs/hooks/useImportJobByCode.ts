@@ -6,7 +6,7 @@ import { useOnSettled } from '../../../shared/hooks';
 import { JOB_CARD_STRINGS } from '../../jobCards';
 import { selectJobCardById } from '../../jobCards/store/selectors';
 import { JOBS_STRINGS, ROLE_JOBS } from '../constants';
-import type { QcKind } from '../qc';
+import { pendingQcKind, type QcKind } from '../qc';
 import type { FoundJob } from '../store/myJobsSlice';
 import type { JobsScreenProps } from '../types';
 import { useMyJobs } from './useMyJobs';
@@ -49,7 +49,9 @@ export function useImportJobByCode(qcKind: QcKind = 'rm', confirmMs = 0) {
     if (importTo === 'order') {
       navigation.navigate('ImportOrder', { orderId: job.orderId });
     } else if (importTo === 'qc') {
-      openOverTabs('QcCheck', { jobCardId: job.jobCardId, kind: qcKind });
+      // The check waiting on QC, not just the tab it was scanned from.
+      const kind = foundCard ? pendingQcKind(foundCard, qcKind) : qcKind;
+      openOverTabs('QcCheck', { jobCardId: job.jobCardId, kind });
     } else {
       openOverTabs('OperatorJob', { jobCardId: job.jobCardId });
     }

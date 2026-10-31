@@ -1,4 +1,10 @@
+import {
+  fileDownloadUrl,
+  openStoredFile,
+} from '../../services/files/fileStorage';
+import { reserveTab } from '../../services/files/viewDocument';
 import type { Attachment } from '../../shared/types';
+import { maskedDrawing } from './drawingStamp';
 import { DRAWING_KIND } from './constants';
 import type { WorkOrder } from './types';
 
@@ -33,3 +39,26 @@ export const drawingsToOrderFiles = (
     ...drawings.slice(1).map(doc => ({ ...doc, kind: DRAWING_KIND })),
   ],
 });
+
+/**
+ * Opens (downloads) a drawing with the customer's (`company`) name, address
+ * and logo blanked, as when printing. Files that can't be masked here (DWG,
+ * STEP, or a native build) open as stored. False when nothing opened.
+ */
+export async function openMaskedDrawing(
+  doc: Attachment,
+  company: string,
+): Promise<boolean> {
+  // Web: the tab opens on the tap; the masked copy takes a moment.
+  const tab = reserveTab();
+  if (!tab) {
+    return openStoredFile(doc);
+  }
+  try {
+    const masked = await maskedDrawing(doc, company).catch(() => null);
+    return tab.open(masked ?? doc.uri ?? (await fileDownloadUrl(doc.id)));
+  } catch (error) {
+    tab.close();
+    throw error;
+  }
+}

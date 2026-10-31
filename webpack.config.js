@@ -115,7 +115,7 @@ module.exports = (env, argv) => {
           target:
             process.env.N1_API_PROXY_TARGET ||
             process.env.N1_API_URL ||
-            'http://127.0.0.1:3000',
+            'https://api.staging.app.none1.in',
           // Send the target's own Host header; a remote HTTPS backend
           // (staging behind CloudFront) refuses "localhost:8080".
           changeOrigin: true,

@@ -18,8 +18,12 @@ test.each([
     'https://api.staging.app.none1.in',
     'https://api.staging.app.none1.in',
   ],
-  ['android', 'https://api.staging.app.none1.in', 'http://10.0.2.2:3000'],
-  ['ios', 'https://api.staging.app.none1.in', 'http://127.0.0.1:3000'],
+  [
+    'android',
+    'https://api.staging.app.none1.in',
+    'https://api.staging.app.none1.in',
+  ],
+  ['ios', undefined, 'https://api.staging.app.none1.in'],
 ])('API URL for %s with N1_API_URL=%s', (platform, apiUrl, expected) => {
   jest.resetModules();
   const { Platform } = require('react-native');

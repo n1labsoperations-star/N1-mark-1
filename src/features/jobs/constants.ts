@@ -19,8 +19,8 @@ export const ROLE_JOBS: Record<
 
 export const QC_STRINGS = {
   title: 'QC',
-  subtitle: (pending: number, total: number) =>
-    `${pending} pending · ${total} total`,
+  subtitle: (pending: number) => `${pending} pending`,
+  empty: 'No jobs waiting for QC.',
   tabs: { rm: 'Raw Material QC', machine: 'Machine QC' },
   statusFilter: 'QC status',
   kind: { rm: 'RM QC', machine: 'Machine QC' },

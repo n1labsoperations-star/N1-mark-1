@@ -11,6 +11,8 @@ import {
 } from '../../../shared/testing/testUtils';
 import { MOCK_JOB_CARDS } from '../../jobCards/api/mockData';
 import { jobCardsApi } from '../../jobCards/api/mockJobCardsApi';
+import { employeeProfileApi } from '../../profile/api/mockEmployeeProfileApi';
+import { myJobsApi } from '../api/mockMyJobsApi';
 import { QC_STRINGS } from '../constants';
 import { machineQc, qcResult, rawMaterialQc } from '../qc';
 
@@ -57,7 +59,7 @@ describe('qc rules', () => {
     // 1042: Facing finished and passed; Turning still running.
     expect(machineQc(mock('1042'))).toMatchObject({
       status: 'passed',
-      stage: 'In-process QC',
+      stage: 'Facing (Lathe) QC',
       subject: 'Facing (Lathe) (Lathe-01)',
     });
     // 1039: Material QC finished, not checked yet.
@@ -88,24 +90,38 @@ describe('qc rules', () => {
 test('QC list has Raw Material and Machine QC tabs', async () => {
   const root = await qc();
 
-  let text = allText(root);
-  expect(text).toContain('QC');
-  expect(text).toContain('1 pending · 5 total');
+  expect(allText(root)).toContain('QC');
+  // Only checks waiting on QC: passed and failed ones have left the bucket.
+  expect(byTestId(root, 'qc-count').props.children).toBe('1 pending');
   expect(rowText(root, '1039')).toContain('Incoming inspection · SS Plate');
   expect(rowText(root, '1039')).toContain('Pending');
-  expect(rowText(root, '1041')).toContain('Failed');
+  expect(hasTestId(root, 'qc-row-1041')).toBe(false);
+  expect(hasTestId(root, 'qc-row-1042')).toBe(false);
 
   // Swipeable tabs under the header, like Billing on phones.
   expect(hasTestId(root, 'qc-tabs-rm')).toBe(true);
   await press(byTestId(root, 'qc-tabs-machine'));
   expect(hasTestId(root, 'qc-tab-page-machine')).toBe(true);
-  text = allText(root);
-  expect(rowText(root, '1042')).toContain('In-process QC');
-  expect(rowText(root, '1042')).toContain('Passed');
-  expect(rowText(root, '1036')).toContain('Waiting');
+  // A finished operation waits on QC; passed, running or waiting ones don't.
+  expect(rowText(root, '1039')).toContain('Cutting QC');
+  expect(rowText(root, '1039')).toContain('Pending');
+  expect(hasTestId(root, 'qc-row-1042')).toBe(false);
+  expect(hasTestId(root, 'qc-row-1036')).toBe(false);
 });
 
-test('passing raw material QC moves the item to Passed', async () => {
+test('opening the QC list loads its jobs, queue and profile once each', async () => {
+  const list = jest.spyOn(myJobsApi, 'list');
+  const queue = jest.spyOn(myJobsApi, 'qcQueue');
+  const profile = jest.spyOn(employeeProfileApi, 'fetchProfile');
+  await qc();
+  // The header, the list and the focus reload mount together.
+  expect(list).toHaveBeenCalledTimes(1);
+  expect(queue).toHaveBeenCalledTimes(1);
+  expect(profile).toHaveBeenCalledTimes(1);
+  jest.restoreAllMocks();
+});
+
+test('passing raw material QC takes the job out of the bucket', async () => {
   const root = await qc();
   await press(byTestId(root, 'qc-row-1039'));
 
@@ -122,8 +138,9 @@ test('passing raw material QC moves the item to Passed', async () => {
   await press(byTestId(root, 'qc-pass'));
 
   expect(hasTestId(root, 'qc-list-screen')).toBe(true);
-  expect(rowText(root, '1039')).toContain('Passed');
-  expect(allText(root)).toContain('0 pending · 5 total');
+  expect(hasTestId(root, 'qc-row-1039')).toBe(false);
+  expect(allText(root)).toContain('0 pending');
+  expect(allText(root)).toContain('No jobs waiting for QC.');
   expect((await card('1039')).materialQc).toBe('accepted');
 });
 
@@ -134,7 +151,7 @@ test('failing needs remarks, then marks the item failed', async () => {
 
   // QC station: what is checked and who is assigned, no timer.
   const station = allText(byTestId(root, 'qc-station'));
-  expect(station).toContain('In-process QC');
+  expect(station).toContain('Cutting QC');
   expect(station).toContain('Material QC');
   expect(station).not.toContain('Material QC QC');
   expect(station).toContain('Assigned QC');
@@ -156,7 +173,7 @@ test('failing needs remarks, then marks the item failed', async () => {
   // Back on the list (Machine QC tab kept). The failed check reopened the
   // step as rework, so there's nothing to check until it's done again.
   expect(hasTestId(root, 'qc-list-screen')).toBe(true);
-  expect(rowText(root, '1039')).not.toContain('Pending');
+  expect(hasTestId(root, 'qc-row-1039')).toBe(false);
   const failed = await card('1039');
   expect(failed.qcHistory.at(-1)).toMatchObject({
     kind: 'machine',
@@ -168,9 +185,6 @@ test('failing needs remarks, then marks the item failed', async () => {
     status: 'pending',
     isRework: true,
   });
-
-  await press(byTestId(root, 'qc-row-1039'));
-  expect(hasTestId(root, 'qc-pass')).toBe(false);
 });
 
 test('a supporting document can be attached to a fail, and is kept as its report', async () => {
@@ -212,7 +226,7 @@ test('failing raw material QC also records the rejected material', async () => {
   await typeInto(byTestId(root, 'qc-rejected-size'), '24mm dia x 200mm');
   await press(byTestId(root, 'qc-submit-fail'));
 
-  expect(rowText(root, '1039')).toContain('Failed');
+  expect(hasTestId(root, 'qc-row-1039')).toBe(false);
   expect((await card('1039')).qcHistory.at(-1)).toMatchObject({
     result: 'rejected',
     remark: 'Wrong grade received',
@@ -223,8 +237,12 @@ test('failing raw material QC also records the rejected material', async () => {
     },
   });
 
-  // The check lists them with the remark.
-  await press(byTestId(root, 'qc-row-1039'));
+  // Off the list, the check still opens by its code and lists them with
+  // the remark.
+  await press(byTestId(root, 'import-job'));
+  await press(byText(root, 'Enter code manually'));
+  await typeInto(byTestId(root, 'job-code-input'), 'WO-1039');
+  await press(byTestId(root, 'job-code-submit'));
   const text = allText(root);
   expect(text).toContain('Wrong grade received');
   expect(text).toContain('HT-12345');
@@ -244,13 +262,30 @@ test('importing a job opens its check in the current tab', async () => {
   expect(text).toContain('WO #1040 · Bracket — Job B');
 
   await press(byLabel(root, 'Back'));
-  expect(allText(root)).toContain('6 total');
-  expect(hasTestId(root, 'qc-row-1040')).toBe(true);
+  // Its machine check is waiting, so it joins the Machine QC bucket.
+  await press(byTestId(root, 'qc-tabs-machine'));
+  const machine = byTestId(root, 'qc-tab-page-machine');
+  expect(hasTestId(machine, 'qc-row-1040')).toBe(true);
+});
+
+test('a job scanned on the RM tab opens the check waiting on QC, with Pass and Fail', async () => {
+  const root = await qc();
+  // Raw Material QC tab (the default); 1040's RM is accepted, its machine
+  // check waits.
+  await press(byTestId(root, 'import-job'));
+  await press(byText(root, 'Enter code manually'));
+  await typeInto(byTestId(root, 'job-code-input'), 'WO-1040');
+  await press(byTestId(root, 'job-code-submit'));
+
+  const screen = byTestId(root, 'qc-check-screen');
+  expect(allText(screen)).toContain('Machine QC');
+  expect(hasTestId(screen, 'qc-pass')).toBe(true);
+  expect(hasTestId(screen, 'qc-fail')).toBe(true);
 });
 
 test('View Details opens the order behind a QC check', async () => {
   const root = await qc();
-  await press(byTestId(root, 'qc-row-1042'));
+  await press(byTestId(root, 'qc-row-1039'));
   await press(byTestId(root, 'view-order-details'));
 
   // The job view: no prices or client details.

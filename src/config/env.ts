@@ -1,16 +1,16 @@
 import { Platform } from 'react-native';
 
+/** N1 Core API on staging. */
+export const STAGING_API_URL = 'https://api.staging.app.none1.in';
+
 /**
- * N1 Core API (run it with `pnpm dev` in N1-mark-1-backend). Web builds use
- * N1_API_URL, falling back to the dev server's /api proxy (webpack.config.js)
- * because the local backend only allows browser calls from its docs site.
- * The Android emulator reaches the Mac at 10.0.2.2; on a real phone use the
- * Mac's LAN IP instead.
+ * Web builds use N1_API_URL, falling back to the dev server's /api proxy
+ * (webpack.config.js, which forwards to staging) because the backend only
+ * allows browser calls from its docs site. Native apps call staging directly.
  */
 export const API_BASE_URL = Platform.select({
   web: process.env.N1_API_URL || '/api',
-  android: 'https://api.staging.app.none1.in',
-  default: 'http://127.0.0.1:3000',
+  default: STAGING_API_URL,
 });
 /**
  * Web dev only: the dev server path that forwards presigned file uploads

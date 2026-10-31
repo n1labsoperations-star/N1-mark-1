@@ -31,6 +31,7 @@ import type {
   RejectedMaterial,
 } from '../types';
 import { normaliseJobCode } from '../utils';
+import { QC_STRINGS } from '../../jobs/constants';
 import type { MaterialSource, OrderPriority } from '../../orders/types';
 
 // N1 Core API: jobCards / jobCard / jobCardByQr, and each production move as
@@ -158,11 +159,23 @@ function toCurrentStep(node: CurrentStepNode): JobCurrentStep {
   };
 }
 
-function toQcEntry(node: QcRecordNode): QcEntry {
+/**
+ * Stopgap until the server names each check after its step: it currently
+ * sends "In-process QC" for every mid-route check, so name it after the step
+ * inspected, e.g. "Turning QC". Any other stage the server sends is kept, so
+ * this drops out by itself once the server sends the step name.
+ */
+function qcStage(node: QcRecordNode, operations: OperationNode[]): string {
+  if (node.stage !== QC_STRINGS.stages.inProcess) return node.stage;
+  const op = operations.find(o => o.id === node.jobOperationId);
+  return op ? QC_STRINGS.station.operationQc(op.name) : node.stage;
+}
+
+function toQcEntry(node: QcRecordNode, operations: OperationNode[]): QcEntry {
   return {
     id: node.id,
     kind: node.kind === 'RM' ? 'rm' : 'machine',
-    stage: node.stage,
+    stage: qcStage(node, operations),
     result: fromWireEnum<QcResult>(node.result),
     remark: textOrEmpty(node.remark),
     at: node.recordedAt,
@@ -198,7 +211,7 @@ export function toJobCard(node: JobCardNode): JobCard {
       .sort((a, b) => a.seq - b.seq)
       .map(toOperation),
     currentStep: node.currentStep && toCurrentStep(node.currentStep),
-    qcHistory: node.qcHistory.map(toQcEntry),
+    qcHistory: node.qcHistory.map(e => toQcEntry(e, node.operations)),
     quotation: fromWireEnum<QuotationStatus>(node.quotation),
     billing: fromWireEnum<BillingState>(node.billing),
     partNumber: textOrEmpty(node.partNumber),

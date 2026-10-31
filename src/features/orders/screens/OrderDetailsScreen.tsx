@@ -514,7 +514,12 @@ export function OrderDetailsScreen({
   // What the order QR holds; the app's scanner imports the order from it.
   const qrValue = orderQrValue(order);
   const viewDrawing = (doc?: Attachment) =>
-    setViewing({ type: 'drawing', drawingNumber: drawingNo, doc });
+    setViewing({
+      type: 'drawing',
+      drawingNumber: drawingNo,
+      doc,
+      company: order.customerName,
+    });
   const previewDrawing = (doc: Attachment) =>
     setViewing({
       type: 'drawingQr',
@@ -529,6 +534,7 @@ export function OrderDetailsScreen({
       drawingNumber={drawingNo}
       drawings={drawings}
       qrValue={qrValue}
+      company={order.customerName}
       onViewDrawing={viewDrawing}
       onPrintDrawing={printDrawing}
       onPreviewDrawing={previewDrawing}
@@ -582,7 +588,9 @@ export function OrderDetailsScreen({
           items={[
             {
               label: F.jobCardNo,
-              value: orDash(JOB_CARD_STRINGS.jobCardNumber(jobCard?.code ?? '')),
+              value: orDash(
+                JOB_CARD_STRINGS.jobCardNumber(jobCard?.code ?? ''),
+              ),
             },
             { label: F.dcNo, value: orDash(order.dcNo) },
             { label: F.dcDate, value: orDash(formatLongDate(order.dcDate)) },

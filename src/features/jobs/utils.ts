@@ -1,6 +1,8 @@
 import { isBlank } from '../../shared/utils';
 import type { WorkOrder } from '../orders/types';
+import { jobCardStage } from '../jobCards/utils';
 import type { JobCard } from '../jobCards/types';
+import type { EmployeeRole } from '../profile/types';
 import type { OrderView, RawMaterialInput } from './types';
 
 /** The job view of a work order, from its job card (operator, QC). */
@@ -19,6 +21,7 @@ export const jobViewOf = (c: JobCard): OrderView => ({
   poNumber: c.poNumber ?? '',
   routeCardNo: c.routeCardNo ?? '',
   materialSource: c.materialSource,
+  designFile: c.designFile,
 });
 
 export const rawMaterialOf = (order: WorkOrder): RawMaterialInput => ({
@@ -46,4 +49,19 @@ export function isOperatorDone(c: JobCard, operatorId: string): boolean {
     op => operatorId && op.operatorId === operatorId,
   );
   return mine.length > 0 && mine.every(op => op.status === 'completed');
+}
+
+/**
+ * Whether a job leaves the role's My Jobs: an operator's once their part is
+ * over, a supervisor's once it's dispatched and invoiced (Done).
+ */
+export function isOffMyJobs(
+  c: JobCard,
+  role: EmployeeRole,
+  operatorId: string,
+): boolean {
+  if (role === 'operator') {
+    return isOperatorDone(c, operatorId);
+  }
+  return role === 'supervisor' && jobCardStage(c).key === 'done';
 }

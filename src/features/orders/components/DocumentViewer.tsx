@@ -6,6 +6,7 @@ import {
   N1Modal,
   N1Text,
   createN1Styles,
+  useN1Breakpoint,
   useN1Styles,
 } from '../../../shared/components';
 import {
@@ -16,6 +17,7 @@ import { useHeldWhileVisible } from '../../../shared/hooks';
 import type { Attachment } from '../../../shared/types';
 import { formatFileSize } from '../../../shared/utils';
 import { ORDER_STRINGS } from '../constants';
+import { openMaskedDrawing } from '../drawings';
 import { useDrawingThumbnail } from '../hooks/useDrawingThumbnail';
 import { useStampedPreview } from '../hooks/useStampedPreview';
 import { DrawingPreview } from './DrawingPreview';
@@ -71,8 +73,16 @@ const makeStyles = createN1Styles(t => ({
 /** What the viewer shows: a document, the order's drawing, or its QR. */
 export type ViewerTarget =
   | { type: 'document'; doc: Attachment }
-  /** `doc`: the uploaded drawing file, shown by its first page. */
-  | { type: 'drawing'; drawingNumber: string; doc?: Attachment }
+  /**
+   * `doc`: the uploaded drawing file, shown by its first page with the
+   * customer's (`company`) details blanked, as when printing.
+   */
+  | {
+      type: 'drawing';
+      drawingNumber: string;
+      doc?: Attachment;
+      company: string;
+    }
   /** The drawing file as it prints: the order QR on every page. */
   | {
       type: 'drawingQr';
@@ -111,13 +121,20 @@ export function DocumentViewer({
   onOpen,
 }: Props) {
   const styles = useN1Styles(makeStyles);
+  const { isCompact } = useN1Breakpoint();
   const visible = targetProp !== null;
   // Kept while the dialog fades out.
   const target = useHeldWhileVisible(visible, targetProp);
   const doc = target?.doc ?? null;
   const thumbnail = useDrawingThumbnail(
     target?.type === 'drawing' ? target.doc : undefined,
+    target?.type === 'drawing' ? target.company : '',
   );
+  // A drawing downloads masked too; other documents as stored.
+  const download = (file: Attachment) =>
+    target?.type === 'drawing' || target?.type === 'drawingQr'
+      ? openMaskedDrawing(file, target.company).catch(() => onDownload(file))
+      : onDownload(file);
   const stamped = useStampedPreview(
     target?.type === 'drawingQr' ? target.doc : undefined,
     target?.type === 'drawingQr' ? target.qrValue : '',
@@ -239,16 +256,19 @@ export function DocumentViewer({
               title={D.downloadDocument}
               leftIcon="download"
               variant="secondary"
-              onPress={() => onDownload(doc)}
+              onPress={() => download(doc)}
               testID="document-viewer-download"
             />
           )}
-          <N1Button
-            title={isDrawing(target) ? D.printDrawing : D.print}
-            leftIcon="printer"
-            onPress={() => target && onPrint(target)}
-            testID="document-viewer-print"
-          />
+          {/* Phones: Download only, no Print. */}
+          {!isCompact && (
+            <N1Button
+              title={isDrawing(target) ? D.printDrawing : D.print}
+              leftIcon="printer"
+              onPress={() => target && onPrint(target)}
+              testID="document-viewer-print"
+            />
+          )}
         </View>
       }
       testID="document-viewer"

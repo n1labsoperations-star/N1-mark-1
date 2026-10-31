@@ -15,7 +15,7 @@ import { SCAN_SUCCESS_DELAY_MS } from '../../../shared/constants';
 import { jobCardsApi } from '../../jobCards/api/mockJobCardsApi';
 import { MOCK_ORDERS } from '../../orders/api/mockData';
 import { ordersApi } from '../../orders/api/mockOrdersApi';
-import { normaliseJobCode } from '../../jobCards/utils';
+import { normaliseJobCode, reopenOperation } from '../../jobCards/utils';
 import { isRawMaterialMissing } from '../utils';
 
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
@@ -78,8 +78,10 @@ test("My Jobs lists the user's jobs with counts and search", async () => {
 
   const text = allText(root);
   expect(text).toContain('My Jobs');
-  expect(text).toContain('5 active · 6 total');
+  expect(text).toContain('5 active · 5 total');
   expect(hasTestId(root, 'job-card-1042')).toBe(true);
+  // A dispatched (Done) job leaves the list.
+  expect(hasTestId(root, 'job-card-1035')).toBe(false);
   // Job cards that were never imported stay off the list.
   expect(hasTestId(root, 'job-card-1036')).toBe(false);
 
@@ -275,7 +277,7 @@ test('order → raw material modal → job added to My Jobs → job card', async
   // Back lands on My Jobs, with the job added at the top.
   await press(byLabel(root, 'Back'));
   text = allText(root);
-  expect(text).toContain('6 active · 7 total');
+  expect(text).toContain('6 active · 6 total');
   expect(text.indexOf('WO #1036')).toBeLessThan(text.indexOf('WO #1041'));
 });
 
@@ -303,7 +305,9 @@ test('the order keeps its heading and drawing pinned; the thumbnail opens the Dr
   await press(byTestId(tile, 'order-drawing-thumb'));
   const drawing = byTestId(root, 'drawing-screen');
   expect(allText(drawing)).toContain('DRW-1184');
-  expect(hasTestId(drawing, 'drawing-print')).toBe(true);
+  // Phones: just the drawing, no Print or Open in new tab.
+  expect(hasTestId(drawing, 'drawing-print')).toBe(false);
+  expect(hasTestId(drawing, 'drawing-open')).toBe(false);
   await press(byLabel(drawing, 'Close'));
   expect(hasTestId(root, 'drawing-screen')).toBe(false);
   expect(hasTestId(root, 'import-order-screen')).toBe(true);
@@ -365,6 +369,65 @@ test('an order without a job card gets one created', async () => {
   expect(hasTestId(root, 'job-card-details-screen')).toBe(true);
   const created = (await jobCardsApi.list()).find(c => c.id === '1045');
   expect(created).toMatchObject({ status: 'not_started', operations: [] });
+});
+
+test('an order without a job card still opens its drawing', async () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { id, status, statusHistory, createdAt, ...input } = MOCK_ORDERS[0];
+  app = await renderAppAs('supervisor@n1.com', 'Supervisor@123', () =>
+    ordersApi.create(input),
+  );
+  const root = app.root;
+  await importCode(root, 'WO-1045');
+
+  await press(byTestId(root, 'order-drawing-thumb'));
+  const drawing = byTestId(root, 'drawing-screen');
+  expect(allText(drawing)).not.toContain('This order no longer exists.');
+  expect(allText(drawing)).toContain(MOCK_ORDERS[0].drawingNumber);
+  // Phones: just the drawing, no Print or Open in new tab.
+  expect(hasTestId(drawing, 'drawing-print')).toBe(false);
+  expect(hasTestId(drawing, 'drawing-open')).toBe(false);
+});
+
+test('supervisor restarts a step whose QC failed with Redo, not Start', async () => {
+  // 1042's Turning step failed its QC and reopened as a redo.
+  app = await renderAppAs('supervisor@n1.com', 'Supervisor@123', async () => {
+    const card = await jobCardsApi.get('1042');
+    const operations = card.operations.map((op, i) =>
+      i < 3
+        ? {
+            ...op,
+            status: 'completed' as const,
+            completedAt: '2026-09-25T10:00:00',
+          }
+        : op,
+    );
+    const done = { ...card, operations };
+    await jobCardsApi.update('1042', {
+      ...reopenOperation(done, '1042-op3'),
+      qcHistory: [
+        ...card.qcHistory,
+        {
+          id: 'qc-redo',
+          kind: 'machine',
+          stage: 'Turning - QC',
+          result: 'failed',
+          remark: 'Oversize',
+          at: '2026-09-25T11:00:00',
+          operationId: '1042-op3',
+        },
+      ],
+    });
+  });
+  const root = app.root;
+  await press(byLabel(root, 'View job card WO #1042'));
+  const bar = byTestId(root, 'job-card-operation-bar');
+  expect(hasTestId(bar, 'redo-operation')).toBe(true);
+  expect(hasTestId(bar, 'start-operation')).toBe(false);
+  await press(byTestId(bar, 'redo-operation'));
+  expect(allText(byTestId(root, 'start-step-dialog'))).toContain(
+    'Start Turning (Lathe)',
+  );
 });
 
 test('supervisor re-initiates RM QC with new material after a rejection', async () => {

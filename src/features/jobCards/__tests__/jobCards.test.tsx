@@ -17,7 +17,9 @@ import { machineQc } from '../../jobs/qc';
 import { MOCK_ORDERS } from '../../orders/api/mockData';
 import type { WorkOrder } from '../../orders/types';
 import { jobCardsApi } from '../api/mockJobCardsApi';
+import { apiClient } from '../../../services/api';
 import { jobCardActions } from '../store/jobCardsSlice';
+import { customerActions } from '../../customers/store/customersSlice';
 import { MOCK_JOB_CARDS } from '../api/mockData';
 import type { JobCard, JobOperation } from '../types';
 import {
@@ -60,6 +62,43 @@ afterEach(() => jest.restoreAllMocks());
 
 const cardById = (id: string) =>
   MOCK_JOB_CARDS.find(c => c.id === id) as JobCard;
+
+/**
+ * The card in the store with every step completed and the last one's final
+ * QC passed: Ready to dispatch, so Generate Dispatch shows.
+ */
+type Store = { getState: () => any; dispatch: (a: any) => unknown };
+const finishCard = async (store: Store, id: string) => {
+  const card: JobCard = store.getState().jobCards.entities[id];
+  const operations = card.operations.map(o => ({
+    ...o,
+    status: 'completed' as const,
+    isRework: false,
+    completedAt: '2026-09-25T10:00:00',
+  }));
+  const last = operations[operations.length - 1];
+  await act(async () => {
+    store.dispatch(
+      jobCardActions.saveSuccess({
+        ...card,
+        operations,
+        status: 'completed',
+        qcHistory: [
+          ...card.qcHistory,
+          {
+            id: `qc-final-${id}`,
+            kind: 'machine',
+            stage: `${last.name} - QC`,
+            result: 'passed',
+            remark: '',
+            at: '2026-09-25T11:00:00',
+            operationId: last.id,
+          },
+        ],
+      }),
+    );
+  });
+};
 
 const op = (
   status: JobOperation['status'],
@@ -176,6 +215,50 @@ describe('job card rules', () => {
   test('a card without a flow starts with blank steps', () => {
     const steps = initialFlowSteps(cardById('1036'), 3);
     expect(steps.map(s => s.name)).toEqual(['', '', '']);
+  });
+
+  test('a job waiting on QC releases its operator and machine', () => {
+    const card = cardById('1042');
+    // Every step finished, none checked yet: Final QC.
+    const atFinalQc = {
+      ...card,
+      status: 'in_progress' as const,
+      operations: card.operations.map(step => ({
+        ...step,
+        status: 'completed' as const,
+        machine: 'CNC006',
+        operator: 'shakthi',
+      })),
+      qcHistory: [],
+    };
+    expect(jobCardStage(atFinalQc)).toMatchObject({
+      key: 'operation_qc',
+      final: true,
+    });
+    expect(assignedMachine(atFinalQc)).toBe('');
+    expect(assignedOperator(atFinalQc)).toBe('');
+
+    // QC failed: the step reopens as a redo, but on no machine and with no
+    // operator until it is started again.
+    const [first, ...rest] = atFinalQc.operations;
+    const redo = {
+      ...atFinalQc,
+      operations: [
+        {
+          ...first,
+          status: 'pending' as const,
+          isRework: true,
+          completedAt: null,
+        },
+        ...rest.map(step => ({ ...step, status: 'pending' as const })),
+      ],
+    };
+    expect(jobCardStage(redo)).toMatchObject({
+      key: 'operation',
+      state: 'rework',
+    });
+    expect(assignedMachine(redo)).toBe('');
+    expect(assignedOperator(redo)).toBe('');
   });
 
   test('a completed job card is on no machine and with no operator', () => {
@@ -513,10 +596,16 @@ describe('Job Cards list', () => {
         .jobCards.entities['1042'].operations.some(o => o.status === 'paused'),
     ).toBe(true);
     expect(allText(bar())).toBe('Start|Complete');
-    // Generate Dispatch is the header's only action.
-    const dispatch = screen.findAll(
-      n => typeof n.type === 'string' && n.props.testID === 'generate-dispatch',
-    );
+    // Generate Dispatch waits for the last step's final QC to pass, then is
+    // the header's only action.
+    const dispatches = () =>
+      byTestId(h.root, 'job-card-details-screen').findAll(
+        n =>
+          typeof n.type === 'string' && n.props.testID === 'generate-dispatch',
+      );
+    expect(dispatches()).toHaveLength(0);
+    await finishCard(h.store, '1042');
+    const dispatch = dispatches();
     expect(dispatch).toHaveLength(1);
     expect(dispatch[0].props.accessibilityLabel).toBe('Generate Dispatch');
     await press(byTestId(h.root, 'job-card-tab-qc'));
@@ -578,8 +667,8 @@ describe('Job card details', () => {
     expect(allText(byTestId(screen, 'job-card-stage-1042'))).toBe(
       'Turning (Lathe)',
     );
-    // Generate Dispatch is the only action; no Print Job Card.
-    expect(text).toContain('Generate Dispatch');
+    // No Generate Dispatch while steps are left; no Print Job Card.
+    expect(text).not.toContain('Generate Dispatch');
     expect(text).not.toContain('Print Job Card');
     // Machining, QC, then Order details; Machining opens first.
     expect(text).toMatch(/\|Machining\|QC\|Order details\|/);
@@ -704,6 +793,10 @@ describe('Job card details', () => {
     expect(allText(byTestId(screen(), 'qc-report-qc1'))).toBe(
       'material-qc-report.pdf',
     );
+    // No backend in tests: the download link request fails.
+    jest
+      .spyOn(apiClient, 'post')
+      .mockRejectedValueOnce(new Error('Network Error'));
     await press(byTestId(screen(), 'qc-report-qc1'));
     expect(alert).toHaveBeenCalledTimes(1);
 
@@ -825,6 +918,8 @@ describe('Job card details', () => {
       h.store.getState().jobCards.entities['1042'].operations[2],
     ).toMatchObject({ status: 'pending', isRework: true });
 
+    // Redo takes Start's place: one way to restart the failed step.
+    expect(hasTestId(screen(), 'start-operation')).toBe(false);
     // Redo picks the operator and an idle machine, then starts it.
     await press(byTestId(screen(), 'redo-operation'));
     const dialog = () => byTestId(h.root, 'start-step-dialog');
@@ -844,6 +939,7 @@ describe('Job card details', () => {
   test('dispatch asks to confirm, then bills the job from its operations', async () => {
     const h = await renderAdmin('JobCards');
     await h.navigate('JobCardDetails', { jobCardId: '1042' });
+    await finishCard(h.store, '1042');
     const billed = () =>
       Object.values(h.store.getState().billing.invoices.entities).find(
         i => i?.jobId === 'WO-01042',
@@ -894,9 +990,34 @@ describe('Job card details', () => {
     expect(h.currentRoute()).toBe('JobCardDetails');
   });
 
+  test('dispatch waits for the customer’s state: the invoice needs it', async () => {
+    const h = await renderAdmin('JobCards');
+    await h.navigate('JobCardDetails', { jobCardId: '1042' });
+    await finishCard(h.store, '1042');
+    await press(byTestId(h.root, 'generate-dispatch'));
+    await flush();
+    const { customerId } = h.store.getState().jobCards.entities['1042'];
+    const customer = h.store.getState().customers.entities[customerId]!;
+    await act(async () => {
+      h.store.dispatch(customerActions.saveSuccess({ ...customer, state: '' }));
+    });
+
+    const modal = () => byTestId(h.root, 'dispatch-modal');
+    expect(allText(modal())).toContain(
+      "Add Acme Metalworks's state (Customers → Address) before dispatching",
+    );
+    // Dispatch does nothing: the order stays where it is.
+    const status = h.store.getState().orders.entities['1042'].status;
+    await press(byText(modal(), 'Dispatch'));
+    await flush();
+    expect(h.currentRoute()).toBe('JobCardDetails');
+    expect(h.store.getState().orders.entities['1042'].status).toBe(status);
+  });
+
   test('dispatch lists the job’s operations to price; a billed job opens its invoice', async () => {
     const h = await renderAdmin('JobCards');
     await h.navigate('JobCardDetails', { jobCardId: '1039' });
+    await finishCard(h.store, '1039');
     await press(byTestId(h.root, 'generate-dispatch'));
     await press(byText(byTestId(h.root, 'dispatch-modal'), 'Dispatch'));
     // dispatchOrder, then createInvoice.

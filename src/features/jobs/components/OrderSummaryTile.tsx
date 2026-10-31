@@ -15,6 +15,7 @@ import {
   PriorityBadge,
   orderHeading,
 } from '../../orders';
+import { useDrawingThumbnail } from '../../orders/hooks/useDrawingThumbnail';
 import { JOBS_STRINGS } from '../constants';
 import type { JobsScreenProps, OrderView } from '../types';
 
@@ -60,6 +61,10 @@ export const OrderSummaryTile = memo(function OrderSummaryTileComponent({
 }) {
   const styles = useN1Styles(makeStyles);
   const drawingNumber = order.drawingNumber || D.noDrawing;
+  const thumbnail = useDrawingThumbnail(
+    order.designFile ?? undefined,
+    order.customerName,
+  );
   const navigation =
     useNavigation<JobsScreenProps<'ImportOrder'>['navigation']>();
 
@@ -84,7 +89,11 @@ export const OrderSummaryTile = memo(function OrderSummaryTileComponent({
         style={({ pressed }) => [styles.drawing, pressed && styles.pressed]}
         testID="order-drawing-thumb"
       >
-        <DrawingPreview drawingNumber={drawingNumber} style={styles.thumb} />
+        <DrawingPreview
+          drawingNumber={drawingNumber}
+          uri={thumbnail}
+          style={styles.thumb}
+        />
         <View style={styles.grow}>
           <N1Text variant="title" weight="bold">
             {D.drawing}
