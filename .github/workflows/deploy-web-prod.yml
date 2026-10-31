@@ -1,0 +1,82 @@
+name: Deploy web prod
+
+# Manual only: production gets a build the founder chose, never every push to main.
+# The prod deploy role (backend infra/terraform/modules/webapp, N1C-182) trusts this repo's main branch only.
+# Needs the repository variable WEBAPP_PROD_DISTRIBUTION_ID (terraform output webapp_distribution_id in n1-prod).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: web-prod-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AWS_REGION: ap-south-1
+      AWS_DEFAULT_REGION: ap-south-1
+      N1_API_URL: https://api.app.none1.in
+      BUCKET: n1-prod-webapp-713285551650
+      DISTRIBUTION_ID: ${{ vars.WEBAPP_PROD_DISTRIBUTION_ID }}
+    steps:
+      - name: Check the distribution variable
+        run: |
+          [[ "$DISTRIBUTION_ID" =~ ^E[A-Z0-9]{8,20}$ ]] || { echo "::error::Set the WEBAPP_PROD_DISTRIBUTION_ID repository variable"; exit 1; }
+
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+
+      # The repository does not track a JavaScript lockfile.
+      - name: Install dependencies
+        run: npm install --no-package-lock --no-audit --no-fund
+
+      - name: Build web app
+        run: |
+          npm run build:web
+          test -s dist/index.html
+          # The prod API must be baked in; a staging URL here would ship a prod UI talking to staging.
+          # (The native-only staging constant in src/config/env.ts may still appear; web uses N1_API_URL.)
+          grep -rq 'https://api.app.none1.in' dist/ || { echo "::error::prod API URL missing from the build"; exit 1; }
+
+      - name: Assume prod deployment role
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        with:
+          role-to-assume: arn:aws:iam::713285551650:role/n1-prod-webapp-deploy
+          aws-region: ap-south-1
+          allowed-account-ids: '713285551650'
+
+      - name: Sync prod assets and publish HTML
+        run: |
+          aws s3 sync dist/ "s3://$BUCKET/" \
+            --delete \
+            --exclude 'index.html' \
+            --cache-control 'max-age=31536000,immutable' \
+            --only-show-errors
+          # Upload HTML last, always replacing its cache metadata.
+          aws s3 cp dist/index.html "s3://$BUCKET/index.html" \
+            --cache-control 'no-cache' \
+            --content-type 'text/html' \
+            --only-show-errors
+
+      - name: Invalidate prod CloudFront cache
+        run: aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths '/*'
+
+      - name: Live site serves this build
+        run: |
+          sleep 20
+          live=$(curl -fsS https://app.none1.in/ | sha256sum | cut -c1-64)
+          built=$(sha256sum dist/index.html | cut -c1-64)
+          [ "$live" = "$built" ] || { echo "::warning::app.none1.in index.html differs from this build (invalidation may still be propagating)"; }
+          echo "index.html live=$live built=$built"
