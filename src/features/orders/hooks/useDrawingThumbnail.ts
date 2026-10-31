@@ -5,10 +5,18 @@ import { drawingThumbnail } from '../drawingStamp';
 // Thumbnails by file id: a stored drawing is downloaded and drawn once.
 const thumbnails = new Map<string, Promise<string | null>>();
 
+// A failed download (a network blip, an expired session) is tried again
+// once, then forgotten so the next view retries instead of keeping the
+// placeholder for the rest of the session.
 function thumbnailOf(doc: Attachment) {
   let thumbnail = thumbnails.get(doc.id);
   if (!thumbnail) {
-    thumbnail = drawingThumbnail(doc).catch(() => null);
+    thumbnail = drawingThumbnail(doc)
+      .catch(() => drawingThumbnail(doc))
+      .catch(() => {
+        thumbnails.delete(doc.id);
+        return null;
+      });
     thumbnails.set(doc.id, thumbnail);
   }
   return thumbnail;

@@ -24,6 +24,8 @@ import {
   useListFilter,
   usePagination,
 } from '../../../shared/hooks';
+import { openStoredFile } from '../../../services/files/fileStorage';
+import type { Attachment } from '../../../shared/types';
 import { notifyUnavailable } from '../../../shared/utils';
 import {
   DocumentViewer,
@@ -39,6 +41,8 @@ import { INITIAL_JOB_CARD_FILTERS, JOB_CARD_STRINGS as S } from '../constants';
 import { useJobCards } from '../hooks/useJobCards';
 import type { JobCard, JobCardFilters, JobCardsNavigation } from '../types';
 import {
+  assignedMachine,
+  assignedOperator,
   currentOperation,
   distinctOptions,
   jobCardSearchText,
@@ -54,7 +58,10 @@ const makeStyles = createN1Styles(t => ({
 
 const dash = (value?: string) => value || COMMON_STRINGS.dash;
 const printDrawing = () => notifyUnavailable(ORDER_STRINGS.details.printAction);
-const download = () => notifyUnavailable(ORDER_STRINGS.details.downloadAction);
+const download = (doc: Attachment) =>
+  openStoredFile(doc).catch(() =>
+    notifyUnavailable(ORDER_STRINGS.details.downloadAction),
+  );
 
 export function JobCardsListScreen() {
   const styles = useN1Styles(makeStyles);
@@ -87,16 +94,12 @@ export function JobCardsListScreen() {
       {
         key: 'operator',
         label: S.operatorFilter,
-        options: distinctOptions(
-          items.map(c => currentOperation(c)?.operator ?? ''),
-        ),
+        options: distinctOptions(items.map(assignedOperator)),
       },
       {
         key: 'machine',
         label: S.machineFilter,
-        options: distinctOptions(
-          items.map(c => currentOperation(c)?.machine ?? ''),
-        ),
+        options: distinctOptions(items.map(assignedMachine)),
       },
     ],
     [items],
@@ -135,7 +138,8 @@ export function JobCardsListScreen() {
     [navigation, isCompact],
   );
   const flowJobCard = items.find(c => c.id === flowId);
-  // The diagram opens full size, numbered by its order's drawing number.
+  // The diagram opens full size with its design file, numbered by its
+  // order's drawing number.
   const [viewing, setViewing] = useState<ViewerTarget | null>(null);
   const closeViewer = useCallback(() => setViewing(null), []);
   const drawingNumberOf = useCallback(
@@ -145,7 +149,11 @@ export function JobCardsListScreen() {
   );
   const openDrawing = useCallback(
     (c: JobCard) =>
-      setViewing({ type: 'drawing', drawingNumber: drawingNumberOf(c) }),
+      setViewing({
+        type: 'drawing',
+        drawingNumber: drawingNumberOf(c),
+        doc: c.designFile ?? undefined,
+      }),
     [drawingNumberOf],
   );
 
@@ -181,12 +189,12 @@ export function JobCardsListScreen() {
       {
         key: 'machine',
         title: S.columns.machine,
-        render: c => <N1Text>{dash(currentOperation(c)?.machine)}</N1Text>,
+        render: c => <N1Text>{dash(assignedMachine(c))}</N1Text>,
       },
       {
         key: 'operator',
         title: S.columns.operator,
-        render: c => <N1Text>{dash(currentOperation(c)?.operator)}</N1Text>,
+        render: c => <N1Text>{dash(assignedOperator(c))}</N1Text>,
       },
       {
         key: 'diagram',

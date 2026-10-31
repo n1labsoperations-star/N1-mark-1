@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { useAppDispatch, useAppSelector } from '../../app/store/hooks';
+import {
+  useAppDispatch,
+  useAppSelector,
+  useAppStore,
+} from '../../app/store/hooks';
 import type { RootState } from '../../app/store';
 import type { CrudActions, CrudState } from './createCrudSlice';
 
@@ -21,11 +25,14 @@ export function useCrudResource<T extends { id: string }, Input>(
   const deletingId = useAppSelector(state => selectState(state).deletingId);
   const deleteError = useAppSelector(state => selectState(state).deleteError);
 
+  // Read the store, not this render's status: screens that mount together
+  // all render "idle", and only the first of them should load.
+  const store = useAppStore();
   useEffect(() => {
-    if (status === 'idle') {
+    if (selectState(store.getState()).status === 'idle') {
       dispatch(actions.fetchRequest());
     }
-  }, [dispatch, actions, status]);
+  }, [dispatch, actions, status, store, selectState]);
 
   const reload = useCallback(
     () => dispatch(actions.fetchRequest()),
