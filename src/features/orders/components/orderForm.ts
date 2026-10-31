@@ -136,10 +136,8 @@ export const ORDER_FORM_STEPS: (keyof OrderFormValues)[][] = [
 export const REQUIRED_ORDER_FIELDS = [
   'customerName',
   'poNumber',
-  'quantity',
   'partName',
   'drawingNumber',
-  'deliveryDate',
 ] as const satisfies (keyof OrderFormValues)[];
 
 /** Required fields, then format checks on the rest. */

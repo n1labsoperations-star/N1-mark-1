@@ -15,6 +15,7 @@ import {
 import { MOCK_ORDERS } from '../../orders/api/mockData';
 import type { WorkOrder } from '../../orders/types';
 import { jobCardsApi } from '../api/mockJobCardsApi';
+import { apiClient } from '../../../services/api';
 import { jobCardActions } from '../store/jobCardsSlice';
 import { MOCK_JOB_CARDS } from '../api/mockData';
 import type { JobCard, JobOperation } from '../types';
@@ -638,6 +639,10 @@ describe('Job card details', () => {
     expect(allText(byTestId(screen(), 'qc-report-qc1'))).toBe(
       'material-qc-report.pdf',
     );
+    // No backend in tests: the download link request fails.
+    jest
+      .spyOn(apiClient, 'post')
+      .mockRejectedValueOnce(new Error('Network Error'));
     await press(byTestId(screen(), 'qc-report-qc1'));
     expect(alert).toHaveBeenCalledTimes(1);
 

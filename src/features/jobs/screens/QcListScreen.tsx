@@ -48,7 +48,14 @@ type Queue = ReadonlyMap<string, QcQueueEntry>;
 const statusOf = (c: JobCard, kind: QcKind, queue: Queue) =>
   QC_STATUS_META[queuedQcItem(c, kind, queue).status].label;
 
-/** One tab's page: its pending count, then its checks. */
+/**
+ * Whether the job is in this tab's QC bucket: its check is waiting on QC.
+ * Once passed or failed (or while the machine is still on it) it drops off.
+ */
+const isInQc = (c: JobCard, kind: QcKind, queue: Queue) =>
+  queuedQcItem(c, kind, queue).status === 'pending';
+
+/** One tab's page: its count, then the checks waiting on QC. */
 function QcTabPage({
   kind,
   items,
@@ -73,23 +80,24 @@ function QcTabPage({
   reload: () => void;
   onOpen: (c: JobCard, kind: QcKind) => void;
 }) {
+  const inQc = useMemo(
+    () => items.filter(c => isInQc(c, kind, queue)),
+    [items, kind, queue],
+  );
   const shown = useMemo(
     () =>
-      statuses.length === 0
-        ? filtered
-        : filtered.filter(c => statuses.includes(statusOf(c, kind, queue))),
+      filtered.filter(
+        c =>
+          isInQc(c, kind, queue) &&
+          (statuses.length === 0 ||
+            statuses.includes(statusOf(c, kind, queue))),
+      ),
     [filtered, statuses, kind, queue],
-  );
-  const pending = useMemo(
-    () =>
-      items.filter(c => queuedQcItem(c, kind, queue).status === 'pending')
-        .length,
-    [items, kind, queue],
   );
   return (
     <UserScreen background="muted" testID={`qc-tab-page-${kind}`}>
       <N1Text variant="small" color="secondary" testID="qc-count">
-        {S.subtitle(pending, items.length)}
+        {S.subtitle(inQc.length)}
       </N1Text>
       <AsyncContent
         status={status}
@@ -99,7 +107,7 @@ function QcTabPage({
       >
         {shown.length === 0 ? (
           <N1Text color="secondary" align="center">
-            {items.length ? COMMON_STRINGS.noResults : L.empty}
+            {inQc.length ? COMMON_STRINGS.noResults : S.empty}
           </N1Text>
         ) : (
           shown.map(c => {
@@ -159,7 +167,11 @@ export function QcListScreen() {
       {
         key: 'status',
         label: S.statusFilter,
-        options: distinctOptions(items.map(c => statusOf(c, kind, qcQueue))),
+        options: distinctOptions(
+          items
+            .filter(c => isInQc(c, kind, qcQueue))
+            .map(c => statusOf(c, kind, qcQueue)),
+        ),
       },
     ],
     [items, kind, qcQueue],

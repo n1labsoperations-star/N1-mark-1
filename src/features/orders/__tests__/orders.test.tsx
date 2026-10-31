@@ -29,6 +29,7 @@ import { orderActions } from '../store/ordersSlice';
 import type { WorkOrder } from '../types';
 import { compareOrders, orderQrValue, orderStatus, orderTitle } from '../utils';
 import { normaliseJobCode } from '../../jobCards/utils';
+import { apiClient } from '../../../services/api';
 
 let mockWidth = 1280;
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
@@ -677,6 +678,10 @@ test('documents: the drawing prints with its QR; download is not wired yet', asy
 
   await press(byTestId(screen, 'order-tab-documents'));
   expect(hasTestId(screen, 'order-drawing')).toBe(false);
+  // No backend in tests: the download link request fails.
+  jest
+    .spyOn(apiClient, 'post')
+    .mockRejectedValueOnce(new Error('Network Error'));
   await press(byLabel(screen, 'Download PO-8842_project-docs.pdf'));
   expect(alert).toHaveBeenCalledTimes(3);
   Platform.OS = os;
@@ -736,8 +741,8 @@ test('creates an order over two steps, without raw material', async () => {
   // Priority starts at Low.
   expect(allText(byTestId(form, 'order-form-priority'))).toBe('Low');
   // The required fields stop Create until they're filled (the server needs
-  // a PO number; DC no and DC date are optional).
-  expect(allText(form).split('This field is required').length - 1).toBe(4);
+  // a PO number; quantity, delivery date, DC no and DC date are optional).
+  expect(allText(form).split('This field is required').length - 1).toBe(3);
 
   await typeInto(byTestId(form, 'order-form-quantity'), '25');
   await typeInto(byTestId(form, 'order-form-po-amount'), '125000');
@@ -1013,10 +1018,12 @@ test('saving an edit with a bad field keeps the form open on that step', async (
   expect(allText(form)).toContain('Enter a valid email address');
   await typeInto(byTestId(form, 'order-form-email'), 'orders@brightsteel.in');
   await press(byTestId(form, 'order-step-2'));
-  // Clear the delivery date from its picker, then try to save.
+  // The delivery date can be cleared from its picker; it's optional.
   await press(byTestId(form, 'order-form-delivery'));
   await press(byTestId(form, 'order-form-delivery-clear'));
   expect(allText(byTestId(form, 'order-form-delivery'))).toBe('DD/MM/YYYY');
+  // Clear a required field, then try to save.
+  await typeInto(byTestId(form, 'order-form-part-name'), '');
   await press(byTestId(form, 'order-form-submit'));
   expect(hasTestId(form, 'order-form-step-2')).toBe(true);
   expect(allText(form)).toContain('This field is required');
