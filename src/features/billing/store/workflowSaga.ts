@@ -63,18 +63,17 @@ export function* generateInvoice(
     }
     const jobCard: JobCard = yield call(jobCardsApi.get, jobCardId);
     const dispatched: WorkOrder = yield call(
-      ordersApi.dispatch,
+      dispatchOnce,
       jobCardOrderId(jobCard),
     );
     yield put(orderActions.saveSuccess(dispatched));
-    // The order's PO amount goes on the invoice.
-    const orders: WorkOrder[] = yield call(ordersApi.list);
+    // The order's PO amount goes on the invoice: the dispatched order is it.
     const quotes: Quote[] = yield select(selectAllQuotes);
     const created: Invoice = yield call(
       invoicesApi.create,
       invoiceForDispatch(
         jobCard,
-        orders.find(o => o.id === jobCardOrderId(jobCard)),
+        dispatched,
         quotes.find(q => q.id === quoteId),
         gstRate,
       ),
@@ -90,6 +89,33 @@ export function* generateInvoice(
         errorMessage(error, 'Failed to create the invoice'),
       ),
     );
+  }
+}
+
+/** Where a dispatched order is: billing (payment due) or paid. */
+const isDispatched = (order: WorkOrder) =>
+  order.status === 'payment_due' || order.status === 'completed';
+
+/**
+ * dispatchOrder, once: an earlier try may have dispatched the order and then
+ * failed to make the invoice, and the server refuses a second dispatch. That
+ * order goes on to its invoice; any other refusal stands.
+ */
+export function* dispatchOnce(orderId: string) {
+  try {
+    const dispatched: WorkOrder = yield call(ordersApi.dispatch, orderId);
+    return dispatched;
+  } catch (error) {
+    let order: WorkOrder | undefined;
+    try {
+      order = yield call(ordersApi.get, orderId);
+    } catch {
+      // Can't tell: the dispatch's own error explains it.
+    }
+    if (order && isDispatched(order)) {
+      return order;
+    }
+    throw error;
   }
 }
 

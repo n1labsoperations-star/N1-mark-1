@@ -71,6 +71,9 @@ export const BILLING_STRINGS = {
     existing: (invoiceId: string) =>
       `This job is already billed on ${invoiceId}.`,
     open: 'Open invoice',
+    /** The server bills by the customer's state (GST): dispatch waits for it. */
+    noState: (customer: string) =>
+      `Add ${customer}'s state (Customers → Address) before dispatching: the invoice needs it.`,
     created: 'Invoice created',
     createdMessage: (invoiceId: string) =>
       `${invoiceId} was added to billing as a new invoice.`,

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { N1ConfirmDialog, N1Text } from '../../../shared/components';
 import { useOnSettled } from '../../../shared/hooks';
+import { useCustomers } from '../../customers';
 import type { JobCard } from '../../jobCards/types';
 import { BILLING_STRINGS } from '../constants';
 import { useInvoices } from '../hooks/useBilling';
@@ -41,8 +42,13 @@ function DispatchDialog({ visible, jobCard, onClose, onInvoice }: Props) {
   const { generateInvoice, busy, error, invoiceId } = useBillingWorkflow();
   const requested = useRef(false);
 
+  const { items: customers } = useCustomers();
   const existing = invoices.find(i => i.jobCardId === jobCard.id);
   const job = jobCardLabel(jobCard);
+  // Checked before dispatching: otherwise the order would move to billing
+  // and the invoice then be refused for want of the customer's state.
+  const customer = customers.find(c => c.id === jobCard.customerId);
+  const noState = !existing && !!customer && !customer.state.trim();
 
   useOnSettled(busy, error, () => {
     if (requested.current && invoiceId) {
@@ -54,6 +60,9 @@ function DispatchDialog({ visible, jobCard, onClose, onInvoice }: Props) {
   const confirm = () => {
     if (existing) {
       onInvoice(existing.id, false);
+      return;
+    }
+    if (noState) {
       return;
     }
     requested.current = true;
@@ -69,9 +78,9 @@ function DispatchDialog({ visible, jobCard, onClose, onInvoice }: Props) {
           {existing
             ? S.existing(existing.number)
             : S.confirm(job, jobCard.customerName)}
-          {error && (
+          {(noState || error) && (
             <N1Text variant="small" color="danger">
-              {`\n${error}`}
+              {`\n${noState ? S.noState(jobCard.customerName) : error}`}
             </N1Text>
           )}
         </>

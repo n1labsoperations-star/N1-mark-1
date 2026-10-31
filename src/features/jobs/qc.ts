@@ -20,7 +20,7 @@ export type QcStatus =
 
 export type QcItem = {
   status: QcStatus;
-  /** "Incoming inspection", "In-process QC" or "Final QC". */
+  /** "Incoming inspection", "Turning QC" (the step's name) or "Final QC". */
   stage: string;
   /** What is inspected: the material, or "Turning (CNC-02)". */
   subject: string;
@@ -69,7 +69,7 @@ export function machineQc(c: JobCard): QcItem {
         ? 'passed'
         : 'failed'
       : 'pending',
-    stage: final ? S.final : S.inProcess,
+    stage: final ? S.final : QC_STRINGS.station.operationQc(last.name),
     subject: final ? last.machine || last.name : describe(last),
     operation: last,
   };
@@ -77,6 +77,18 @@ export function machineQc(c: JobCard): QcItem {
 
 export const qcItem = (c: JobCard, kind: QcKind) =>
   kind === 'rm' ? rawMaterialQc(c) : machineQc(c);
+
+/**
+ * The check a scanned job opens on: the tab it was scanned from, unless
+ * that check has nothing to do or show (passed, waiting, still running)
+ * while the other waits on QC, e.g. a job past RM QC waits on Machine QC.
+ * A failed check stays: it shows its remarks.
+ */
+export function pendingQcKind(c: JobCard, preferred: QcKind): QcKind {
+  const other: QcKind = preferred === 'rm' ? 'machine' : 'rm';
+  const hasWork = ['pending', 'failed'].includes(qcItem(c, preferred).status);
+  return !hasWork && qcItem(c, other).status === 'pending' ? other : preferred;
+}
 
 /** One check on QC's list, as the server's QC queue (qcQueue) reports it. */
 export type QcQueueEntry = {
@@ -99,7 +111,12 @@ export function queuedQcItem(
     ? {
         ...item,
         status: queued.status,
-        stage: queued.stage,
+        // Stopgap: the server's generic "In-process QC" becomes the step's name;
+        // any other stage the server sends is kept as is.
+        stage:
+          queued.stage === S.inProcess && item.operation
+            ? QC_STRINGS.station.operationQc(item.operation.name)
+            : queued.stage,
         subject: queued.subject,
       }
     : item;

@@ -5,7 +5,7 @@ import { useDrawingThumbnail } from '../hooks/useDrawingThumbnail';
 
 jest.mock('../drawingStamp', () => ({ drawingThumbnail: jest.fn() }));
 const draw = drawingThumbnail as unknown as jest.MockedFunction<
-  (doc: Attachment) => Promise<string | null>
+  (doc: Attachment, company: string) => Promise<string | null>
 >;
 
 const doc = (id: string): Attachment => ({
@@ -16,15 +16,15 @@ const doc = (id: string): Attachment => ({
 });
 
 let shown: string | null = null;
-function Probe({ file }: { file: Attachment }) {
-  shown = useDrawingThumbnail(file);
+function Probe({ file, company }: { file: Attachment; company: string }) {
+  shown = useDrawingThumbnail(file, company);
   return null;
 }
 
-async function view(file: Attachment) {
+async function view(file: Attachment, company = 'Motherson') {
   let renderer: ReactTestRenderer | undefined;
   await act(async () => {
-    renderer = create(<Probe file={file} />);
+    renderer = create(<Probe file={file} company={company} />);
   });
   await act(async () => {});
   act(() => renderer?.unmount());
@@ -42,6 +42,17 @@ describe('useDrawingThumbnail', () => {
     expect(await view(doc('once'))).toBe('data:image/png;base64,a');
     expect(await view(doc('once'))).toBe('data:image/png;base64,a');
     expect(draw).toHaveBeenCalledTimes(1);
+  });
+
+  test('the customer is blanked, each customer drawn once', async () => {
+    draw.mockResolvedValue('data:image/png;base64,m');
+    await view(doc('masked'), 'Motherson');
+    await view(doc('masked'), 'Motherson');
+    await view(doc('masked'), 'Acme');
+    expect(draw.mock.calls.map(([, company]) => company)).toEqual([
+      'Motherson',
+      'Acme',
+    ]);
   });
 
   test('a failed download is tried again once', async () => {

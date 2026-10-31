@@ -67,13 +67,26 @@ export function currentOperation(c: JobCard): JobOperation | undefined {
   );
 }
 
-/** The machine the job is on; none once the job card is completed. */
-export const assignedMachine = (c: JobCard) =>
-  c.status === 'completed' ? '' : currentOperation(c)?.machine ?? '';
+/**
+ * The step the job is on (running, paused or next up). None while it waits
+ * on QC, after its QC failed (the redo is started again on a machine), or
+ * once it is ready to dispatch or done: the operator and machine of a
+ * finished step are released then.
+ */
+const workingOperation = (c: JobCard): JobOperation | undefined => {
+  const stage = jobCardStage(c);
+  return stage.key === 'operation' && stage.state !== 'rework'
+    ? stage.operation
+    : undefined;
+};
 
-/** Who is working the job; no one once the job card is completed. */
+/** The machine the job is on; none at a QC stage or once it's finished. */
+export const assignedMachine = (c: JobCard) =>
+  workingOperation(c)?.machine ?? '';
+
+/** Who is working the job; no one at a QC stage or once it's finished. */
 export const assignedOperator = (c: JobCard) =>
-  c.status === 'completed' ? '' : currentOperation(c)?.operator ?? '';
+  workingOperation(c)?.operator ?? '';
 
 /** Completed steps count fully, a started step counts half. */
 export function jobProgress(c: JobCard): number {
@@ -280,6 +293,15 @@ export const canStart = (c: JobCard) =>
 export const canEditFlow = (c: JobCard) =>
   c.operations.length > 0 || c.materialQc === 'accepted';
 
+/**
+ * Generate Dispatch waits for the last step to finish and pass its final QC;
+ * a dispatched card keeps it so its invoice can be opened again.
+ */
+export const canGenerateDispatch = (c: JobCard) => {
+  const { key } = jobCardStage(c);
+  return key === 'ready_to_dispatch' || key === 'done';
+};
+
 /** Work has begun on a step; the card can no longer be cancelled. */
 export const hasStarted = (c: JobCard) =>
   c.operations.some(op => op.status !== 'pending' || op.isRework);
@@ -431,7 +453,9 @@ export const jobCardSearchText = (c: JobCard) => {
   const op = currentOperation(c);
   return `${c.code} ${workOrderSearchTerms(
     c.number.replace(/^WO-?/i, ''),
-  )} ${jobTitle(c)} ${c.customerName} ${op?.name ?? ''} ${assignedMachine(c)} ${assignedOperator(c)}`;
+  )} ${jobTitle(c)} ${c.customerName} ${op?.name ?? ''} ${assignedMachine(
+    c,
+  )} ${assignedOperator(c)}`;
 };
 
 export const matchesJobCardFilters = (c: JobCard, f: JobCardFilters) => {

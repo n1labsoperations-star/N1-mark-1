@@ -153,6 +153,7 @@ export function JobCardsListScreen() {
         type: 'drawing',
         drawingNumber: drawingNumberOf(c),
         doc: c.designFile ?? undefined,
+        company: c.customerName,
       }),
     [drawingNumberOf],
   );

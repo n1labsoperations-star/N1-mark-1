@@ -25,6 +25,17 @@ export async function stampedPreview(
 }
 
 /** Native: no thumbnail yet; the placeholder part shows instead. */
-export async function drawingThumbnail(_doc: Attachment): Promise<null> {
+export async function drawingThumbnail(
+  _doc: Attachment,
+  _company?: string,
+): Promise<null> {
+  return null;
+}
+
+/** Native: nothing is masked; the stored file opens as it is. */
+export async function maskedDrawing(
+  _doc: Attachment,
+  _company: string,
+): Promise<string | null> {
   return null;
 }

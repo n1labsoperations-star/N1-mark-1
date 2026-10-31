@@ -8,14 +8,18 @@ import {
   N1Text,
   UserScreen,
   createN1Styles,
+  useN1Breakpoint,
   useN1Styles,
 } from '../../../shared/components';
 import { printOrNotify } from '../../../services/print';
-import { openStoredFile } from '../../../services/files/fileStorage';
 import { notifyUnavailable } from '../../../shared/utils';
+import { useAppSelector } from '../../../app/store/hooks';
 import { useJobCardForOrder } from '../../jobCards';
 import { DrawingPreview, ORDER_STRINGS, orderHeading } from '../../orders';
 import { VIEW } from '../../orders/components/DrawingPreview';
+import { useDrawingThumbnail } from '../../orders/hooks/useDrawingThumbnail';
+import { selectOrderById } from '../../orders/store/selectors';
+import { openMaskedDrawing } from '../../orders/drawings';
 import { drawingPrintHtml } from '../../orders/printing';
 import type { JobsScreenProps } from '../types';
 import { jobViewOf } from '../utils';
@@ -31,25 +35,32 @@ const makeStyles = createN1Styles(t => ({
 /**
  * A work order's drawing, full screen (opened from the job's or order's
  * drawing), with Print drawing with QR and the stored design file. Read
- * through the order's job card, which every shop-floor role may open.
+ * through the order's job card, which every shop-floor role may open; an
+ * order without a card yet (a supervisor importing it) from the order
+ * already loaded.
  */
 export function DrawingScreen({
   route,
   navigation,
 }: JobsScreenProps<'Drawing'>) {
   const styles = useN1Styles(makeStyles);
+  const { isCompact } = useN1Breakpoint();
   const { orderId } = route.params;
   const { jobCard, status, error, reload } = useJobCardForOrder(orderId);
-  const order = jobCard && jobViewOf(jobCard);
+  const loadedOrder = useAppSelector(state => selectOrderById(state, orderId));
+  const order = jobCard ? jobViewOf(jobCard) : loadedOrder;
   const drawingNumber = order?.drawingNumber || D.noDrawing;
-  const designFile = jobCard?.designFile;
+  const designFile = order?.designFile ?? undefined;
+  const company = order?.customerName ?? '';
+  const thumbnail = useDrawingThumbnail(designFile, company);
+  // Masked as when printing: no customer name, address or logo.
   const openFile = useCallback(() => {
     if (designFile) {
-      openStoredFile(designFile)
+      openMaskedDrawing(designFile, company)
         .then(opened => opened || notifyUnavailable(D.downloadAction))
         .catch(() => notifyUnavailable(D.downloadAction));
     }
-  }, [designFile]);
+  }, [designFile, company]);
 
   const print = useCallback(() => {
     if (order) {
@@ -82,39 +93,48 @@ export function DrawingScreen({
   return (
     <UserScreen
       header={header}
-      footer={[
-        ...(designFile
-          ? [
+      // Phones: just the drawing, without Open in new tab or Print.
+      footer={
+        isCompact
+          ? undefined
+          : [
+              ...(designFile
+                ? [
+                    <N1Button
+                      key="open"
+                      title={D.openInNewTab}
+                      leftIcon="file"
+                      variant="secondary"
+                      size="lg"
+                      fullWidth
+                      onPress={openFile}
+                      testID="drawing-open"
+                    />,
+                  ]
+                : []),
               <N1Button
-                key="open"
-                title={D.openInNewTab}
-                leftIcon="file"
+                key="print"
+                title={D.printDrawing}
+                leftIcon="printer"
                 variant="secondary"
                 size="lg"
                 fullWidth
-                onPress={openFile}
-                testID="drawing-open"
+                onPress={print}
+                testID="drawing-print"
               />,
             ]
-          : []),
-        <N1Button
-          key="print"
-          title={D.printDrawing}
-          leftIcon="printer"
-          variant="secondary"
-          size="lg"
-          fullWidth
-          onPress={print}
-          testID="drawing-print"
-        />,
-      ]}
+      }
       testID="drawing-screen"
     >
       <View style={styles.heading}>
         <N1Text variant="h2">{drawingNumber}</N1Text>
         <N1Text color="secondary">{orderHeading(order)}</N1Text>
       </View>
-      <DrawingPreview drawingNumber={drawingNumber} style={styles.drawing} />
+      <DrawingPreview
+        drawingNumber={drawingNumber}
+        uri={thumbnail}
+        style={styles.drawing}
+      />
     </UserScreen>
   );
 }

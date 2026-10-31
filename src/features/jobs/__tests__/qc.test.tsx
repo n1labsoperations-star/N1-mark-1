@@ -11,6 +11,8 @@ import {
 } from '../../../shared/testing/testUtils';
 import { MOCK_JOB_CARDS } from '../../jobCards/api/mockData';
 import { jobCardsApi } from '../../jobCards/api/mockJobCardsApi';
+import { employeeProfileApi } from '../../profile/api/mockEmployeeProfileApi';
+import { myJobsApi } from '../api/mockMyJobsApi';
 import { QC_STRINGS } from '../constants';
 import { machineQc, qcResult, rawMaterialQc } from '../qc';
 
@@ -57,7 +59,7 @@ describe('qc rules', () => {
     // 1042: Facing finished and passed; Turning still running.
     expect(machineQc(mock('1042'))).toMatchObject({
       status: 'passed',
-      stage: 'In-process QC',
+      stage: 'Facing (Lathe) QC',
       subject: 'Facing (Lathe) (Lathe-01)',
     });
     // 1039: Material QC finished, not checked yet.
@@ -101,10 +103,22 @@ test('QC list has Raw Material and Machine QC tabs', async () => {
   await press(byTestId(root, 'qc-tabs-machine'));
   expect(hasTestId(root, 'qc-tab-page-machine')).toBe(true);
   // A finished operation waits on QC; passed, running or waiting ones don't.
-  expect(rowText(root, '1039')).toContain('In-process QC');
+  expect(rowText(root, '1039')).toContain('Cutting QC');
   expect(rowText(root, '1039')).toContain('Pending');
   expect(hasTestId(root, 'qc-row-1042')).toBe(false);
   expect(hasTestId(root, 'qc-row-1036')).toBe(false);
+});
+
+test('opening the QC list loads its jobs, queue and profile once each', async () => {
+  const list = jest.spyOn(myJobsApi, 'list');
+  const queue = jest.spyOn(myJobsApi, 'qcQueue');
+  const profile = jest.spyOn(employeeProfileApi, 'fetchProfile');
+  await qc();
+  // The header, the list and the focus reload mount together.
+  expect(list).toHaveBeenCalledTimes(1);
+  expect(queue).toHaveBeenCalledTimes(1);
+  expect(profile).toHaveBeenCalledTimes(1);
+  jest.restoreAllMocks();
 });
 
 test('passing raw material QC takes the job out of the bucket', async () => {
@@ -137,7 +151,7 @@ test('failing needs remarks, then marks the item failed', async () => {
 
   // QC station: what is checked and who is assigned, no timer.
   const station = allText(byTestId(root, 'qc-station'));
-  expect(station).toContain('In-process QC');
+  expect(station).toContain('Cutting QC');
   expect(station).toContain('Material QC');
   expect(station).not.toContain('Material QC QC');
   expect(station).toContain('Assigned QC');
@@ -252,6 +266,21 @@ test('importing a job opens its check in the current tab', async () => {
   await press(byTestId(root, 'qc-tabs-machine'));
   const machine = byTestId(root, 'qc-tab-page-machine');
   expect(hasTestId(machine, 'qc-row-1040')).toBe(true);
+});
+
+test('a job scanned on the RM tab opens the check waiting on QC, with Pass and Fail', async () => {
+  const root = await qc();
+  // Raw Material QC tab (the default); 1040's RM is accepted, its machine
+  // check waits.
+  await press(byTestId(root, 'import-job'));
+  await press(byText(root, 'Enter code manually'));
+  await typeInto(byTestId(root, 'job-code-input'), 'WO-1040');
+  await press(byTestId(root, 'job-code-submit'));
+
+  const screen = byTestId(root, 'qc-check-screen');
+  expect(allText(screen)).toContain('Machine QC');
+  expect(hasTestId(screen, 'qc-pass')).toBe(true);
+  expect(hasTestId(screen, 'qc-fail')).toBe(true);
 });
 
 test('View Details opens the order behind a QC check', async () => {

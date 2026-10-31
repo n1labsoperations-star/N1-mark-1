@@ -28,6 +28,9 @@ const makeStyles = createN1Styles(t => ({
   // Wide screens: the Order QR takes the last detail column's width (set
   // inline), so it starts in line with that column below.
   wideRow: { flexWrap: 'nowrap', gap: 0 },
+  // Phones: stacked and held to the screen's width, so the drawing and its
+  // buttons (which wrap) never run past the edge.
+  compactRow: { flexDirection: 'column' },
   section: { gap: t.spacing.md },
   // Wide screens: the file list keeps clear of the QR column beside it.
   wideSection: { paddingRight: t.spacing.xl },
@@ -66,6 +69,8 @@ type Props = {
   drawings?: readonly Attachment[];
   /** What the order QR holds; the app's scanner imports the order from it. */
   qrValue: string;
+  /** The customer, whose name, address and logo the thumbnail blanks. */
+  company: string;
   /** `doc` is the drawing file; none when no file is uploaded. */
   onViewDrawing: (doc?: Attachment) => void;
   onPrintDrawing: (doc?: Attachment) => void;
@@ -86,6 +91,7 @@ export const DrawingQrSection = memo(function DrawingQrSectionComponent({
   hasDrawing = true,
   drawings = NO_DRAWINGS,
   qrValue,
+  company,
   onViewDrawing,
   onPrintDrawing,
   onPreviewDrawing,
@@ -103,11 +109,11 @@ export const DrawingQrSection = memo(function DrawingQrSectionComponent({
   );
   // The thumbnail and buttons are for the first file.
   const [first] = drawings;
-  const thumbnail = useDrawingThumbnail(first);
+  const thumbnail = useDrawingThumbnail(first, company);
   const viewFirst = () => onViewDrawing(first);
   const printFirst = () => onPrintDrawing(first);
   return (
-    <View style={[styles.row, !isCompact && styles.wideRow]}>
+    <View style={[styles.row, isCompact ? styles.compactRow : styles.wideRow]}>
       <View
         style={[
           styles.section,
@@ -141,15 +147,18 @@ export const DrawingQrSection = memo(function DrawingQrSectionComponent({
                 </N1Text>
                 <N1Text weight="bold">{drawingNumber}</N1Text>
               </View>
+              {/* Phones: the drawing itself opens it; no View or Print. */}
               <View style={styles.actions}>
-                <N1Button
-                  title={D.viewDrawing}
-                  leftIcon="eye"
-                  variant="secondary"
-                  size="sm"
-                  onPress={viewFirst}
-                  testID={`${testID}-view-drawing`}
-                />
+                {!isCompact && (
+                  <N1Button
+                    title={D.viewDrawing}
+                    leftIcon="eye"
+                    variant="secondary"
+                    size="sm"
+                    onPress={viewFirst}
+                    testID={`${testID}-view-drawing`}
+                  />
+                )}
                 {first && onPreviewDrawing && (
                   <N1Button
                     title={D.previewQr}
@@ -160,13 +169,15 @@ export const DrawingQrSection = memo(function DrawingQrSectionComponent({
                     testID={`${testID}-preview-qr`}
                   />
                 )}
-                <N1Button
-                  title={D.printDrawing}
-                  leftIcon="printer"
-                  variant="secondary"
-                  size="sm"
-                  onPress={printFirst}
-                />
+                {!isCompact && (
+                  <N1Button
+                    title={D.printDrawing}
+                    leftIcon="printer"
+                    variant="secondary"
+                    size="sm"
+                    onPress={printFirst}
+                  />
+                )}
               </View>
             </View>
           </View>

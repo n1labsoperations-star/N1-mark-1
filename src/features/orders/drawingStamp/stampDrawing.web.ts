@@ -33,6 +33,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
 // The project builds without the DOM typings; just what this file touches.
 type Context2D = {
+  fillStyle: string;
+  fillRect: (x: number, y: number, w: number, h: number) => void;
   getImageData: (
     x: number,
     y: number,
@@ -210,16 +212,11 @@ async function pictureBoxes(
 }
 
 /**
- * Draws the page small, finds the company's details to blank (when a
- * company is given: its name and address, and logos in the title block)
- * and room for a QR, in pixels. Blanked areas count as paper, so the QR may
- * go there.
+ * Draws the page small and finds the company's details to blank (when a
+ * company is given: its name and address, and logos in the title block),
+ * in that small viewport's pixels.
  */
-async function spotOnPage(
-  page: pdfjs.PDFPageProxy,
-  company: string,
-  withLabel: boolean,
-) {
+async function companyDetails(page: pdfjs.PDFPageProxy, company: string) {
   const { canvas, context, viewport } = await renderPage(
     page,
     DRAWING_QR.mapPixels,
@@ -232,6 +229,19 @@ async function spotOnPage(
         ...logoAreas(drawn, await pictureBoxes(page, viewport)),
       ]
     : [];
+  return { drawn, hidden, viewport };
+}
+
+/**
+ * The company's details to blank and room for a QR, in pixels. Blanked
+ * areas count as paper, so the QR may go there.
+ */
+async function spotOnPage(
+  page: pdfjs.PDFPageProxy,
+  company: string,
+  withLabel: boolean,
+) {
+  const { drawn, hidden, viewport } = await companyDetails(page, company);
   const map = clearInk(drawn, hidden);
   const px = (mm: number) => Math.round(mm * PT_PER_MM * viewport.scale);
   // A label takes a band on top, so the square grows to keep the QR's size.
@@ -338,6 +348,18 @@ function drawLabel(
   });
 }
 
+/** The drawing as PDF bytes, or null for files that can't be drawn here. */
+async function drawingPdfBytes(doc: Attachment) {
+  const blob = await drawingBlob(doc);
+  const type = typeOf(doc, blob);
+  if (!type) {
+    return null;
+  }
+  return type === PDF_TYPE
+    ? new Uint8Array(await blob.arrayBuffer())
+    : imageAsPdf(blob, type);
+}
+
 /**
  * The stamped PDF's bytes, or null for files that can't be drawn here.
  * `company`: the customer, whose name, address and logo are blanked.
@@ -349,15 +371,10 @@ async function stampedBytes(
   company: string,
   label: string,
 ) {
-  const blob = await drawingBlob(doc);
-  const type = typeOf(doc, blob);
-  if (!type) {
+  const bytes = await drawingPdfBytes(doc);
+  if (!bytes) {
     return null;
   }
-  const bytes =
-    type === PDF_TYPE
-      ? new Uint8Array(await blob.arrayBuffer())
-      : await imageAsPdf(blob, type);
   // pdf.js takes its copy of the bytes away to its worker.
   const source = await pdfjs.getDocument({ data: bytes.slice() }).promise;
   const pdf = await PDFDocument.load(bytes);
@@ -445,11 +462,44 @@ export async function stampedPreview(
 }
 
 /**
- * The drawing's first page as an image, for its thumbnail. Null for files
+ * The drawing with the customer's details (`company`) blanked and no QR,
+ * for downloading or opening in a tab. Null for files that can't be drawn
+ * here (DWG, STEP…).
+ */
+export async function maskedDrawing(
+  doc: Attachment,
+  company: string,
+): Promise<string | null> {
+  const bytes = await drawingPdfBytes(doc);
+  if (!bytes) {
+    return null;
+  }
+  const source = await pdfjs.getDocument({ data: bytes.slice() }).promise;
+  const pdf = await PDFDocument.load(bytes);
+  const pages = pdf.getPages();
+  try {
+    for (let i = 0; i < pages.length; i++) {
+      const { hidden, viewport } = await companyDetails(
+        await source.getPage(i + 1),
+        company,
+      );
+      hidden.forEach(box => blankOut(pages[i], box, viewport));
+    }
+  } finally {
+    source.destroy();
+  }
+  const blob = new browser.Blob([await pdf.save()], { type: PDF_TYPE });
+  return browser.URL.createObjectURL(blob);
+}
+
+/**
+ * The drawing's first page as an image, for its thumbnail, with the
+ * customer's details (`company`) blanked as when printing. Null for files
  * that can't be drawn here (DWG, STEP…).
  */
 export async function drawingThumbnail(
   doc: Attachment,
+  company = '',
 ): Promise<string | null> {
   if (doc.uri?.startsWith('data:image')) {
     return doc.uri;
@@ -463,7 +513,22 @@ export async function drawingThumbnail(
   const source = await pdfjs.getDocument({ data }).promise;
   try {
     const page = await source.getPage(1);
-    const { canvas } = await renderPage(page, DRAWING_QR.thumbnailPixels);
+    const { hidden, viewport: found } = await companyDetails(page, company);
+    const { canvas, context, viewport } = await renderPage(
+      page,
+      DRAWING_QR.thumbnailPixels,
+    );
+    // Found on a smaller drawing of the same page: scale up to this one.
+    const k = viewport.scale / found.scale;
+    context.fillStyle = lightTheme.colors.qrBackground;
+    hidden.forEach(b =>
+      context.fillRect(
+        Math.floor(b.x0 * k),
+        Math.floor(b.y0 * k),
+        Math.ceil((b.x1 - b.x0 + 1) * k),
+        Math.ceil((b.y1 - b.y0 + 1) * k),
+      ),
+    );
     return canvas.toDataURL('image/png');
   } finally {
     source.destroy();

@@ -69,6 +69,7 @@ export type OrderView = Pick<
       | 'rawMaterialGrade'
       | 'rawMaterialSize'
       | 'heatNumber'
+      | 'designFile'
     >
   >;
 

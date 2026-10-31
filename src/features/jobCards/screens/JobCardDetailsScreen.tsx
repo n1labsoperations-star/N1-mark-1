@@ -95,6 +95,7 @@ import type {
 } from '../types';
 import {
   canEditFlow,
+  canGenerateDispatch,
   canPauseOrComplete,
   canStart,
   jobCardStage,
@@ -503,9 +504,13 @@ export function JobCardDetailsScreen({
   // Supervisor only: enter the replacement material so RM QC checks it again.
   // RawMaterial lives in the role's stack, not the admin Job Cards stack.
   const canReinitiate = employeeRole === 'supervisor';
+  // Admin and supervisor restart a step whose QC failed.
+  const canRedo = employeeRole === null || employeeRole === 'supervisor';
   // Invoices are for owner, admin and accountant: the backend refuses the
-  // supervisor (a delivery challan for them is coming next).
-  const canDispatch = employeeRole === null;
+  // supervisor (a delivery challan for them is coming next). Shown only
+  // once the last step is done and has passed its final QC.
+  const canDispatch =
+    employeeRole === null && !!jobCard && canGenerateDispatch(jobCard);
   const reinitiate = useCallback(() => {
     if (orderId) {
       navigation.dispatch(
@@ -536,7 +541,6 @@ export function JobCardDetailsScreen({
       title={D.title}
       onBack={back.goBack}
       compactRight={
-        jobCard &&
         canDispatch && (
           <N1IconButton
             icon="package"
@@ -649,7 +653,23 @@ export function JobCardDetailsScreen({
       testID="complete-operation"
     />
   );
-  const operationButtons = [startButton, pauseButton, completeButton];
+  // A step whose QC failed restarts with Redo (admin and supervisor) in
+  // place of Start, so there's one way to restart it.
+  const redoButton = failedStep && canRedo && (
+    <N1Button
+      key="redo"
+      title={S.stages.redo(failedStep.name)}
+      leftIcon="refresh"
+      variant="danger"
+      size={isCompact ? 'lg' : 'sm'}
+      fullWidth={isCompact}
+      onPress={redo}
+      disabled={saving || Boolean(blocked)}
+      testID="redo-operation"
+    />
+  );
+  const restartButton = failedStep ? redoButton : startButton;
+  const operationButtons = [restartButton, pauseButton, completeButton];
 
   const top = (
     <View style={styles.top}>
@@ -697,8 +717,14 @@ export function JobCardDetailsScreen({
         hasDrawing={Boolean(jobCard.designFile)}
         drawings={drawings}
         qrValue={order ? orderQrValue(order) : jobCard.number}
+        company={jobCard.customerName}
         onViewDrawing={doc =>
-          setViewing({ type: 'drawing', drawingNumber, doc })
+          setViewing({
+            type: 'drawing',
+            drawingNumber,
+            doc,
+            company: jobCard.customerName,
+          })
         }
         onPrintDrawing={printDrawing}
         onPreviewDrawing={
@@ -808,23 +834,10 @@ export function JobCardDetailsScreen({
             </View>
           }
         >
-          {/* Phones: Start, Pause and Complete sit in the sticky bottom
-              bar. */}
-          {hasFlow && (!isCompact || failedStep) && (
-            <View style={styles.actions}>
-              {!isCompact && operationButtons}
-              {failedStep && (
-                <N1Button
-                  title={S.stages.redo(failedStep.name)}
-                  leftIcon="refresh"
-                  variant="danger"
-                  size="sm"
-                  onPress={redo}
-                  disabled={saving || Boolean(blocked)}
-                  testID="redo-operation"
-                />
-              )}
-            </View>
+          {/* Phones: Start (or Redo), Pause and Complete sit in the sticky
+              bottom bar. */}
+          {hasFlow && !isCompact && (
+            <View style={styles.actions}>{operationButtons}</View>
           )}
           {hasFlow && blocked && (
             <N1Text variant="small" color="secondary" testID="start-blocked">
@@ -982,10 +995,11 @@ export function JobCardDetailsScreen({
               </JobCardTabs.Screen>
             ))}
           </JobCardTabs.Navigator>
-          {/* Two buttons: Start (Pause while a step runs) and Complete. */}
+          {/* Two buttons: Start or Redo (Pause while a step runs) and
+              Complete. */}
           {hasFlow && (
             <N1BottomBar testID="job-card-operation-bar">
-              {running ? pauseButton : startButton}
+              {running ? pauseButton : restartButton}
               {completeButton}
             </N1BottomBar>
           )}
